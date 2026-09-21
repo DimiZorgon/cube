@@ -4,58 +4,60 @@ import { OrbitControls } from '@react-three/drei';
 // import { Cubie } from './components/Cubie';
 import { RubiksCube } from './components/RubiksCube';
 import { useCubeStore } from './store/useCubeStore';
+import { CameraMapper } from './components/CameraMapper';
 
 function App() {
   const [time, setTime] = useState("00:00.00");
   const rotateFace = useCubeStore(state => state.rotateFace);
+  const cameraMapping = useCubeStore(state => state.cameraMapping);
 
   const handleMove = (move) => {
-    console.log("Move triggered:", move);
+    const { Right, Left, Up, Down, Front, Back } = cameraMapping;
 
     // Mouvements simples
     if (move === "R") {
-      rotateFace("x", 1, 1);
+      rotateFace(Right.axis, Right.value, 1 * Right.dirMultiplier);
     }
     else if (move === "L") {
-      rotateFace("x", -1, 1);
+      rotateFace(Left.axis, Left.value, 1 * Left.dirMultiplier);
     }
     else if (move === "U") {
-      rotateFace("y", 1, 1);
+      rotateFace(Up.axis, Up.value, 1 * Up.dirMultiplier);
     }
     else if (move === "D") {
-      rotateFace("y", -1, 1);
+      rotateFace(Down.axis, Down.value, 1 * Down.dirMultiplier);
     }
     else if (move === "F") {
-      rotateFace("z", 1, 1);
+      rotateFace(Front.axis, Front.value, 1 * Front.dirMultiplier);
     }
     else if (move === "B") {
-      rotateFace("z", -1, 1);
+      rotateFace(Back.axis, Back.value, 1 * Back.dirMultiplier);
     }
     else if (move === "M") {
-      rotateFace("x", 0, 1);
+      rotateFace(Left.axis, 0, 1 * Left.dirMultiplier);
     }
 
     // Mouvements prime
     if (move === "R'") {
-      rotateFace("x", 1, -1);
+      rotateFace(Right.axis, Right.value, -1 * Right.dirMultiplier);
     }
     else if (move === "L'") {
-      rotateFace("x", -1, -1);
+      rotateFace(Left.axis, Left.value, -1 * Left.dirMultiplier);
     }
     else if (move === "U'") {
-      rotateFace("y", 1, -1);
+      rotateFace(Up.axis, Up.value, -1 * Up.dirMultiplier);
     }
     else if (move === "D'") {
-      rotateFace("y", -1, -1);
+      rotateFace(Down.axis, Down.value, -1 * Down.dirMultiplier);
     }
     else if (move === "F'") {
-      rotateFace("z", 1, -1);
+      rotateFace(Front.axis, Front.value, -1 * Front.dirMultiplier);
     }
     else if (move === "B'") {
-      rotateFace("z", -1, -1);
+      rotateFace(Back.axis, Back.value, -1 * Back.dirMultiplier);
     }
     else if (move === "M'") {
-      rotateFace("x", 0, -1);
+      rotateFace(Left.axis, 0, -1 * Left.dirMultiplier);
     }
 
 
@@ -90,6 +92,9 @@ function App() {
 
             {/* Placeholder Cube */}
             <RubiksCube />
+
+            {/* Espion caméra */}
+            <CameraMapper />
 
             <OrbitControls enablePan={false} enableZoom={false} />
           </Canvas>

@@ -16,6 +16,17 @@ export const generateInitialCubies = () => {
 
 export const useCubeStore = create((set) => ({
     cubies: generateInitialCubies(),
+    //etat par defaut 
+    cameraMapping: {
+        Right: { axis: 'x', value: 1, dirMultiplier: 1 },
+        Up: { axis: 'y', value: 1, dirMultiplier: 1 },
+        Front: { axis: 'z', value: 1, dirMultiplier: 1 },
+        Left: { axis: 'x', value: -1, dirMultiplier: 1 },
+        Down: { axis: 'y', value: -1, dirMultiplier: 1 },
+        Back: { axis: 'z', value: -1, dirMultiplier: 1 }
+    },
+    // La fonction pour mettre à jour cet état
+    setCameraMapping: (mapping) => set({ cameraMapping: mapping }),
 
 
     // fonction de rotation de face
