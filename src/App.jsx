@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import { TrackballControls } from '@react-three/drei';
 // import { Cubie } from './components/Cubie';
 import { RubiksCube } from './components/RubiksCube';
 import { useCubeStore } from './store/useCubeStore';
@@ -96,7 +96,8 @@ function App() {
             {/* Espion caméra */}
             <CameraMapper />
 
-            <OrbitControls enablePan={false} enableZoom={false} />
+            <TrackballControls noPan={true} noZoom={true} rotateSpeed={7} />
+
           </Canvas>
         </div>
 
