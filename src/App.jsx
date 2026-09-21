@@ -3,13 +3,62 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 // import { Cubie } from './components/Cubie';
 import { RubiksCube } from './components/RubiksCube';
+import { useCubeStore } from './store/useCubeStore';
 
 function App() {
   const [time, setTime] = useState("00:00.00");
+  const rotateFace = useCubeStore(state => state.rotateFace);
 
   const handleMove = (move) => {
     console.log("Move triggered:", move);
-    // TODO: implement move logic which starts timer on first move
+
+    // Mouvements simples
+    if (move === "R") {
+      rotateFace("x", 1, 1);
+    }
+    else if (move === "L") {
+      rotateFace("x", -1, 1);
+    }
+    else if (move === "U") {
+      rotateFace("y", 1, 1);
+    }
+    else if (move === "D") {
+      rotateFace("y", -1, 1);
+    }
+    else if (move === "F") {
+      rotateFace("z", 1, 1);
+    }
+    else if (move === "B") {
+      rotateFace("z", -1, 1);
+    }
+    else if (move === "M") {
+      rotateFace("x", 0, 1);
+    }
+
+    // Mouvements prime
+    if (move === "R'") {
+      rotateFace("x", 1, -1);
+    }
+    else if (move === "L'") {
+      rotateFace("x", -1, -1);
+    }
+    else if (move === "U'") {
+      rotateFace("y", 1, -1);
+    }
+    else if (move === "D'") {
+      rotateFace("y", -1, -1);
+    }
+    else if (move === "F'") {
+      rotateFace("z", 1, -1);
+    }
+    else if (move === "B'") {
+      rotateFace("z", -1, -1);
+    }
+    else if (move === "M'") {
+      rotateFace("x", 0, -1);
+    }
+
+
   };
 
   const handleShuffle = () => {
