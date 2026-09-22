@@ -87,7 +87,7 @@ function App() {
         {/* 3D Canvas */}
         <div className="cube-container">
           <Canvas camera={{ position: [5, 5, 5], fov: 45 }}>
-            <ambientLight intensity={0.5} />
+            <ambientLight intensity={0.9} />
             <directionalLight position={[10, 10, 10]} intensity={1} />
 
             {/* Placeholder Cube */}
