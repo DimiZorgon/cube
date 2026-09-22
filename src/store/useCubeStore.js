@@ -28,9 +28,19 @@ export const useCubeStore = create((set) => ({
     // La fonction pour mettre à jour cet état
     setCameraMapping: (mapping) => set({ cameraMapping: mapping }),
 
+    // Gestion rotation
+
+    activeRotation: null,
+
+    startRotation: (axis, value, direction) => {
+        set({ activeRotation: { axis, value, direction, progress: 0 } })
+    },
+
+
+
 
     // fonction de rotation de face
-    rotateFace: (axis, value, direction) => {
+    commitRotation: (axis, value, direction) => {
         set((state) => {
             const dico_axis = {
                 x: 0,
@@ -68,7 +78,7 @@ export const useCubeStore = create((set) => ({
                 }
 
             })
-            return { cubies: axedCubies };
+            return { cubies: axedCubies, activeRotation: null };
         })
     }
 

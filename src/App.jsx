@@ -8,7 +8,7 @@ import { CameraMapper } from './components/CameraMapper';
 
 function App() {
   const [time, setTime] = useState("00:00.00");
-  const rotateFace = useCubeStore(state => state.rotateFace);
+  const startRotation = useCubeStore(state => state.startRotation);
   const cameraMapping = useCubeStore(state => state.cameraMapping);
 
   const handleMove = (move) => {
@@ -16,48 +16,48 @@ function App() {
 
     // Mouvements simples
     if (move === "R") {
-      rotateFace(Right.axis, Right.value, 1 * Right.dirMultiplier);
+      startRotation(Right.axis, Right.value, 1 * Right.dirMultiplier);
     }
     else if (move === "L") {
-      rotateFace(Left.axis, Left.value, 1 * Left.dirMultiplier);
+      startRotation(Left.axis, Left.value, 1 * Left.dirMultiplier);
     }
     else if (move === "U") {
-      rotateFace(Up.axis, Up.value, 1 * Up.dirMultiplier);
+      startRotation(Up.axis, Up.value, 1 * Up.dirMultiplier);
     }
     else if (move === "D") {
-      rotateFace(Down.axis, Down.value, 1 * Down.dirMultiplier);
+      startRotation(Down.axis, Down.value, 1 * Down.dirMultiplier);
     }
     else if (move === "F") {
-      rotateFace(Front.axis, Front.value, 1 * Front.dirMultiplier);
+      startRotation(Front.axis, Front.value, 1 * Front.dirMultiplier);
     }
     else if (move === "B") {
-      rotateFace(Back.axis, Back.value, 1 * Back.dirMultiplier);
+      startRotation(Back.axis, Back.value, 1 * Back.dirMultiplier);
     }
     else if (move === "M") {
-      rotateFace(Left.axis, 0, 1 * Left.dirMultiplier);
+      startRotation(Left.axis, 0, 1 * Left.dirMultiplier);
     }
 
     // Mouvements prime
     if (move === "R'") {
-      rotateFace(Right.axis, Right.value, -1 * Right.dirMultiplier);
+      startRotation(Right.axis, Right.value, -1 * Right.dirMultiplier);
     }
     else if (move === "L'") {
-      rotateFace(Left.axis, Left.value, -1 * Left.dirMultiplier);
+      startRotation(Left.axis, Left.value, -1 * Left.dirMultiplier);
     }
     else if (move === "U'") {
-      rotateFace(Up.axis, Up.value, -1 * Up.dirMultiplier);
+      startRotation(Up.axis, Up.value, -1 * Up.dirMultiplier);
     }
     else if (move === "D'") {
-      rotateFace(Down.axis, Down.value, -1 * Down.dirMultiplier);
+      startRotation(Down.axis, Down.value, -1 * Down.dirMultiplier);
     }
     else if (move === "F'") {
-      rotateFace(Front.axis, Front.value, -1 * Front.dirMultiplier);
+      startRotation(Front.axis, Front.value, -1 * Front.dirMultiplier);
     }
     else if (move === "B'") {
-      rotateFace(Back.axis, Back.value, -1 * Back.dirMultiplier);
+      startRotation(Back.axis, Back.value, -1 * Back.dirMultiplier);
     }
     else if (move === "M'") {
-      rotateFace(Left.axis, 0, -1 * Left.dirMultiplier);
+      startRotation(Left.axis, 0, -1 * Left.dirMultiplier);
     }
 
 
