@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { TrackballControls } from '@react-three/drei';
+import { TrackballControls, OrbitControls } from '@react-three/drei';
 // import { Cubie } from './components/Cubie';
 import { RubiksCube } from './components/RubiksCube';
 import { useCubeStore } from './store/useCubeStore';
@@ -10,6 +10,28 @@ function App() {
   const [time, setTime] = useState("00:00.00");
   const startRotation = useCubeStore(state => state.startRotation);
   const cameraMapping = useCubeStore(state => state.cameraMapping);
+  const [isMobile, setIsMobile] = useState(false)
+
+
+  useEffect(() => {
+    // vérifie la largeur et met à jour le state
+    const handleResize = () => {
+      // SI la largeur de la fenêtre (window.innerWidth) est plus petite que 768px, 
+      // ALORS on utilise setIsMobile(true), SINON setIsMobile(false)
+
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    // écoute les changements de taille de l'écran
+    window.addEventListener("resize", handleResize);
+
+    // appelle la fonction une 1ère fois au démarrage pour initialiser la valeur
+    handleResize();
+
+    // nettoye pour éviter les fuites de mémoire
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
 
   const handleMove = (move) => {
     const { Right, Left, Up, Down, Front, Back } = cameraMapping;
@@ -65,7 +87,16 @@ function App() {
 
   const handleShuffle = () => {
     console.log("Shuffle triggered");
-    // TODO: implement shuffle logic
+    const moves = ["R", "L", "U", "D", "F", "B", "R'", "L'", "U'", "D'", "F'", "B'"];
+    let previousMove = "";
+    for (let i = 0; i < 20; i++) {
+      let randomMove = moves[Math.floor(Math.random() * moves.length)];
+      while (randomMove === previousMove + "'" || randomMove + "'" === previousMove) {
+        randomMove = moves[Math.floor(Math.random() * moves.length)];
+      }
+      previousMove = randomMove;
+      handleMove(randomMove);
+    }
   };
 
   const MoveButton = ({ label }) => (
@@ -86,7 +117,7 @@ function App() {
       <main className="main-area">
         {/* 3D Canvas */}
         <div className="cube-container">
-          <Canvas camera={{ position: [5, 5, 5], fov: 45 }}>
+          <Canvas camera={{ position: [5, 5, 5], fov: isMobile ? 75 : 65 }}>
             <ambientLight intensity={0.9} />
             <directionalLight position={[10, 10, 10]} intensity={1} />
 
@@ -96,7 +127,8 @@ function App() {
             {/* Espion caméra */}
             <CameraMapper />
 
-            <TrackballControls noPan={true} noZoom={true} rotateSpeed={7} />
+            {/* Controls */}
+            <TrackballControls noPan={true} noZoom={true} rotateSpeed={isMobile ? 5 : 8} />
 
           </Canvas>
         </div>

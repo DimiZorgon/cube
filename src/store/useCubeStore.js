@@ -14,6 +14,8 @@ export const generateInitialCubies = () => {
     return cubies
 }
 
+
+
 export const useCubeStore = create((set) => ({
     cubies: generateInitialCubies(),
     //etat par defaut 
@@ -31,12 +33,26 @@ export const useCubeStore = create((set) => ({
     // Gestion rotation
 
     activeRotation: null,
+    rotationFile: [],
 
     startRotation: (axis, value, direction) => {
-        set({ activeRotation: { axis, value, direction, progress: 0 } })
+        // Le mouvement que l'on veut faire
+        const newMove = { axis, value, direction, progress: 0 };
+        // On utilise la méthode réfléchie car on a besoin de lire l'état actuel
+        set((state) => {
+
+            // CAS 1 : Le cube ne tourne pas actuellement
+            if (state.activeRotation === null) {
+                // Retourne un objet qui met `newMove` dans `activeRotation`
+                return { activeRotation: newMove };
+            }
+
+            // CAS 2 : Le cube tourne déjà
+            else {
+                return { rotationFile: [...state.rotationFile, newMove] };
+            }
+        });
     },
-
-
 
 
     // fonction de rotation de face
@@ -78,6 +94,10 @@ export const useCubeStore = create((set) => ({
                 }
 
             })
+            if (state.rotationFile.length > 0) {
+                const [activeRotation, ...rest] = state.rotationFile;
+                return { cubies: axedCubies, activeRotation, rotationFile: rest };
+            }
             return { cubies: axedCubies, activeRotation: null };
         })
     }
