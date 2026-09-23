@@ -64,7 +64,7 @@ export const useCubeStore = create((set) => ({
                 z: 2
             }
             const axedCubies = state.cubies.map((c) => {
-                if (c.position[dico_axis[axis]] === value) {
+                if (value.includes(c.position[dico_axis[axis]])) {
                     // Creation axe 3D (si axis est 'x', ça fait Vector3(1,0,0))
                     const axisVector = new THREE.Vector3(
                         axis === 'x' ? 1 : 0,

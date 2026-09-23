@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { TrackballControls, OrbitControls } from '@react-three/drei';
 // import { Cubie } from './components/Cubie';
@@ -30,53 +30,97 @@ function App() {
   const handleMove = (move) => {
     const { Right, Left, Up, Down, Front, Back } = cameraMapping;
 
-    // Mouvements simples
-    if (move === "R") {
-      startRotation(Right.axis, Right.value, 1 * Right.dirMultiplier);
-    }
-    else if (move === "L") {
-      startRotation(Left.axis, Left.value, 1 * Left.dirMultiplier);
-    }
-    else if (move === "U") {
-      startRotation(Up.axis, Up.value, 1 * Up.dirMultiplier);
-    }
-    else if (move === "D") {
-      startRotation(Down.axis, Down.value, 1 * Down.dirMultiplier);
-    }
-    else if (move === "F") {
-      startRotation(Front.axis, Front.value, 1 * Front.dirMultiplier);
-    }
-    else if (move === "B") {
-      startRotation(Back.axis, Back.value, 1 * Back.dirMultiplier);
-    }
-    else if (move === "M") {
-      startRotation(Left.axis, 0, 1 * Left.dirMultiplier);
-    }
+    switch (move) {
+      // Mouvements simples (1 tranche)
+      case "R":
+        startRotation(Right.axis, [Right.value], 1 * Right.dirMultiplier);
+        break;
+      case "L":
+        startRotation(Left.axis, [Left.value], 1 * Left.dirMultiplier);
+        break;
+      case "U":
+        startRotation(Up.axis, [Up.value], 1 * Up.dirMultiplier);
+        break;
+      case "D":
+        startRotation(Down.axis, [Down.value], 1 * Down.dirMultiplier);
+        break;
+      case "F":
+        startRotation(Front.axis, [Front.value], 1 * Front.dirMultiplier);
+        break;
+      case "B":
+        startRotation(Back.axis, [Back.value], 1 * Back.dirMultiplier);
+        break;
+      case "M":
+        startRotation(Left.axis, [0], 1 * Left.dirMultiplier);
+        break;
 
-    // Mouvements prime
-    if (move === "R'") {
-      startRotation(Right.axis, Right.value, -1 * Right.dirMultiplier);
-    }
-    else if (move === "L'") {
-      startRotation(Left.axis, Left.value, -1 * Left.dirMultiplier);
-    }
-    else if (move === "U'") {
-      startRotation(Up.axis, Up.value, -1 * Up.dirMultiplier);
-    }
-    else if (move === "D'") {
-      startRotation(Down.axis, Down.value, -1 * Down.dirMultiplier);
-    }
-    else if (move === "F'") {
-      startRotation(Front.axis, Front.value, -1 * Front.dirMultiplier);
-    }
-    else if (move === "B'") {
-      startRotation(Back.axis, Back.value, -1 * Back.dirMultiplier);
-    }
-    else if (move === "M'") {
-      startRotation(Left.axis, 0, -1 * Left.dirMultiplier);
-    }
+      // Mouvements prime (1 tranche, sens inverse)
+      case "R'":
+        startRotation(Right.axis, [Right.value], -1 * Right.dirMultiplier);
+        break;
+      case "L'":
+        startRotation(Left.axis, [Left.value], -1 * Left.dirMultiplier);
+        break;
+      case "U'":
+        startRotation(Up.axis, [Up.value], -1 * Up.dirMultiplier);
+        break;
+      case "D'":
+        startRotation(Down.axis, [Down.value], -1 * Down.dirMultiplier);
+        break;
+      case "F'":
+        startRotation(Front.axis, [Front.value], -1 * Front.dirMultiplier);
+        break;
+      case "B'":
+        startRotation(Back.axis, [Back.value], -1 * Back.dirMultiplier);
+        break;
+      case "M'":
+        startRotation(Left.axis, [0], -1 * Left.dirMultiplier);
+        break;
 
+      // Mouvements larges (2 tranches)
+      case "r":
+        startRotation(Right.axis, [Right.value, 0], 1 * Right.dirMultiplier);
+        break;
+      case "l":
+        startRotation(Left.axis, [Left.value, 0], 1 * Left.dirMultiplier);
+        break;
+      case "u":
+        startRotation(Up.axis, [Up.value, 0], 1 * Up.dirMultiplier);
+        break;
+      case "d":
+        startRotation(Down.axis, [Down.value, 0], 1 * Down.dirMultiplier);
+        break;
+      case "f":
+        startRotation(Front.axis, [Front.value, 0], 1 * Front.dirMultiplier);
+        break;
+      case "b":
+        startRotation(Back.axis, [Back.value, 0], 1 * Back.dirMultiplier);
+        break;
 
+      // Mouvements larges prime (2 tranches, sens inverse)
+      case "r'":
+        startRotation(Right.axis, [Right.value, 0], -1 * Right.dirMultiplier);
+        break;
+      case "l'":
+        startRotation(Left.axis, [Left.value, 0], -1 * Left.dirMultiplier);
+        break;
+      case "u'":
+        startRotation(Up.axis, [Up.value, 0], -1 * Up.dirMultiplier);
+        break;
+      case "d'":
+        startRotation(Down.axis, [Down.value, 0], -1 * Down.dirMultiplier);
+        break;
+      case "f'":
+        startRotation(Front.axis, [Front.value, 0], -1 * Front.dirMultiplier);
+        break;
+      case "b'":
+        startRotation(Back.axis, [Back.value, 0], -1 * Back.dirMultiplier);
+        break;
+
+      default:
+        console.warn(`Mouvement non reconnu : ${move}`);
+        break;
+    }
   };
 
   const handleShuffle = () => {
@@ -93,11 +137,34 @@ function App() {
     }
   };
 
-  const MoveButton = ({ label }) => (
-    <button className="move-btn" onClick={() => handleMove(label)}>
-      {label}
-    </button>
-  );
+  const MoveButton = ({ label }) => {
+    const timerRef = useRef(null)
+    const handlePointerDown = () => {
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null;
+        handleMove(label.toLowerCase());
+      }, 500)
+
+    }
+    const handlePointerUp = () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+        handleMove(label);
+      }
+    };
+
+    return (
+      <button
+        className="move-btn"
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
+      >
+        {label}
+      </button>
+    )
+  };
 
   return (
     <div className="app-container">
@@ -115,8 +182,8 @@ function App() {
       <main className="main-area">
         {/* 3D Canvas */}
         <div className="cube-container">
-          <Canvas camera={{ position: [5, 5, 5], fov: isMobile ? 75 : 65 }}>
-            <ambientLight intensity={0.9} />
+          <Canvas camera={{ position: [5, 5, 5], fov: isMobile ? 65 : 55 }}>
+            <ambientLight intensity={1} />
             <directionalLight position={[10, 10, 10]} intensity={1} />
 
             {/* Placeholder Cube */}
