@@ -5,30 +5,24 @@ import { TrackballControls, OrbitControls } from '@react-three/drei';
 import { RubiksCube } from './components/RubiksCube';
 import { useCubeStore } from './store/useCubeStore';
 import { CameraMapper } from './components/CameraMapper';
+import { CustomLockControls } from './components/LockCamera';
+
 
 function App() {
   const [time, setTime] = useState("00:00.00");
   const startRotation = useCubeStore(state => state.startRotation);
   const cameraMapping = useCubeStore(state => state.cameraMapping);
-  const [isMobile, setIsMobile] = useState(false)
+  const [isMobile, setIsMobile] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
+
 
 
   useEffect(() => {
-    // vérifie la largeur et met à jour le state
     const handleResize = () => {
-      // SI la largeur de la fenêtre (window.innerWidth) est plus petite que 768px, 
-      // ALORS on utilise setIsMobile(true), SINON setIsMobile(false)
-
       setIsMobile(window.innerWidth < 768);
     };
-
-    // écoute les changements de taille de l'écran
     window.addEventListener("resize", handleResize);
-
-    // appelle la fonction une 1ère fois au démarrage pour initialiser la valeur
     handleResize();
-
-    // nettoye pour éviter les fuites de mémoire
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
@@ -111,6 +105,10 @@ function App() {
       <header className="header">
         <div className="timer">{time}</div>
         <button className="shuffle-btn" onClick={handleShuffle}>Shuffle</button>
+        <button className="shuffle-btn" onClick={() => setIsLocked(!isLocked)}>
+          {isLocked ? "Déverrouiller" : "Verrouiller"}
+        </button>
+
       </header>
 
       {/* Main Area: 3D Cube and Controls */}
@@ -128,7 +126,8 @@ function App() {
             <CameraMapper />
 
             {/* Controls */}
-            <TrackballControls noPan={true} noZoom={true} rotateSpeed={isMobile ? 5 : 8} />
+            <TrackballControls enabled={!isLocked} noPan={true} noZoom={true} rotateSpeed={isMobile ? 5 : 8} />
+            <CustomLockControls isLocked={isLocked} cameraMapping={cameraMapping} />
 
           </Canvas>
         </div>
