@@ -199,11 +199,10 @@ body {
 
   .timer {
     font-size: 1rem;
-    letter-spacing: -2px;
   }
 
   .highscore {
-    font-size: 0.5rem;
+    font-size: 1rem;
     letter-spacing: -2px;
   }
 
