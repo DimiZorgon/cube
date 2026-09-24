@@ -13,6 +13,9 @@ body {
   background-color: var(--bg-color);
   color: var(--text-color);
   font-family: 'Courier New', Courier, monospace;
+  touch-action: none;
+  overscroll-behavior: none;
+
 }
 
 .app-container {
@@ -167,5 +170,13 @@ body {
 
   .timer {
     font-size: 1.8rem;
+  }
+
+  :root {
+    --btn-size: 45px;
+  }
+
+  .header {
+    padding: 0.5rem 1rem;
   }
 }

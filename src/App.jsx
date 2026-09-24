@@ -236,12 +236,12 @@ function App() {
               <MoveButton label="F'" />
             </div>
             <div className="btn-group">
-              <MoveButton label="D" />
-              <MoveButton label="D'" />
-            </div>
-            <div className="btn-group">
               <MoveButton label="M" />
               <MoveButton label="M'" />
+            </div>
+            <div className="btn-group">
+              <MoveButton label="D" />
+              <MoveButton label="D'" />
             </div>
           </div>
         </div>
