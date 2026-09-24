@@ -233,7 +233,7 @@ function App() {
         {/* BLOC DROITE */}
         <div className="header-right">
           <button className="shuffle-btn" onClick={() => setIsLocked(!isLocked)}>
-            {isLocked ? isMobile ? "🔒" : "🔒 Locked" : isMobile ? "🔓" : "🔓 Unlocked"}
+            {isLocked ? (isMobile ? "🔒" : "🔒 Locked") : (isMobile ? "🔓" : "🔓 Unlocked")}
           </button>
         </div>
       </header>
