@@ -6,6 +6,7 @@ import { RubiksCube } from './components/RubiksCube';
 import { useCubeStore } from './store/useCubeStore';
 import { CameraMapper } from './components/CameraMapper';
 import { CustomLockControls } from './components/LockCamera';
+import confetti from 'canvas-confetti';
 
 
 const MoveButton = ({ label, onMove }) => {
@@ -47,6 +48,7 @@ function App() {
   const [isMobile, setIsMobile] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const isSolved = useCubeStore(state => state.isSolved);
+  const [highScore, setHighScore] = useState(localStorage.getItem('rubiksHighScore') || null);
 
 
   useEffect(() => {
@@ -76,9 +78,18 @@ function App() {
   useEffect(() => {
     if (isSolved && isRunning) {
       setIsRunning(false);
-      console.log("VICTOIRE !");
+      if (!highScore || time < highScore) {
+        localStorage.setItem('rubiksHighScore', time);
+        setHighScore(time);
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      }
+
     }
-  }, [isSolved, isRunning]);
+  }, [isSolved, isRunning, time, highScore]);
 
 
 
@@ -184,7 +195,7 @@ function App() {
   const handleShuffle = () => {
     const moves = ["R", "L", "U", "D", "F", "B", "R'", "L'", "U'", "D'", "F'", "B'"];
     let previousMove = "";
-    for (let i = 0; i < 21; i++) {
+    for (let i = 0; i < 20; i++) {
       let randomMove = moves[Math.floor(Math.random() * moves.length)];
       while (randomMove === previousMove + "'" || randomMove + "'" === previousMove) {
         randomMove = moves[Math.floor(Math.random() * moves.length)];
@@ -209,16 +220,28 @@ function App() {
     <div className="app-container">
       {/* Header: Timer and Shuffle */}
       <header className="header">
-        <div className="timer">{formatTime(time)}</div>
-        <button className="shuffle-btn" onClick={handleShuffle}>Shuffle</button>
-        <button className="shuffle-btn" onClick={() => setIsLocked(!isLocked)}>
-          {isLocked ? isMobile ? "🔒" : "🔒 Locked" : isMobile ? "🔓" : "🔓 Unlocked"}
-        </button>
 
+        {/* BLOC GAUCHE */}
+        <div className="header-left">
+          <div className="highscore">High Score: {highScore ? formatTime(highScore) : "-"}</div>
+        </div>
+
+        {/* BLOC CENTRE */}
+        <div className="header-center">
+          <button className="shuffle-btn" onClick={handleShuffle}>Shuffle</button>
+        </div>
+        {/* BLOC DROITE */}
+        <div className="header-right">
+          <button className="shuffle-btn" onClick={() => setIsLocked(!isLocked)}>
+            {isLocked ? isMobile ? "🔒" : "🔒 Locked" : isMobile ? "🔓" : "🔓 Unlocked"}
+          </button>
+        </div>
       </header>
+
 
       {/* Main Area: 3D Cube and Controls */}
       <main className="main-area">
+        <div className="timer">{formatTime(time)}</div>
         {/* 3D Canvas */}
         <div className="cube-container">
           <Canvas camera={{ position: [5, 5, 5], fov: isMobile ? 65 : 55 }}>
