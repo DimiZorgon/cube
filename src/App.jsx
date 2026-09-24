@@ -8,13 +8,45 @@ import { CameraMapper } from './components/CameraMapper';
 import { CustomLockControls } from './components/LockCamera';
 
 
+const MoveButton = ({ label, onMove }) => {
+  const timerRef = useRef(null)
+  const handlePointerDown = () => {
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null;
+      onMove(label.toLowerCase());
+    }, 500)
+
+  }
+  const handlePointerUp = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+      onMove(label);
+    }
+  };
+
+
+
+  return (
+    <button
+      className="move-btn"
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={handlePointerUp}
+    >
+      {label}
+    </button>
+  )
+};
+
 function App() {
-  const [time, setTime] = useState("00:00.00");
+  const [time, setTime] = useState(0);
+  const [isRunning, setIsRunning] = useState(false);
   const startRotation = useCubeStore(state => state.startRotation);
   const cameraMapping = useCubeStore(state => state.cameraMapping);
   const [isMobile, setIsMobile] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
-
+  const isSolved = useCubeStore(state => state.isSolved);
 
 
   useEffect(() => {
@@ -27,7 +59,33 @@ function App() {
   }, []);
 
 
+  useEffect(() => {
+    let intervalId;
+
+    if (isRunning) {
+      intervalId = setInterval(() => {
+        setTime((prevTime) => prevTime + 10);
+      }, 10);
+    } else {
+      clearInterval(intervalId);
+    }
+
+    return () => clearInterval(intervalId);
+  }, [isRunning]);
+
+  useEffect(() => {
+    if (isSolved && isRunning) {
+      setIsRunning(false);
+      console.log("VICTOIRE !");
+    }
+  }, [isSolved, isRunning]);
+
+
+
   const handleMove = (move) => {
+    if (!isRunning && time === 0) {
+      setIsRunning(true);
+    }
     const { Right, Left, Up, Down, Front, Back } = cameraMapping;
 
     switch (move) {
@@ -124,10 +182,9 @@ function App() {
   };
 
   const handleShuffle = () => {
-    console.log("Shuffle triggered");
     const moves = ["R", "L", "U", "D", "F", "B", "R'", "L'", "U'", "D'", "F'", "B'"];
     let previousMove = "";
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 21; i++) {
       let randomMove = moves[Math.floor(Math.random() * moves.length)];
       while (randomMove === previousMove + "'" || randomMove + "'" === previousMove) {
         randomMove = moves[Math.floor(Math.random() * moves.length)];
@@ -135,45 +192,27 @@ function App() {
       previousMove = randomMove;
       handleMove(randomMove);
     }
+    setTime(0);
+    setIsRunning(false);
   };
 
-  const MoveButton = ({ label }) => {
-    const timerRef = useRef(null)
-    const handlePointerDown = () => {
-      timerRef.current = setTimeout(() => {
-        timerRef.current = null;
-        handleMove(label.toLowerCase());
-      }, 500)
 
-    }
-    const handlePointerUp = () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-        handleMove(label);
-      }
-    };
+  const formatTime = (time) => {
+    const minutes = Math.floor(time / 60000).toString().padStart(2, '0');
+    const seconds = Math.floor((time % 60000) / 1000).toString().padStart(2, '0');
+    const centiseconds = Math.floor((time % 1000) / 10).toString().padStart(2, '0');
 
-    return (
-      <button
-        className="move-btn"
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerUp}
-      >
-        {label}
-      </button>
-    )
+    return `${minutes}:${seconds}.${centiseconds}`;
   };
 
   return (
     <div className="app-container">
       {/* Header: Timer and Shuffle */}
       <header className="header">
-        <div className="timer">{time}</div>
+        <div className="timer">{formatTime(time)}</div>
         <button className="shuffle-btn" onClick={handleShuffle}>Shuffle</button>
         <button className="shuffle-btn" onClick={() => setIsLocked(!isLocked)}>
-          {isLocked ? "Déverrouiller" : "Verrouiller"}
+          {isLocked ? isMobile ? "🔒" : "🔒 Locked" : isMobile ? "🔓" : "🔓 Unlocked"}
         </button>
 
       </header>
@@ -204,44 +243,44 @@ function App() {
           {/* Top buttons: B, U */}
           <div className="pos-top">
             <div className="btn-group">
-              <MoveButton label="B" />
-              <MoveButton label="B'" />
+              <MoveButton label="B" onMove={handleMove} />
+              <MoveButton label="B'" onMove={handleMove} />
             </div>
             <div className="btn-group">
-              <MoveButton label="U" />
-              <MoveButton label="U'" />
+              <MoveButton label="U" onMove={handleMove} />
+              <MoveButton label="U'" onMove={handleMove} />
             </div>
           </div>
 
           {/* Left buttons: L */}
           <div className="pos-left">
             <div className="btn-group">
-              <MoveButton label="L" />
-              <MoveButton label="L'" />
+              <MoveButton label="L" onMove={handleMove} />
+              <MoveButton label="L'" onMove={handleMove} />
             </div>
           </div>
 
           {/* Right buttons: R */}
           <div className="pos-right">
             <div className="btn-group">
-              <MoveButton label="R" />
-              <MoveButton label="R'" />
+              <MoveButton label="R" onMove={handleMove} />
+              <MoveButton label="R'" onMove={handleMove} />
             </div>
           </div>
 
           {/* Bottom buttons: F, D, M */}
           <div className="pos-bottom">
             <div className="btn-group">
-              <MoveButton label="F" />
-              <MoveButton label="F'" />
+              <MoveButton label="F" onMove={handleMove} />
+              <MoveButton label="F'" onMove={handleMove} />
             </div>
             <div className="btn-group">
-              <MoveButton label="M" />
-              <MoveButton label="M'" />
+              <MoveButton label="M" onMove={handleMove} />
+              <MoveButton label="M'" onMove={handleMove} />
             </div>
             <div className="btn-group">
-              <MoveButton label="D" />
-              <MoveButton label="D'" />
+              <MoveButton label="D" onMove={handleMove} />
+              <MoveButton label="D'" onMove={handleMove} />
             </div>
           </div>
         </div>
@@ -249,5 +288,7 @@ function App() {
     </div>
   );
 }
+
+
 
 export default App;

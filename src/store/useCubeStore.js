@@ -1,6 +1,26 @@
 import { create } from 'zustand';
 import * as THREE from 'three'; // car probleme d'axe (Grimal lock)
 
+
+const checkIsSolved = (cubies) => {
+    return cubies.every(c => {
+        const posOk = Math.round(c.position[0]) === c.initialPosition[0] &&
+            Math.round(c.position[1]) === c.initialPosition[1] &&
+            Math.round(c.position[2]) === c.initialPosition[2];
+
+        if (!posOk) return false;
+
+        const euler = new THREE.Euler(c.rotation[0], c.rotation[1], c.rotation[2]);
+        const up = new THREE.Vector3(0, 1, 0).applyEuler(euler);
+        const right = new THREE.Vector3(1, 0, 0).applyEuler(euler);
+
+        const rotOk = Math.round(up.y) === 1 && Math.round(right.x) === 1;
+
+        return rotOk;
+    });
+};
+
+
 export const generateInitialCubies = () => {
     const cubies = [];
     for (let x = -1; x <= 1; x++) {
@@ -18,6 +38,7 @@ export const generateInitialCubies = () => {
 
 export const useCubeStore = create((set) => ({
     cubies: generateInitialCubies(),
+    isSolved: true,
     //etat par defaut 
     cameraMapping: {
         Right: { axis: 'x', value: 1, dirMultiplier: 1 },
@@ -94,11 +115,12 @@ export const useCubeStore = create((set) => ({
                 }
 
             })
+            const solved = checkIsSolved(axedCubies);
             if (state.rotationFile.length > 0) {
                 const [activeRotation, ...rest] = state.rotationFile;
                 return { cubies: axedCubies, activeRotation, rotationFile: rest };
             }
-            return { cubies: axedCubies, activeRotation: null };
+            return { cubies: axedCubies, activeRotation: null, isSolved: solved };
         })
     }
 
