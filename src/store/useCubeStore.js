@@ -13,9 +13,11 @@ const checkIsSolved = (cubies) => {
         const euler = new THREE.Euler(c.rotation[0], c.rotation[1], c.rotation[2]);
         const up = new THREE.Vector3(0, 1, 0).applyEuler(euler);
         const right = new THREE.Vector3(1, 0, 0).applyEuler(euler);
+        const forward = new THREE.Vector3(0, 0, 1).applyEuler(euler);
 
-        const rotOk = Math.round(up.y) === 1 && Math.round(right.x) === 1;
-
+        const rotOk = (c.initialPosition[0] === 0 || Math.round(right.x) === 1) &&
+            (c.initialPosition[1] === 0 || Math.round(up.y) === 1) &&
+            (c.initialPosition[2] === 0 || Math.round(forward.z) === 1);
         return rotOk;
     });
 };
@@ -39,7 +41,7 @@ export const generateInitialCubies = () => {
 export const useCubeStore = create((set) => ({
     cubies: generateInitialCubies(),
     isSolved: true,
-    //etat par defaut 
+    // etat par defaut 
     cameraMapping: {
         Right: { axis: 'x', value: 1, dirMultiplier: 1 },
         Up: { axis: 'y', value: 1, dirMultiplier: 1 },

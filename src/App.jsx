@@ -244,7 +244,7 @@ function App() {
         <div className="timer">{formatTime(time)}</div>
         {/* 3D Canvas */}
         <div className="cube-container">
-          <Canvas camera={{ position: [5, 5, 5], fov: isMobile ? 65 : 55 }}>
+          <Canvas camera={{ position: [5, 5, 5], fov: isMobile ? 75 : 65 }}>
             <ambientLight intensity={1} />
             <directionalLight position={[10, 10, 10]} intensity={1} />
 
@@ -255,7 +255,7 @@ function App() {
             <CameraMapper />
 
             {/* Controls */}
-            <TrackballControls enabled={!isLocked} noPan={true} noZoom={true} rotateSpeed={isMobile ? 5 : 8} />
+            <TrackballControls enabled={!isLocked} noPan={true} noZoom={true} rotateSpeed={isMobile ? 4 : 7} />
             <CustomLockControls isLocked={isLocked} cameraMapping={cameraMapping} />
 
           </Canvas>
