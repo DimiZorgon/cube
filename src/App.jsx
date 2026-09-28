@@ -91,7 +91,7 @@ function App() {
       }
 
     }
-  }, [isSolved, isRunning, time, highScore]);
+  }, [isSolved]);
 
 
 
