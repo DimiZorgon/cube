@@ -121,7 +121,7 @@ export const useCubeStore = create((set) => ({
             const solved = checkIsSolved(axedCubies);
             if (state.rotationFile.length > 0) {
                 const [activeRotation, ...rest] = state.rotationFile;
-                return { cubies: axedCubies, activeRotation, rotationFile: rest };
+                return { cubies: axedCubies, activeRotation, rotationFile: rest, isSolved: solved };
             }
             return { cubies: axedCubies, activeRotation: null, isSolved: solved };
         })
