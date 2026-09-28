@@ -49,6 +49,7 @@ function App() {
   const [isLocked, setIsLocked] = useState(false);
   const isSolved = useCubeStore(state => state.isSolved);
   const [highScore, setHighScore] = useState(localStorage.getItem('rubiksHighScore') || null);
+  const [hasShuffled, setHasShuffled] = useState(false);
 
 
   useEffect(() => {
@@ -78,6 +79,7 @@ function App() {
   useEffect(() => {
     if (isSolved && isRunning) {
       setIsRunning(false);
+      setHasShuffled(false);
       if (!highScore || time < highScore) {
         localStorage.setItem('rubiksHighScore', time);
         setHighScore(time);
@@ -94,7 +96,7 @@ function App() {
 
 
   const handleMove = (move) => {
-    if (!isRunning && time === 0) {
+    if (hasShuffled && !isRunning && time === 0) {
       setIsRunning(true);
     }
     const { Right, Left, Up, Down, Front, Back } = cameraMapping;
@@ -205,6 +207,7 @@ function App() {
     }
     setTime(0);
     setIsRunning(false);
+    setHasShuffled(true);
   };
 
 

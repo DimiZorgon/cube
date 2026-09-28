@@ -67,12 +67,13 @@ export const useCubeStore = create((set) => ({
             // CAS 1 : Le cube ne tourne pas actuellement
             if (state.activeRotation === null) {
                 // Retourne un objet qui met `newMove` dans `activeRotation`
-                return { activeRotation: newMove };
+                // isSolved = false pour éviter que le highscore se déclenche avant commitRotation
+                return { activeRotation: newMove, isSolved: false };
             }
 
             // CAS 2 : Le cube tourne déjà
             else {
-                return { rotationFile: [...state.rotationFile, newMove] };
+                return { rotationFile: [...state.rotationFile, newMove], isSolved: false };
             }
         });
     },
