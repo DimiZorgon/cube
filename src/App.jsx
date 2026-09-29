@@ -175,20 +175,16 @@ function App() {
           <div className="timer" style={{ margin: '0 0 0 2rem' }}>{formatTime(time)}</div>
           <div className="moves-count" style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Moves: {moveCount}</div>
         </div>
-        
+
         <div className="cube-container">
           <Canvas camera={{ position: [5, 5, 5], fov: isMobile ? 80 : 65 }}>
             <ambientLight intensity={1} />
             <directionalLight position={[10, 10, 10]} intensity={1} />
             <RubiksCube />
             <CameraMapper />
-<<<<<<< HEAD
 
             {/* Controls */}
             <TrackballControls enabled={!isLocked} noPan={true} noZoom={true} rotateSpeed={isMobile ? 2 : 7} />
-=======
-            <TrackballControls enabled={!isLocked} noPan={true} noZoom={true} rotateSpeed={isMobile ? 4 : 7} />
->>>>>>> 3a629fe5f91e9cff496c396a0d400e0680adb3fa
             <CustomLockControls isLocked={isLocked} cameraMapping={cameraMapping} />
           </Canvas>
         </div>
