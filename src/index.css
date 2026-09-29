@@ -5,6 +5,14 @@
   --btn-size: clamp(50px, 8vmin, 120px);
 }
 
+* {
+  box-sizing: border-box;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   height: 100vh;
   width: 100vw;

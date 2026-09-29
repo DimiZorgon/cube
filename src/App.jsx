@@ -1,23 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { TrackballControls, OrbitControls } from '@react-three/drei';
-// import { Cubie } from './components/Cubie';
+import { TrackballControls } from '@react-three/drei';
 import { RubiksCube } from './components/RubiksCube';
 import { useCubeStore } from './store/useCubeStore';
 import { CameraMapper } from './components/CameraMapper';
 import { CustomLockControls } from './components/LockCamera';
 import confetti from 'canvas-confetti';
 
-
 const MoveButton = ({ label, onMove }) => {
-  const timerRef = useRef(null)
+  const timerRef = useRef(null);
+
   const handlePointerDown = () => {
     timerRef.current = setTimeout(() => {
       timerRef.current = null;
       onMove(label.toLowerCase());
-    }, 500)
+    }, 500);
+  };
 
-  }
   const handlePointerUp = () => {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
@@ -25,8 +24,6 @@ const MoveButton = ({ label, onMove }) => {
       onMove(label);
     }
   };
-
-
 
   return (
     <button
@@ -37,7 +34,7 @@ const MoveButton = ({ label, onMove }) => {
     >
       {label}
     </button>
-  )
+  );
 };
 
 function App() {
@@ -49,148 +46,89 @@ function App() {
   const [isLocked, setIsLocked] = useState(false);
   const isSolved = useCubeStore(state => state.isSolved);
   const [highScore, setHighScore] = useState(localStorage.getItem('rubiksHighScore') || null);
-
+  const [hasShuffled, setHasShuffled] = useState(false);
+  const [moveCount, setMoveCount] = useState(0);
 
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener("resize", handleResize);
     handleResize();
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-
   useEffect(() => {
     let intervalId;
-
     if (isRunning) {
-      intervalId = setInterval(() => {
-        setTime((prevTime) => prevTime + 10);
-      }, 10);
+      intervalId = setInterval(() => setTime(t => t + 10), 10);
     } else {
       clearInterval(intervalId);
     }
-
     return () => clearInterval(intervalId);
   }, [isRunning]);
 
   useEffect(() => {
     if (isSolved && isRunning) {
       setIsRunning(false);
+      setHasShuffled(false);
       if (!highScore || time < highScore) {
         localStorage.setItem('rubiksHighScore', time);
         setHighScore(time);
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
+        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
       }
-
     }
-  }, [isSolved, isRunning, time, highScore]);
+  }, [isSolved, isRunning, highScore, time]);
 
-
-
-  const handleMove = (move) => {
-    if (!isRunning && time === 0) {
-      setIsRunning(true);
+  const handleMove = (move, isManual = true) => {
+    if (isManual) {
+      if (hasShuffled && !isRunning && time === 0) setIsRunning(true);
+      setMoveCount(prev => prev + 1);
     }
+
     const { Right, Left, Up, Down, Front, Back } = cameraMapping;
 
     switch (move) {
-      // Mouvements simples (1 tranche)
-      case "R":
-        startRotation(Right.axis, [Right.value], 1 * Right.dirMultiplier);
-        break;
-      case "L":
-        startRotation(Left.axis, [Left.value], 1 * Left.dirMultiplier);
-        break;
-      case "U":
-        startRotation(Up.axis, [Up.value], 1 * Up.dirMultiplier);
-        break;
-      case "D":
-        startRotation(Down.axis, [Down.value], 1 * Down.dirMultiplier);
-        break;
-      case "F":
-        startRotation(Front.axis, [Front.value], 1 * Front.dirMultiplier);
-        break;
-      case "B":
-        startRotation(Back.axis, [Back.value], 1 * Back.dirMultiplier);
-        break;
-      case "M":
-        startRotation(Left.axis, [0], 1 * Left.dirMultiplier);
-        break;
-
-      // Mouvements prime (1 tranche, sens inverse)
-      case "R'":
-        startRotation(Right.axis, [Right.value], -1 * Right.dirMultiplier);
-        break;
-      case "L'":
-        startRotation(Left.axis, [Left.value], -1 * Left.dirMultiplier);
-        break;
-      case "U'":
-        startRotation(Up.axis, [Up.value], -1 * Up.dirMultiplier);
-        break;
-      case "D'":
-        startRotation(Down.axis, [Down.value], -1 * Down.dirMultiplier);
-        break;
-      case "F'":
-        startRotation(Front.axis, [Front.value], -1 * Front.dirMultiplier);
-        break;
-      case "B'":
-        startRotation(Back.axis, [Back.value], -1 * Back.dirMultiplier);
-        break;
-      case "M'":
-        startRotation(Left.axis, [0], -1 * Left.dirMultiplier);
-        break;
-
-      // Mouvements larges (2 tranches)
-      case "r":
-        startRotation(Right.axis, [Right.value, 0], 1 * Right.dirMultiplier);
-        break;
-      case "l":
-        startRotation(Left.axis, [Left.value, 0], 1 * Left.dirMultiplier);
-        break;
-      case "u":
-        startRotation(Up.axis, [Up.value, 0], 1 * Up.dirMultiplier);
-        break;
-      case "d":
-        startRotation(Down.axis, [Down.value, 0], 1 * Down.dirMultiplier);
-        break;
-      case "f":
-        startRotation(Front.axis, [Front.value, 0], 1 * Front.dirMultiplier);
-        break;
-      case "b":
-        startRotation(Back.axis, [Back.value, 0], 1 * Back.dirMultiplier);
-        break;
-
-      // Mouvements larges prime (2 tranches, sens inverse)
-      case "r'":
-        startRotation(Right.axis, [Right.value, 0], -1 * Right.dirMultiplier);
-        break;
-      case "l'":
-        startRotation(Left.axis, [Left.value, 0], -1 * Left.dirMultiplier);
-        break;
-      case "u'":
-        startRotation(Up.axis, [Up.value, 0], -1 * Up.dirMultiplier);
-        break;
-      case "d'":
-        startRotation(Down.axis, [Down.value, 0], -1 * Down.dirMultiplier);
-        break;
-      case "f'":
-        startRotation(Front.axis, [Front.value, 0], -1 * Front.dirMultiplier);
-        break;
-      case "b'":
-        startRotation(Back.axis, [Back.value, 0], -1 * Back.dirMultiplier);
-        break;
-
-      default:
-        console.warn(`Mouvement non reconnu : ${move}`);
-        break;
+      case "R": startRotation(Right.axis, [Right.value], 1 * Right.dirMultiplier); break;
+      case "L": startRotation(Left.axis, [Left.value], 1 * Left.dirMultiplier); break;
+      case "U": startRotation(Up.axis, [Up.value], 1 * Up.dirMultiplier); break;
+      case "D": startRotation(Down.axis, [Down.value], 1 * Down.dirMultiplier); break;
+      case "F": startRotation(Front.axis, [Front.value], 1 * Front.dirMultiplier); break;
+      case "B": startRotation(Back.axis, [Back.value], 1 * Back.dirMultiplier); break;
+      case "M": startRotation(Left.axis, [0], 1 * Left.dirMultiplier); break;
+      case "R'": startRotation(Right.axis, [Right.value], -1 * Right.dirMultiplier); break;
+      case "L'": startRotation(Left.axis, [Left.value], -1 * Left.dirMultiplier); break;
+      case "U'": startRotation(Up.axis, [Up.value], -1 * Up.dirMultiplier); break;
+      case "D'": startRotation(Down.axis, [Down.value], -1 * Down.dirMultiplier); break;
+      case "F'": startRotation(Front.axis, [Front.value], -1 * Front.dirMultiplier); break;
+      case "B'": startRotation(Back.axis, [Back.value], -1 * Back.dirMultiplier); break;
+      case "M'": startRotation(Left.axis, [0], -1 * Left.dirMultiplier); break;
+      case "r": startRotation(Right.axis, [Right.value, 0], 1 * Right.dirMultiplier); break;
+      case "l": startRotation(Left.axis, [Left.value, 0], 1 * Left.dirMultiplier); break;
+      case "u": startRotation(Up.axis, [Up.value, 0], 1 * Up.dirMultiplier); break;
+      case "d": startRotation(Down.axis, [Down.value, 0], 1 * Down.dirMultiplier); break;
+      case "f": startRotation(Front.axis, [Front.value, 0], 1 * Front.dirMultiplier); break;
+      case "b": startRotation(Back.axis, [Back.value, 0], 1 * Back.dirMultiplier); break;
+      case "r'": startRotation(Right.axis, [Right.value, 0], -1 * Right.dirMultiplier); break;
+      case "l'": startRotation(Left.axis, [Left.value, 0], -1 * Left.dirMultiplier); break;
+      case "u'": startRotation(Up.axis, [Up.value, 0], -1 * Up.dirMultiplier); break;
+      case "d'": startRotation(Down.axis, [Down.value, 0], -1 * Down.dirMultiplier); break;
+      case "f'": startRotation(Front.axis, [Front.value, 0], -1 * Front.dirMultiplier); break;
+      case "b'": startRotation(Back.axis, [Back.value, 0], -1 * Back.dirMultiplier); break;
+      default: break;
     }
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (document.activeElement.tagName === 'INPUT') return;
+      const keyMap = {
+        'r': 'R', 'l': 'L', 'u': 'U', 'd': 'D', 'f': 'F', 'b': 'B', 'm': 'M',
+        'R': "R'", 'L': "L'", 'U': "U'", 'D': "D'", 'F': "F'", 'B': "B'", 'M': "M'"
+      };
+      if (keyMap[e.key]) handleMove(keyMap[e.key], true);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [cameraMapping, hasShuffled, isRunning, time]);
 
   const handleShuffle = () => {
     const moves = ["R", "L", "U", "D", "F", "B", "R'", "L'", "U'", "D'", "F'", "B'"];
@@ -201,36 +139,30 @@ function App() {
         randomMove = moves[Math.floor(Math.random() * moves.length)];
       }
       previousMove = randomMove;
-      handleMove(randomMove);
+      handleMove(randomMove, false);
     }
     setTime(0);
+    setMoveCount(0);
     setIsRunning(false);
+    setHasShuffled(true);
   };
-
 
   const formatTime = (time) => {
     const minutes = Math.floor(time / 60000).toString().padStart(2, '0');
     const seconds = Math.floor((time % 60000) / 1000).toString().padStart(2, '0');
     const centiseconds = Math.floor((time % 1000) / 10).toString().padStart(2, '0');
-
     return `${minutes}:${seconds}.${centiseconds}`;
   };
 
   return (
     <div className="app-container">
-      {/* Header: Timer and Shuffle */}
       <header className="header">
-
-        {/* BLOC GAUCHE */}
         <div className="header-left">
           <div className="highscore">High Score: {highScore ? formatTime(highScore) : "-"}</div>
         </div>
-
-        {/* BLOC CENTRE */}
         <div className="header-center">
           <button className="shuffle-btn" onClick={handleShuffle}>Shuffle</button>
         </div>
-        {/* BLOC DROITE */}
         <div className="header-right">
           <button className="shuffle-btn" onClick={() => setIsLocked(!isLocked)}>
             {isLocked ? (isMobile ? "🔒" : "🔒 Locked") : (isMobile ? "🔓" : "🔓 Unlocked")}
@@ -238,72 +170,64 @@ function App() {
         </div>
       </header>
 
-
-      {/* Main Area: 3D Cube and Controls */}
       <main className="main-area">
-        <div className="timer">{formatTime(time)}</div>
-        {/* 3D Canvas */}
+        <div className="stats-container" style={{ display: 'flex', gap: '2rem', alignItems: 'center', position: 'relative', zIndex: 3 }}>
+          <div className="timer" style={{ margin: '0 0 0 2rem' }}>{formatTime(time)}</div>
+          <div className="moves-count" style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Moves: {moveCount}</div>
+        </div>
+        
         <div className="cube-container">
           <Canvas camera={{ position: [5, 5, 5], fov: isMobile ? 80 : 65 }}>
             <ambientLight intensity={1} />
             <directionalLight position={[10, 10, 10]} intensity={1} />
-
-            {/* Placeholder Cube */}
             <RubiksCube />
-
-            {/* Espion caméra */}
             <CameraMapper />
+<<<<<<< HEAD
 
             {/* Controls */}
             <TrackballControls enabled={!isLocked} noPan={true} noZoom={true} rotateSpeed={isMobile ? 2 : 7} />
+=======
+            <TrackballControls enabled={!isLocked} noPan={true} noZoom={true} rotateSpeed={isMobile ? 4 : 7} />
+>>>>>>> 3a629fe5f91e9cff496c396a0d400e0680adb3fa
             <CustomLockControls isLocked={isLocked} cameraMapping={cameraMapping} />
-
           </Canvas>
         </div>
 
-        {/* UI Controls overlay */}
         <div className="controls-layer">
-          {/* Top buttons: B, U */}
           <div className="pos-top">
             <div className="btn-group">
-              <MoveButton label="B" onMove={handleMove} />
-              <MoveButton label="B'" onMove={handleMove} />
+              <MoveButton label="B" onMove={(m) => handleMove(m, true)} />
+              <MoveButton label="B'" onMove={(m) => handleMove(m, true)} />
             </div>
             <div className="btn-group">
-              <MoveButton label="U" onMove={handleMove} />
-              <MoveButton label="U'" onMove={handleMove} />
+              <MoveButton label="U" onMove={(m) => handleMove(m, true)} />
+              <MoveButton label="U'" onMove={(m) => handleMove(m, true)} />
             </div>
           </div>
-
-          {/* Left buttons: L */}
           <div className="pos-left">
             <div className="btn-group">
-              <MoveButton label="L" onMove={handleMove} />
-              <MoveButton label="L'" onMove={handleMove} />
+              <MoveButton label="L" onMove={(m) => handleMove(m, true)} />
+              <MoveButton label="L'" onMove={(m) => handleMove(m, true)} />
             </div>
           </div>
-
-          {/* Right buttons: R */}
           <div className="pos-right">
             <div className="btn-group">
-              <MoveButton label="R" onMove={handleMove} />
-              <MoveButton label="R'" onMove={handleMove} />
+              <MoveButton label="R" onMove={(m) => handleMove(m, true)} />
+              <MoveButton label="R'" onMove={(m) => handleMove(m, true)} />
             </div>
           </div>
-
-          {/* Bottom buttons: F, D, M */}
           <div className="pos-bottom">
             <div className="btn-group">
-              <MoveButton label="F" onMove={handleMove} />
-              <MoveButton label="F'" onMove={handleMove} />
+              <MoveButton label="F" onMove={(m) => handleMove(m, true)} />
+              <MoveButton label="F'" onMove={(m) => handleMove(m, true)} />
             </div>
             <div className="btn-group">
-              <MoveButton label="M" onMove={handleMove} />
-              <MoveButton label="M'" onMove={handleMove} />
+              <MoveButton label="M" onMove={(m) => handleMove(m, true)} />
+              <MoveButton label="M'" onMove={(m) => handleMove(m, true)} />
             </div>
             <div className="btn-group">
-              <MoveButton label="D" onMove={handleMove} />
-              <MoveButton label="D'" onMove={handleMove} />
+              <MoveButton label="D" onMove={(m) => handleMove(m, true)} />
+              <MoveButton label="D'" onMove={(m) => handleMove(m, true)} />
             </div>
           </div>
         </div>
@@ -311,7 +235,5 @@ function App() {
     </div>
   );
 }
-
-
 
 export default App;

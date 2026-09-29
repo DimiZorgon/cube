@@ -10,15 +10,23 @@ const checkIsSolved = (cubies) => {
 
         if (!posOk) return false;
 
-        const euler = new THREE.Euler(c.rotation[0], c.rotation[1], c.rotation[2]);
-        const up = new THREE.Vector3(0, 1, 0).applyEuler(euler);
-        const right = new THREE.Vector3(1, 0, 0).applyEuler(euler);
-        const forward = new THREE.Vector3(0, 0, 1).applyEuler(euler);
+        // Quaternion pour éviter gimbal lock
+        const q = new THREE.Quaternion().setFromEuler(
+            new THREE.Euler(c.rotation[0], c.rotation[1], c.rotation[2])
+        );
 
-        const rotOk = (c.initialPosition[0] === 0 || Math.round(right.x) === 1) &&
-            (c.initialPosition[1] === 0 || Math.round(up.y) === 1) &&
-            (c.initialPosition[2] === 0 || Math.round(forward.z) === 1);
-        return rotOk;
+        const right = new THREE.Vector3(1, 0, 0).applyQuaternion(q);
+        const up = new THREE.Vector3(0, 1, 0).applyQuaternion(q);
+        const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(q);
+
+        // Vérifie UNIQUEMENT les axes ayant une face colorée (initialPosition != 0)
+        // Centre [-1,0,0] : seul l'axe X compte (face gauche doit rester à gauche)
+        // Arête [1,1,0] : axes X et Y comptent
+        // Coin [1,1,1] : les 3 axes comptent
+        // Core [0,0,0] : aucun axe → toujours OK
+        return (c.initialPosition[0] === 0 || Math.abs(Math.round(right.x) - 1) < 0.01) &&
+            (c.initialPosition[1] === 0 || Math.abs(Math.round(up.y) - 1) < 0.01) &&
+            (c.initialPosition[2] === 0 || Math.abs(Math.round(forward.z) - 1) < 0.01);
     });
 };
 
@@ -67,12 +75,13 @@ export const useCubeStore = create((set) => ({
             // CAS 1 : Le cube ne tourne pas actuellement
             if (state.activeRotation === null) {
                 // Retourne un objet qui met `newMove` dans `activeRotation`
-                return { activeRotation: newMove };
+                // isSolved = false pour éviter que le highscore se déclenche avant commitRotation
+                return { activeRotation: newMove, isSolved: false };
             }
 
             // CAS 2 : Le cube tourne déjà
             else {
-                return { rotationFile: [...state.rotationFile, newMove] };
+                return { rotationFile: [...state.rotationFile, newMove], isSolved: false };
             }
         });
     },
@@ -87,7 +96,7 @@ export const useCubeStore = create((set) => ({
                 z: 2
             }
             const axedCubies = state.cubies.map((c) => {
-                if (value.includes(c.position[dico_axis[axis]])) {
+                if (value.includes(Math.round(c.position[dico_axis[axis]]))) {
                     // Creation axe 3D (si axis est 'x', ça fait Vector3(1,0,0))
                     const axisVector = new THREE.Vector3(
                         axis === 'x' ? 1 : 0,
@@ -120,7 +129,7 @@ export const useCubeStore = create((set) => ({
             const solved = checkIsSolved(axedCubies);
             if (state.rotationFile.length > 0) {
                 const [activeRotation, ...rest] = state.rotationFile;
-                return { cubies: axedCubies, activeRotation, rotationFile: rest };
+                return { cubies: axedCubies, activeRotation, rotationFile: rest, isSolved: solved };
             }
             return { cubies: axedCubies, activeRotation: null, isSolved: solved };
         })
