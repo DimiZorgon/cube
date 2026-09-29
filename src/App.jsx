@@ -79,9 +79,10 @@ function App() {
   }, [isSolved, isRunning, highScore, time]);
 
   const handleMove = (move, isManual = true) => {
+    if (isSolved && isManual) return;
     if (isManual) {
       if (hasShuffled && !isRunning && time === 0) setIsRunning(true);
-      setMoveCount(prev => prev + 1);
+      if (!isSolved) setMoveCount(prev => prev + 1);
     }
 
     const { Right, Left, Up, Down, Front, Back } = cameraMapping;
