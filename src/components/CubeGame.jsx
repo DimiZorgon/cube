@@ -144,7 +144,7 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
         </div>
         <div className="header-right">
           <button className="shuffle-btn" onClick={() => setIsLocked(!isLocked)}>
-            {isLocked ? (isMobile ? "🔒" : "🔒 Locked") : (isMobile ? "🔓" : "🔓 Unlocked")}
+            {isLocked ? "🔒 Locked" : "🔓 Unlocked"}
           </button>
         </div>
       </header>
