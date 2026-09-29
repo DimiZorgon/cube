@@ -137,7 +137,6 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
     <div className="app-container">
       <header className="header">
         <div className="header-left">
-            <button className="shuffle-btn" onClick={onBack} style={{ marginRight: '1rem' }}>← Retour</button>
             <div className="highscore">High Score: {highScore ? formatTime(highScore) : "-"}</div>
         </div>
         <div className="header-center">
@@ -150,7 +149,15 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
         </div>
       </header>
 
-      <main className="main-area">
+      <main className="main-area" style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <button 
+          className="shuffle-btn" 
+          onClick={onBack} 
+          style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 100 }}
+        >
+          Retour →
+        </button>
+
         <div className="stats-container" style={{ display: 'flex', gap: '2rem', alignItems: 'center', position: 'relative', zIndex: 3 }}>
           <div className="timer" style={{ margin: '0 0 0 2rem' }}>{formatTime(time)}</div>
           <div className="moves-count" style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Moves: {moveCount}</div>

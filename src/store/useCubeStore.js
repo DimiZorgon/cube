@@ -3,26 +3,32 @@ import * as THREE from 'three'; // car probleme d'axe (Grimal lock)
 
 
 const checkIsSolved = (cubies) => {
+    if (cubies.length === 0) return true;
+
+    // Use the first cubie to determine the supposed global rotation of the solved cube
+    const firstCubie = cubies[0];
+    const qGlobal = new THREE.Quaternion().setFromEuler(
+        new THREE.Euler(firstCubie.rotation[0], firstCubie.rotation[1], firstCubie.rotation[2])
+    );
+
     return cubies.every(c => {
-        const posOk = Math.abs(c.position[0] - c.initialPosition[0]) < 0.1 &&
-                      Math.abs(c.position[1] - c.initialPosition[1]) < 0.1 &&
-                      Math.abs(c.position[2] - c.initialPosition[2]) < 0.1;
-
-        if (!posOk) return false;
-
-        // Quaternion pour éviter gimbal lock
-        const q = new THREE.Quaternion().setFromEuler(
+        // 1. Check if the cubie's rotation matches the global rotation
+        const qC = new THREE.Quaternion().setFromEuler(
             new THREE.Euler(c.rotation[0], c.rotation[1], c.rotation[2])
         );
+        // Quaternions can be q or -q representing the same rotation
+        const dot = Math.abs(qGlobal.dot(qC));
+        if (dot < 0.99) return false;
 
-        const right = new THREE.Vector3(1, 0, 0).applyQuaternion(q);
-        const up = new THREE.Vector3(0, 1, 0).applyQuaternion(q);
-        const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(q);
+        // 2. Check if the cubie's position matches its initial position rotated by the global rotation
+        const expectedPos = new THREE.Vector3(...c.initialPosition).applyQuaternion(qGlobal);
+        if (Math.abs(c.position[0] - expectedPos.x) > 0.1 ||
+            Math.abs(c.position[1] - expectedPos.y) > 0.1 ||
+            Math.abs(c.position[2] - expectedPos.z) > 0.1) {
+            return false;
+        }
 
-        // Vérifie UNIQUEMENT les axes ayant une face colorée (initialPosition != 0)
-        return (Math.abs(c.initialPosition[0]) < 0.1 || Math.abs(Math.round(right.x) - 1) < 0.01) &&
-               (Math.abs(c.initialPosition[1]) < 0.1 || Math.abs(Math.round(up.y) - 1) < 0.01) &&
-               (Math.abs(c.initialPosition[2]) < 0.1 || Math.abs(Math.round(forward.z) - 1) < 0.01);
+        return true;
     });
 };
 
