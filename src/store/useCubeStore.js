@@ -4,9 +4,9 @@ import * as THREE from 'three'; // car probleme d'axe (Grimal lock)
 
 const checkIsSolved = (cubies) => {
     return cubies.every(c => {
-        const posOk = Math.round(c.position[0]) === c.initialPosition[0] &&
-            Math.round(c.position[1]) === c.initialPosition[1] &&
-            Math.round(c.position[2]) === c.initialPosition[2];
+        const posOk = Math.abs(c.position[0] - c.initialPosition[0]) < 0.1 &&
+                      Math.abs(c.position[1] - c.initialPosition[1]) < 0.1 &&
+                      Math.abs(c.position[2] - c.initialPosition[2]) < 0.1;
 
         if (!posOk) return false;
 
@@ -20,26 +20,32 @@ const checkIsSolved = (cubies) => {
         const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(q);
 
         // Vérifie UNIQUEMENT les axes ayant une face colorée (initialPosition != 0)
-        // Centre [-1,0,0] : seul l'axe X compte (face gauche doit rester à gauche)
-        // Arête [1,1,0] : axes X et Y comptent
-        // Coin [1,1,1] : les 3 axes comptent
-        // Core [0,0,0] : aucun axe → toujours OK
-        return (c.initialPosition[0] === 0 || Math.abs(Math.round(right.x) - 1) < 0.01) &&
-            (c.initialPosition[1] === 0 || Math.abs(Math.round(up.y) - 1) < 0.01) &&
-            (c.initialPosition[2] === 0 || Math.abs(Math.round(forward.z) - 1) < 0.01);
+        return (Math.abs(c.initialPosition[0]) < 0.1 || Math.abs(Math.round(right.x) - 1) < 0.01) &&
+               (Math.abs(c.initialPosition[1]) < 0.1 || Math.abs(Math.round(up.y) - 1) < 0.01) &&
+               (Math.abs(c.initialPosition[2]) < 0.1 || Math.abs(Math.round(forward.z) - 1) < 0.01);
     });
 };
 
 
-export const generateInitialCubies = () => {
+export const generateInitialCubies = (size = 3) => {
     const cubies = [];
-    for (let x = -1; x <= 1; x++) {
-        for (let y = -1; y <= 1; y++) {
-            for (let z = -1; z <= 1; z++) {
-                cubies.push({ id: `cubie_${x}${y}${z}`, position: [x, y, z], rotation: [0, 0, 0], initialPosition: [x, y, z] });
+    if (size === 3) {
+        for (let x = -1; x <= 1; x++) {
+            for (let y = -1; y <= 1; y++) {
+                for (let z = -1; z <= 1; z++) {
+                    cubies.push({ id: `cubie_${x}${y}${z}`, position: [x, y, z], rotation: [0, 0, 0], initialPosition: [x, y, z] });
+                }
             }
         }
-
+    } else if (size === 2) {
+        const coords = [-0.5, 0.5];
+        for (let x of coords) {
+            for (let y of coords) {
+                for (let z of coords) {
+                    cubies.push({ id: `cubie_${x}${y}${z}`, position: [x, y, z], rotation: [0, 0, 0], initialPosition: [x, y, z] });
+                }
+            }
+        }
     }
     return cubies
 }
@@ -47,7 +53,8 @@ export const generateInitialCubies = () => {
 
 
 export const useCubeStore = create((set) => ({
-    cubies: generateInitialCubies(),
+    size: 3,
+    cubies: generateInitialCubies(3),
     isSolved: true,
     // etat par defaut 
     cameraMapping: {
@@ -58,6 +65,26 @@ export const useCubeStore = create((set) => ({
         Down: { axis: 'y', value: -1, dirMultiplier: 1 },
         Back: { axis: 'z', value: -1, dirMultiplier: 1 }
     },
+    
+    initCube: (size) => {
+        const mapping = size === 3 ? {
+            Right: { axis: 'x', value: 1, dirMultiplier: 1 },
+            Up: { axis: 'y', value: 1, dirMultiplier: 1 },
+            Front: { axis: 'z', value: 1, dirMultiplier: 1 },
+            Left: { axis: 'x', value: -1, dirMultiplier: 1 },
+            Down: { axis: 'y', value: -1, dirMultiplier: 1 },
+            Back: { axis: 'z', value: -1, dirMultiplier: 1 }
+        } : {
+            Right: { axis: 'x', value: 0.5, dirMultiplier: 1 },
+            Up: { axis: 'y', value: 0.5, dirMultiplier: 1 },
+            Front: { axis: 'z', value: 0.5, dirMultiplier: 1 },
+            Left: { axis: 'x', value: -0.5, dirMultiplier: 1 },
+            Down: { axis: 'y', value: -0.5, dirMultiplier: 1 },
+            Back: { axis: 'z', value: -0.5, dirMultiplier: 1 }
+        };
+        set({ size, cubies: generateInitialCubies(size), isSolved: true, rotationFile: [], activeRotation: null, cameraMapping: mapping });
+    },
+
     // La fonction pour mettre à jour cet état
     setCameraMapping: (mapping) => set({ cameraMapping: mapping }),
 
@@ -96,7 +123,10 @@ export const useCubeStore = create((set) => ({
                 z: 2
             }
             const axedCubies = state.cubies.map((c) => {
-                if (value.includes(Math.round(c.position[dico_axis[axis]]))) {
+                const pos = c.position[dico_axis[axis]];
+                const isMoving = value.some(v => Math.abs(pos - v) < 0.1);
+
+                if (isMoving) {
                     // Creation axe 3D (si axis est 'x', ça fait Vector3(1,0,0))
                     const axisVector = new THREE.Vector3(
                         axis === 'x' ? 1 : 0,
@@ -109,9 +139,9 @@ export const useCubeStore = create((set) => ({
                     dummy.rotation.set(...c.rotation);
                     // Rotation de la position autour de l'origine (0,0,0)
                     dummy.position.applyAxisAngle(axisVector, -direction * Math.PI / 2);
-                    dummy.position.x = Math.round(dummy.position.x);
-                    dummy.position.y = Math.round(dummy.position.y);
-                    dummy.position.z = Math.round(dummy.position.z);
+                    dummy.position.x = Math.round(dummy.position.x * 2) / 2;
+                    dummy.position.y = Math.round(dummy.position.y * 2) / 2;
+                    dummy.position.z = Math.round(dummy.position.z * 2) / 2;
                     // Rotation de l'objet sur lui-même, par rapport aux axes du MONDE (WorldAxis)
                     dummy.rotateOnWorldAxis(axisVector, -direction * Math.PI / 2);
                     // Mise à jour du cubie avec les nouvelles valeurs extraites du fantôme

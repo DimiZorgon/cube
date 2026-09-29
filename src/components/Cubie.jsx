@@ -18,12 +18,12 @@ export function Cubie({ position, initialPosition, rotation }) {
 
     const getColors = () => {
         return [
-            ix === 1 ? COLORS.right : COLORS.core, // droite
-            ix === -1 ? COLORS.left : COLORS.core, // gauche
-            iy === 1 ? COLORS.up : COLORS.core, // haut
-            iy === -1 ? COLORS.down : COLORS.core, // bas
-            iz === 1 ? COLORS.front : COLORS.core, // avant
-            iz === -1 ? COLORS.back : COLORS.core, // arriere
+            ix > 0.1 ? COLORS.right : COLORS.core, // droite
+            ix < -0.1 ? COLORS.left : COLORS.core, // gauche
+            iy > 0.1 ? COLORS.up : COLORS.core, // haut
+            iy < -0.1 ? COLORS.down : COLORS.core, // bas
+            iz > 0.1 ? COLORS.front : COLORS.core, // avant
+            iz < -0.1 ? COLORS.back : COLORS.core, // arriere
         ];
     };
     const colors = getColors();

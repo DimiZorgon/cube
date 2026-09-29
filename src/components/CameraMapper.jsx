@@ -10,6 +10,7 @@ export function CameraMapper() {
 
     // Lecture du store en direct pour notre aimant
     const cameraMapping = useCubeStore(state => state.cameraMapping);
+    const size = useCubeStore(state => state.size);
 
     const lastMappingRef = useRef("");
 
@@ -40,7 +41,9 @@ export function CameraMapper() {
         if (Math.abs(vector.y) > max) { max = Math.abs(vector.y); axis = 'y'; value = Math.sign(vector.y); }
         if (Math.abs(vector.z) > max) { max = Math.abs(vector.z); axis = 'z'; value = Math.sign(vector.z); }
 
-        return { axis, value, dirMultiplier: value };
+        const mappedValue = size === 2 ? value * 0.5 : value;
+
+        return { axis, value: mappedValue, dirMultiplier: value };
     };
 
     useFrame(() => {

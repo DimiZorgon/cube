@@ -51,8 +51,8 @@ export function RubiksCube() {
     let staticCubies = [];
 
     if (activeRotation !== null) {
-        movingCubies = cubiesData.filter(data => activeRotation.value.includes(Math.round(data.position[dico_axis[activeRotation.axis]])));
-        staticCubies = cubiesData.filter(data => !activeRotation.value.includes(Math.round(data.position[dico_axis[activeRotation.axis]])));
+        movingCubies = cubiesData.filter(data => activeRotation.value.some(v => Math.abs(data.position[dico_axis[activeRotation.axis]] - v) < 0.1));
+        staticCubies = cubiesData.filter(data => !activeRotation.value.some(v => Math.abs(data.position[dico_axis[activeRotation.axis]] - v) < 0.1));
     }
     else {
         movingCubies = [];
