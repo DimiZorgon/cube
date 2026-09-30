@@ -12,20 +12,22 @@ const checkIsSolved = (cubies) => {
     );
 
     return cubies.every(c => {
-        // 1. Check if the cubie's rotation matches the global rotation
-        const qC = new THREE.Quaternion().setFromEuler(
-            new THREE.Euler(c.rotation[0], c.rotation[1], c.rotation[2])
-        );
-        // Quaternions can be q or -q representing the same rotation
-        const dot = Math.abs(qGlobal.dot(qC));
-        if (dot < 0.99) return false;
-
-        // 2. Check if the cubie's position matches its initial position rotated by the global rotation
+        // 1. Check position matches its initial position rotated by the global rotation
         const expectedPos = new THREE.Vector3(...c.initialPosition).applyQuaternion(qGlobal);
         if (Math.abs(c.position[0] - expectedPos.x) > 0.1 ||
             Math.abs(c.position[1] - expectedPos.y) > 0.1 ||
             Math.abs(c.position[2] - expectedPos.z) > 0.1) {
             return false;
+        }
+
+        // 2. Check rotation (only for corners and edges, centers can spin freely)
+        const zeros = c.initialPosition.filter(v => v === 0).length;
+        if (zeros < 2) {
+            const qC = new THREE.Quaternion().setFromEuler(
+                new THREE.Euler(c.rotation[0], c.rotation[1], c.rotation[2])
+            );
+            const dot = Math.abs(qGlobal.dot(qC));
+            if (dot < 0.99) return false;
         }
 
         return true;
