@@ -1,0 +1,46 @@
+.main-menu-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 15vh; /* Titre plus haut */
+  height: 100vh;
+  background: #2c3e50;
+  color: white;
+  box-sizing: border-box;
+}
+
+.main-menu-title {
+  margin-bottom: 3rem;
+  font-size: 3.5rem;
+}
+
+.main-menu-buttons {
+  display: flex;
+  gap: 3rem;
+}
+
+.menu-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem;
+  font-size: 1.8rem;
+  cursor: pointer;
+  background: #34495e;
+  border: none;
+  border-radius: 12px;
+  color: white;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.menu-btn:hover {
+  background: #415b76;
+  transform: scale(1.05);
+}
+
+.mini-cube-container {
+  width: 180px; /* Boutons légèrement plus gros */
+  height: 180px;
+  pointer-events: none;
+  margin-bottom: 0.5rem;
+}
