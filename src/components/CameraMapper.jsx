@@ -4,20 +4,20 @@ import { useCubeStore } from '../store/useCubeStore';
 import { useRef, useEffect } from 'react';
 
 export function CameraMapper() {
-    // ajout 'gl' pour avoir accès à la fenêtre 3D
+    // Setup de la caméra et du rendu
     const { camera, gl } = useThree();
     const setCameraMapping = useCubeStore(state => state.setCameraMapping);
 
-    // Lecture du store en direct pour notre aimant
+    // Lecture du store en direct pour fix move
     const cameraMapping = useCubeStore(state => state.cameraMapping);
     const size = useCubeStore(state => state.size);
 
     const lastMappingRef = useRef("");
 
-    // Notre interrupteur pour l'aimant
+    // Stop fix move
     const isSnapping = useRef(false);
 
-    // Écouter la souris pour savoir quand le joueur lâche le cube
+    // event mouse down / up for fix move
     useEffect(() => {
         const handleDown = () => { isSnapping.current = false; };
         const handleUp = () => { isSnapping.current = true; };
@@ -31,7 +31,7 @@ export function CameraMapper() {
         }
     }, [gl]);
 
-    // Fonction mathématique pour trouver l'axe le plus proche
+    // Function to determine the dominant axis of a vector and its direction
     const getDominantAxis = (vector) => {
         let max = 0;
         let axis = 'x';
@@ -47,7 +47,7 @@ export function CameraMapper() {
     };
 
     useFrame(() => {
-        // mise a jour du dictionnaire (l'espion)
+        // update dict of camera mapping based on camera orientation
         const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
         const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
         const front = new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion);
@@ -55,7 +55,7 @@ export function CameraMapper() {
         const down = new THREE.Vector3(0, -1, 0).applyQuaternion(camera.quaternion);
         const back = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
 
-        // on transforme l'objet en texte pour le comparer facilement
+        // New mapping
         const newMapping = {
             Right: getDominantAxis(right),
             Up: getDominantAxis(up),
@@ -72,27 +72,26 @@ export function CameraMapper() {
             setCameraMapping(newMapping);
         }
 
-        // "aimant"
-        // joueur lache souris -> on prend le contrôle
+        // fix move logic : if the user is holding the mouse button down, we want to snap the camera to a perfect orientation based on the current mapping
         if (isSnapping.current && cameraMapping) {
             const frontAxis = cameraMapping.Front;
             const upAxis = cameraMapping.Up;
 
-            // position parfaite
+            // perfect position
             const targetPos = new THREE.Vector3(0, 0, 0);
             targetPos[frontAxis.axis] = frontAxis.value * 5; // Face au cube
 
-            // inclinaison vers le haut
+            // Up axis for perfect orientation
             targetPos[upAxis.axis] += upAxis.value * 3.5;
 
-            // on repousse la caméra pour qu'elle soit toujours à une distance de 8
+            // camera distance
             targetPos.setLength(8);
 
-            // axe Haut parfait
+            // up axis
             const targetUp = new THREE.Vector3(0, 0, 0);
             targetUp[upAxis.axis] = upAxis.value;
 
-            // transition fluide (0.05 = vitesse)
+            // transition
             camera.position.lerp(targetPos, 0.05);
             camera.up.lerp(targetUp, 0.05);
             camera.lookAt(0, 0, 0);

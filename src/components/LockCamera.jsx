@@ -3,11 +3,13 @@ import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 
 export const CustomLockControls = ({ isLocked, cameraMapping }) => {
+    
+    // Access the camera and WebGL renderer from the Three.js context
     const { camera, gl } = useThree();
-
     const isDragging = useRef(false);
     const previousX = useRef(0);
 
+    // Effect to handle camera rotation when the camera is locked
     useEffect(() => {
         if (!isLocked) return;
         

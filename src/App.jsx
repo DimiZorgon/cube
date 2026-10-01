@@ -13,6 +13,7 @@ function App() {
     return <Cube2x2 onBack={() => setMode(null)} />;
   }
 
+  // Render the initial mode selection screen
   return (
     <div className="app-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#2c3e50', color: 'white' }}>
       <h1 style={{ marginBottom: '2rem', fontSize: '3rem' }}>Rubik's Cube</h1>

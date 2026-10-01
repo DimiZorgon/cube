@@ -4,7 +4,7 @@ export function Cubie({ position, initialPosition, rotation }) {
     const [x, y, z] = position;
     const [ix, iy, iz] = initialPosition;
     const [rx, ry, rz] = rotation;
-    // Tu peux placer ça en haut de ton fichier Cubie.jsx ou même dans un fichier séparé
+
     const COLORS = {
         right: "#B71234",  // rouge
         left: "#ff9900",   // orange
@@ -30,10 +30,10 @@ export function Cubie({ position, initialPosition, rotation }) {
 
     return (
         <mesh position={position} rotation={rotation}>
-            {/* 0.95 pour créer petit espace noir entre les cubes */}
+            {/* petit espace noir entre les cubes */}
             <boxGeometry args={[0.95, 0.95, 0.95]} />
 
-            {/* tableau de 6 matériaux générés par notre liste de couleurs */}
+            {/* tableau des matériaux générés par notre liste de couleurs */}
             {colors.map((color, index) => (
                 <meshStandardMaterial key={index} attach={`material-${index}`} color={color} />
             ))}

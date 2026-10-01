@@ -7,6 +7,7 @@ import { CameraMapper } from './CameraMapper';
 import { CustomLockControls } from './LockCamera';
 import confetti from 'canvas-confetti';
 
+// Main component for the Cube Game
 export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves, onBack }) {
   const [time, setTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
@@ -24,10 +25,12 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
   const [hasShuffled, setHasShuffled] = useState(false);
   const [moveCount, setMoveCount] = useState(0);
 
+  // Effect to initialize the cube when the size changes
   useEffect(() => {
     initCube(size);
   }, [size, initCube]);
 
+  // Effect to handle window resize and determine if the device is mobile
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener("resize", handleResize);
@@ -35,6 +38,7 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Effect to manage the timer based on whether the game is running
   useEffect(() => {
     let intervalId;
     if (isRunning) {
@@ -45,6 +49,7 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
     return () => clearInterval(intervalId);
   }, [isRunning]);
 
+  // Effect to handle the end of the game when the cube is solved
   useEffect(() => {
     if (isSolved && isRunning) {
       setIsRunning(false);
@@ -57,6 +62,7 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
     }
   }, [isSolved, isRunning, highScore, time, highScoreKey]);
 
+  // Function to handle moves based on the current camera mapping
   const handleMove = (move, isManual = true) => {
     if (isSolved && isManual) return;
     if (isManual) {
@@ -66,8 +72,7 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
 
     const { Right, Left, Up, Down, Front, Back } = cameraMapping;
     
-    // We can define standard logic here and delegate if needed. 
-    // Actually, handling moves based on string ('R', 'L', etc) can be generic.
+    // Function to run a move based on the axis, value, and direction
     const runMove = (axis, val, dir) => handleMoveAction(axis, val, dir);
 
     switch (move) {
@@ -101,6 +106,7 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
     }
   };
 
+  // Effect to handle keyboard input for moves
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (document.activeElement.tagName === 'INPUT') return;
@@ -110,6 +116,8 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [cameraMapping, hasShuffled, isRunning, time, keyboardMapping]);
 
+
+  // Function to handle shuffling the cube with 20 random moves
   const handleShuffle = () => {
     let previousMove = "";
     for (let i = 0; i < 20; i++) {
@@ -126,6 +134,7 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
     setHasShuffled(true);
   };
 
+  // Function to format time in mm:ss:cs format
   const formatTime = (time) => {
     const minutes = Math.floor(time / 60000).toString().padStart(2, '0');
     const seconds = Math.floor((time % 60000) / 1000).toString().padStart(2, '0');
@@ -133,6 +142,7 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
     return `${minutes}:${seconds}.${centiseconds}`;
   };
 
+  // Render the Cube Game component
   return (
     <div className="app-container">
       <header className="header">

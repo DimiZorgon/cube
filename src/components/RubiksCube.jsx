@@ -5,7 +5,7 @@ import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 
 export function RubiksCube() {
-    // tableau de données et rotations depuis store
+    // get data from the store
     const cubiesData = useCubeStore(state => state.cubies);
     const activeRotation = useCubeStore(state => state.activeRotation);
     const commitRotation = useCubeStore(state => state.commitRotation);
@@ -15,29 +15,28 @@ export function RubiksCube() {
     const currentAngle = useRef(0);
 
     useFrame((state, delta) => {
-        // On ne fait quelque chose que si une rotation est en cours
-        // ET que notre groupe est bien présent sur l'écran
+        // if there is an active rotation, apply the rotation to the group of cubies
         if (activeRotation !== null && rotatingGroupRef.current) {
 
-            // vitesse
+            // speed
             const speed = 5;
 
-            // Calculer le morceau d'angle à parcourir pour cette image
+            // calculate the step based on speed and delta time
             const step = speed * delta;
 
-            // Ajouter ce "step" à notre compteur total
+            // update the current angle of rotation
             currentAngle.current += step;
 
-            // Appliquer la rotation au groupe en 3D sur le BON AXE
+            // apply the rotation to the group of cubies based on the active rotation axis and direction
             rotatingGroupRef.current.rotation[activeRotation.axis] = currentAngle.current * -activeRotation.direction;
 
-            // verification fin de rotation
+            // if the current angle exceeds 90 degrees (π/2 radians), commit the rotation and reset the angle and group rotation
             if (currentAngle.current >= Math.PI / 2) {
 
-                // commit la rotation
+                // commit rotation
                 commitRotation(activeRotation.axis, activeRotation.value, activeRotation.direction);
 
-                // remet variable a 0
+                // reset angle and group rotation
                 currentAngle.current = 0;
                 rotatingGroupRef.current.rotation.x = 0;
                 rotatingGroupRef.current.rotation.y = 0;
@@ -60,6 +59,7 @@ export function RubiksCube() {
     }
 
 
+    // Render the Rubik's Cube with static and moving cubies
     return (
         <group>
             <group>

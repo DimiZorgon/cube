@@ -12,7 +12,7 @@ const checkIsSolved = (cubies) => {
     );
 
     return cubies.every(c => {
-        // 1. Check position matches its initial position rotated by the global rotation
+        // Check position matches its initial position rotated by the global rotation
         const expectedPos = new THREE.Vector3(...c.initialPosition).applyQuaternion(qGlobal);
         if (Math.abs(c.position[0] - expectedPos.x) > 0.1 ||
             Math.abs(c.position[1] - expectedPos.y) > 0.1 ||
@@ -20,7 +20,7 @@ const checkIsSolved = (cubies) => {
             return false;
         }
 
-        // 2. Check rotation (only for corners and edges, centers can spin freely)
+        // Check rotation (only for 3x3 cubes)
         const zeros = c.initialPosition.filter(v => v === 0).length;
         if (zeros < 2) {
             const qC = new THREE.Quaternion().setFromEuler(
@@ -34,7 +34,7 @@ const checkIsSolved = (cubies) => {
     });
 };
 
-
+// Function to generate initial cubies based on size of the cube (2x2 or 3x3)
 export const generateInitialCubies = (size = 3) => {
     const cubies = [];
     if (size === 3) {
@@ -59,12 +59,12 @@ export const generateInitialCubies = (size = 3) => {
 }
 
 
-
+// Zustand store for cube state management
 export const useCubeStore = create((set) => ({
     size: 3,
     cubies: generateInitialCubies(3),
     isSolved: true,
-    // etat par defaut 
+    // default state for camera mapping
     cameraMapping: {
         Right: { axis: 'x', value: 1, dirMultiplier: 1 },
         Up: { axis: 'y', value: 1, dirMultiplier: 1 },
@@ -93,28 +93,27 @@ export const useCubeStore = create((set) => ({
         set({ size, cubies: generateInitialCubies(size), isSolved: true, rotationFile: [], activeRotation: null, cameraMapping: mapping });
     },
 
-    // La fonction pour mettre à jour cet état
+    // Function to update the camera mapping in the store
     setCameraMapping: (mapping) => set({ cameraMapping: mapping }),
 
-    // Gestion rotation
-
+    // rotation state management
     activeRotation: null,
     rotationFile: [],
 
     startRotation: (axis, value, direction) => {
-        // Le mouvement que l'on veut faire
+        // Move object to represent the new rotation
         const newMove = { axis, value, direction, progress: 0 };
-        // On utilise la méthode réfléchie car on a besoin de lire l'état actuel
+        // Update the store based on whether a rotation is already active or not
         set((state) => {
 
-            // CAS 1 : Le cube ne tourne pas actuellement
+            // CAS 1 : not active rotation, we can start a new one
             if (state.activeRotation === null) {
-                // Retourne un objet qui met `newMove` dans `activeRotation`
+                // return new state with the new active rotation and isSolved set to false
                 // isSolved = false pour éviter que le highscore se déclenche avant commitRotation
                 return { activeRotation: newMove, isSolved: false };
             }
 
-            // CAS 2 : Le cube tourne déjà
+            // CAS 2 : Already an active rotation, we add the new move to the rotationFile queue
             else {
                 return { rotationFile: [...state.rotationFile, newMove], isSolved: false };
             }
@@ -122,7 +121,7 @@ export const useCubeStore = create((set) => ({
     },
 
 
-    // fonction de rotation de face
+    // Function to commit the rotation of the cubies in the store
     commitRotation: (axis, value, direction) => {
         set((state) => {
             const dico_axis = {
@@ -135,24 +134,24 @@ export const useCubeStore = create((set) => ({
                 const isMoving = value.some(v => Math.abs(pos - v) < 0.1);
 
                 if (isMoving) {
-                    // Creation axe 3D (si axis est 'x', ça fait Vector3(1,0,0))
+                    // Create a vector representing the axis of rotation
                     const axisVector = new THREE.Vector3(
                         axis === 'x' ? 1 : 0,
                         axis === 'y' ? 1 : 0,
                         axis === 'z' ? 1 : 0
                     );
-                    // Creation d'un objet 3D "fantôme" avec position et rotation actuelles du cubie
+                    // Create a dummy object to perform the rotation and position calculations
                     const dummy = new THREE.Object3D();
                     dummy.position.set(...c.position);
                     dummy.rotation.set(...c.rotation);
-                    // Rotation de la position autour de l'origine (0,0,0)
+                    // Rotate the dummy object around the specified axis by 90 degrees x direction
                     dummy.position.applyAxisAngle(axisVector, -direction * Math.PI / 2);
                     dummy.position.x = Math.round(dummy.position.x * 2) / 2;
                     dummy.position.y = Math.round(dummy.position.y * 2) / 2;
                     dummy.position.z = Math.round(dummy.position.z * 2) / 2;
-                    // Rotation de l'objet sur lui-même, par rapport aux axes du MONDE (WorldAxis)
+                    // Rotate the dummy object around the specified axis by 90 degrees x direction
                     dummy.rotateOnWorldAxis(axisVector, -direction * Math.PI / 2);
-                    // Mise à jour du cubie avec les nouvelles valeurs extraites du fantôme
+                    // Update the cubie's position and rotation in the store
 
                     return {
                         ...c,
@@ -164,6 +163,7 @@ export const useCubeStore = create((set) => ({
                 }
 
             })
+            // Check if the cube is solved after the rotation
             const solved = checkIsSolved(axedCubies);
             if (state.rotationFile.length > 0) {
                 const [activeRotation, ...rest] = state.rotationFile;
