@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { TrackballControls } from '@react-three/drei';
 import { RubiksCube } from './RubiksCube';
@@ -7,30 +7,28 @@ import { CameraMapper } from './CameraMapper';
 import { CustomLockControls } from './LockCamera';
 import confetti from 'canvas-confetti';
 
-// Main component for the Cube Game
 export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves, onBack }) {
   const [time, setTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
-  
+
   const initCube = useCubeStore(state => state.initCube);
   const cameraMapping = useCubeStore(state => state.cameraMapping);
   const isSolved = useCubeStore(state => state.isSolved);
   const handleMoveAction = useCubeStore(state => state.startRotation);
-  
+  const undoMove = useCubeStore(state => state.undo);
+
   const [isMobile, setIsMobile] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
-  
+
   const highScoreKey = `rubiksHighScore_${size}x${size}`;
   const [highScore, setHighScore] = useState(localStorage.getItem(highScoreKey) || null);
   const [hasShuffled, setHasShuffled] = useState(false);
   const [moveCount, setMoveCount] = useState(0);
 
-  // Effect to initialize the cube when the size changes
   useEffect(() => {
     initCube(size);
   }, [size, initCube]);
 
-  // Effect to handle window resize and determine if the device is mobile
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener("resize", handleResize);
@@ -38,7 +36,6 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Effect to manage the timer based on whether the game is running
   useEffect(() => {
     let intervalId;
     if (isRunning) {
@@ -49,7 +46,6 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
     return () => clearInterval(intervalId);
   }, [isRunning]);
 
-  // Effect to handle the end of the game when the cube is solved
   useEffect(() => {
     if (isSolved && isRunning) {
       setIsRunning(false);
@@ -62,8 +58,7 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
     }
   }, [isSolved, isRunning, highScore, time, highScoreKey]);
 
-  // Function to handle moves based on the current camera mapping
-  const handleMove = (move, isManual = true) => {
+  const handleMove = useCallback((move, isManual = true) => {
     if (isSolved && isManual) return;
     if (isManual) {
       if (hasShuffled && !isRunning && time === 0) setIsRunning(true);
@@ -71,8 +66,6 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
     }
 
     const { Right, Left, Up, Down, Front, Back } = cameraMapping;
-    
-    // Function to run a move based on the axis, value, and direction
     const runMove = (axis, val, dir) => handleMoveAction(axis, val, dir);
 
     switch (move) {
@@ -97,27 +90,34 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
       case "f": runMove(Front.axis, [Front.value, 0], 1 * Front.dirMultiplier); break;
       case "b": runMove(Back.axis, [Back.value, 0], 1 * Back.dirMultiplier); break;
       case "r'": runMove(Right.axis, [Right.value, 0], -1 * Right.dirMultiplier); break;
-      case "l'": runMove(Left.axis, [Left.value, 0], -1 * Left.dirMultiplier); break;
+      case "l'": runMove(Left.axis, [Left.value, 0], -1 * Right.dirMultiplier); break;
       case "u'": runMove(Up.axis, [Up.value, 0], -1 * Up.dirMultiplier); break;
       case "d'": runMove(Down.axis, [Down.value, 0], -1 * Down.dirMultiplier); break;
       case "f'": runMove(Front.axis, [Front.value, 0], -1 * Front.dirMultiplier); break;
       case "b'": runMove(Back.axis, [Back.value, 0], -1 * Back.dirMultiplier); break;
       default: break;
     }
-  };
+  }, [isSolved, hasShuffled, isRunning, time, cameraMapping, handleMoveAction]);
 
-  // Effect to handle keyboard input for moves
+  const handleUndo = useCallback(() => {
+    undoMove();
+    if (moveCount > 0) setMoveCount(prev => prev - 1);
+  }, [undoMove, moveCount]);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (document.activeElement.tagName === 'INPUT') return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        handleUndo();
+        return;
+      }
       if (keyboardMapping[e.key]) handleMove(keyboardMapping[e.key], true);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cameraMapping, hasShuffled, isRunning, time, keyboardMapping]);
+  }, [keyboardMapping, handleMove, handleUndo]);
 
-
-  // Function to handle shuffling the cube with 20 random moves
   const handleShuffle = () => {
     let previousMove = "";
     for (let i = 0; i < 20; i++) {
@@ -134,35 +134,35 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
     setHasShuffled(true);
   };
 
-  // Function to format time in mm:ss:cs format
-  const formatTime = (time) => {
-    const minutes = Math.floor(time / 60000).toString().padStart(2, '0');
-    const seconds = Math.floor((time % 60000) / 1000).toString().padStart(2, '0');
-    const centiseconds = Math.floor((time % 1000) / 10).toString().padStart(2, '0');
+  const formatTime = (t) => {
+    const minutes = Math.floor(t / 60000).toString().padStart(2, '0');
+    const seconds = Math.floor((t % 60000) / 1000).toString().padStart(2, '0');
+    const centiseconds = Math.floor((t % 1000) / 10).toString().padStart(2, '0');
     return `${minutes}:${seconds}.${centiseconds}`;
   };
 
-  // Render the Cube Game component
   return (
     <div className="app-container">
       <header className="header">
         <div className="header-left">
             <div className="highscore">High Score: {highScore ? formatTime(highScore) : "-"}</div>
         </div>
-        <div className="header-center">
-          <button className="shuffle-btn" onClick={handleShuffle}>Shuffle</button>
+        <div className="header-center" style={{ gap: '1rem', display: 'flex' }}>
+          <button className="shuffle-btn" aria-label="Shuffle cube" onClick={handleShuffle}>Shuffle</button>
+          <button className="shuffle-btn" aria-label="Undo last move" onClick={handleUndo}>Undo</button>
         </div>
         <div className="header-right">
-          <button className="shuffle-btn" onClick={() => setIsLocked(!isLocked)}>
+          <button className="shuffle-btn" aria-label={isLocked ? "Unlock camera" : "Lock camera"} onClick={() => setIsLocked(!isLocked)}>
             {isLocked ? "🔒 Locked" : "🔓 Unlocked"}
           </button>
         </div>
       </header>
 
       <main className="main-area" style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column' }}>
-        <button 
-          className="shuffle-btn" 
-          onClick={onBack} 
+        <button
+          className="shuffle-btn"
+          aria-label="Back to main menu"
+          onClick={onBack}
           style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 100 }}
         >
           Retour →
@@ -173,6 +173,26 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
           <div className="moves-count" style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Moves: {moveCount}</div>
         </div>
 
+        {isSolved && hasShuffled && !isRunning && time > 0 && (
+          <div style={{
+            position: 'absolute',
+            top: '20%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'rgba(255, 255, 255, 0.95)',
+            border: '4px solid #111',
+            padding: '1.5rem 2.5rem',
+            borderRadius: '12px',
+            textAlign: 'center',
+            zIndex: 1000,
+            boxShadow: '0 10px 25px rgba(0,0,0,0.3)'
+          }}>
+            <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '2rem' }}>🎉 Cube Résolu !</h2>
+            <p style={{ margin: '0 0 1rem 0', fontSize: '1.2rem' }}>Temps : {formatTime(time)} | Mouvements : {moveCount}</p>
+            <button className="shuffle-btn" onClick={() => handleShuffle()}>Rejouer</button>
+          </div>
+        )}
+
         <div className="cube-container">
           <Canvas camera={{ position: [5, 5, 5], fov: isMobile ? 80 : 65 }}>
             <ambientLight intensity={1} />
@@ -180,7 +200,6 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
             <RubiksCube />
             <CameraMapper />
 
-            {/* Controls */}
             <TrackballControls enabled={!isLocked} noPan={true} noZoom={true} rotateSpeed={isMobile ? 2 : 7} />
             <CustomLockControls isLocked={isLocked} cameraMapping={cameraMapping} />
           </Canvas>

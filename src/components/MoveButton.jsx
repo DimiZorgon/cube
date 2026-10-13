@@ -3,7 +3,6 @@ import React, { useRef } from 'react';
 export const MoveButton = ({ label, onMove }) => {
   const timerRef = useRef(null);
 
-  // Handle pointer down event to start a timer for long press detection
   const handlePointerDown = () => {
     timerRef.current = setTimeout(() => {
       timerRef.current = null;
@@ -11,7 +10,6 @@ export const MoveButton = ({ label, onMove }) => {
     }, 500);
   };
 
-  // Handle pointer up event to clear the timer and trigger the move if it was a short press
   const handlePointerUp = () => {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
@@ -20,10 +18,10 @@ export const MoveButton = ({ label, onMove }) => {
     }
   };
 
-  // Render the button with event handlers for pointer down and up
   return (
     <button
       className="move-btn"
+      aria-label={`Move ${label}`}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}

@@ -1,9 +1,7 @@
 import React from 'react';
 
 export function Cubie({ position, initialPosition, rotation }) {
-    const [x, y, z] = position;
     const [ix, iy, iz] = initialPosition;
-    const [rx, ry, rz] = rotation;
 
     const COLORS = {
         right: "#B71234",  // rouge
@@ -14,7 +12,6 @@ export function Cubie({ position, initialPosition, rotation }) {
         back: "#0003ad",   // Bleu
         core: "#1C1C1C"    // noir
     };
-
 
     const getColors = () => {
         return [
