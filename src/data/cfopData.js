@@ -1,3 +1,5 @@
+// src/data/cfopData.js
+
 export const CFOP_SECTIONS = [
   { id: 'F2L', label: 'F2L' },
   { id: '2-LOOK OLL', label: '2-LOOK OLL' },
@@ -48,21 +50,21 @@ export const CFOP_DATA = {
           id: 'pll_z',
           name: 'Z',
           category: 'PLL',
-          alg: "(M2' U M2' U) (M' U2) (M2' U2 M') [U2]",
+          alg: "(M2 U M2 U) (M' U2) (M2 U2 M') [U2]",
           view: 'top',
           maskMode: 'full',
           yellowTop: true,
           twoLook: true,
           arrows: [
-            { from: [0, 1], to: [1, 2], bi: true },
-            { from: [1, 0], to: [2, 1], bi: true }
+            { from: [0, 1], to: [1, 0], bi: true },
+            { from: [2, 1], to: [1, 2], bi: true }
           ]
         },
         {
           id: 'pll_h',
           name: 'H',
           category: 'PLL',
-          alg: "(M2' U M2') U2 (M2' U M2')",
+          alg: "(M2 U M2) U2 (M2 U M2)",
           view: 'top',
           maskMode: 'full',
           yellowTop: true,
@@ -132,8 +134,8 @@ export const CFOP_DATA = {
           maskMode: 'full',
           yellowTop: true,
           arrows: [
-            { from: [0, 0], to: [2, 0], bi: true },
-            { from: [0, 1], to: [1, 2], bi: true }
+            { from: [0, 1], to: [1, 0], bi: true },
+            { from: [0, 2], to: [2, 2], bi: true }
           ]
         },
         {
@@ -145,8 +147,8 @@ export const CFOP_DATA = {
           maskMode: 'full',
           yellowTop: true,
           arrows: [
-            { from: [0, 2], to: [2, 2], bi: true },
-            { from: [1, 0], to: [2, 1], bi: true }
+            { from: [0, 0], to: [0, 2], bi: true },
+            { from: [1, 2], to: [2, 1], bi: true }
           ]
         },
         {
@@ -172,7 +174,7 @@ export const CFOP_DATA = {
           yellowTop: true,
           arrows: [
             { from: [0, 2], to: [2, 2], bi: true },
-            { from: [1, 2], to: [2, 1], bi: true }
+            { from: [0, 1], to: [1, 2], bi: true }
           ]
         },
         {
@@ -198,14 +200,14 @@ export const CFOP_DATA = {
           maskMode: 'full',
           yellowTop: true,
           arrows: [
-            { from: [0, 2], to: [2, 2], bi: true },
-            { from: [0, 1], to: [2, 1], bi: true }
+            { from: [0, 1], to: [2, 1], bi: true },
+            { from: [0, 2], to: [2, 2], bi: true }
           ]
         }
       ]
     },
     {
-      group: 'Échange de 2 coins en diagonale',
+      group: 'Échange de 2 coins diagonaux',
       cases: [
         {
           id: 'pll_v',
@@ -238,7 +240,7 @@ export const CFOP_DATA = {
           id: 'pll_na',
           name: 'Na',
           category: 'PLL',
-          alg: "(R U R' U) (R U R' F') (R U R' U') R' F R2 U' R' U2 (R U' R')",
+          alg: "(R U R' U) (R U R' F') (R U R' U') (R' F R2 U') R' U2 (R U' R')",
           view: 'top',
           maskMode: 'full',
           yellowTop: true,
@@ -263,7 +265,7 @@ export const CFOP_DATA = {
       ]
     },
     {
-      group: 'Permutations G (Coins + Arêtes)',
+      group: 'Permutations G (cycles doubles)',
       cases: [
         {
           id: 'pll_ga',
@@ -276,49 +278,61 @@ export const CFOP_DATA = {
           arrows: [
             { from: [0, 0], to: [0, 2], bi: false },
             { from: [0, 2], to: [2, 0], bi: false },
-            { from: [2, 0], to: [0, 0], bi: false }
+            { from: [2, 0], to: [0, 0], bi: false },
+            { from: [0, 1], to: [1, 0], bi: false },
+            { from: [1, 0], to: [1, 2], bi: false },
+            { from: [1, 2], to: [0, 1], bi: false }
           ]
         },
         {
           id: 'pll_gb',
           name: 'Gb',
           category: 'PLL',
-          alg: "(R' U' R) U D' (R2 U R' U) (R U' R U') R2 D [U']",
+          alg: "(F' U' F) (R2 u R' U) (R U' R u') R2",
           view: 'top',
           maskMode: 'full',
           yellowTop: true,
           arrows: [
-            { from: [0, 2], to: [0, 0], bi: false },
             { from: [0, 0], to: [2, 0], bi: false },
-            { from: [2, 0], to: [0, 2], bi: false }
+            { from: [2, 0], to: [0, 2], bi: false },
+            { from: [0, 2], to: [0, 0], bi: false },
+            { from: [0, 1], to: [1, 2], bi: false },
+            { from: [1, 2], to: [1, 0], bi: false },
+            { from: [1, 0], to: [0, 1], bi: false }
           ]
         },
         {
           id: 'pll_gc',
           name: 'Gc',
           category: 'PLL',
-          alg: "R2 U' (R U' R U) (R' U R2) D' U (R U' R' D) [U']",
+          alg: "R2 U' (R U' R U) (R' U R2 D') (U R U' R') D [U']",
           view: 'top',
           maskMode: 'full',
           yellowTop: true,
           arrows: [
-            { from: [0, 2], to: [0, 0], bi: false },
             { from: [0, 0], to: [2, 2], bi: false },
-            { from: [2, 2], to: [0, 2], bi: false }
+            { from: [2, 2], to: [2, 0], bi: false },
+            { from: [2, 0], to: [0, 0], bi: false },
+            { from: [1, 0], to: [2, 1], bi: false },
+            { from: [2, 1], to: [1, 2], bi: false },
+            { from: [1, 2], to: [1, 0], bi: false }
           ]
         },
         {
           id: 'pll_gd',
           name: 'Gd',
           category: 'PLL',
-          alg: "(R U R') U' D (R2 U' R U') (R' U R' U) R2 D' [U]",
+          alg: "D' (R U R' U') D (R2 U' R U') (R' U R' U) R2 [U]",
           view: 'top',
           maskMode: 'full',
           yellowTop: true,
           arrows: [
-            { from: [0, 0], to: [0, 2], bi: false },
-            { from: [0, 2], to: [2, 2], bi: false },
-            { from: [2, 2], to: [0, 0], bi: false }
+            { from: [2, 0], to: [0, 2], bi: false },
+            { from: [0, 2], to: [0, 0], bi: false },
+            { from: [0, 0], to: [2, 0], bi: false },
+            { from: [2, 1], to: [0, 1], bi: false },
+            { from: [0, 1], to: [1, 0], bi: false },
+            { from: [1, 0], to: [2, 1], bi: false }
           ]
         }
       ]
@@ -365,6 +379,24 @@ export const CFOP_DATA = {
       group: 'Étape 2 : Orientation des coins (OCLL)',
       cases: [
         {
+          id: 'oll_26',
+          name: 'Antisune',
+          category: '2-LOOK OLL',
+          alg: "R U2 R' U' R U' R'",
+          view: 'top',
+          maskMode: 'oll',
+          yellowTop: true
+        },
+        {
+          id: 'oll_27',
+          name: 'Sune',
+          category: '2-LOOK OLL',
+          alg: "R U R' U R U2 R'",
+          view: 'top',
+          maskMode: 'oll',
+          yellowTop: true
+        },
+        {
           id: 'oll_21',
           name: 'H',
           category: '2-LOOK OLL',
@@ -384,7 +416,7 @@ export const CFOP_DATA = {
         },
         {
           id: 'oll_24',
-          name: 'T (Chameleon)',
+          name: 'T',
           category: '2-LOOK OLL',
           alg: "(r U R' U') (r' F R F')",
           view: 'top',
@@ -393,7 +425,7 @@ export const CFOP_DATA = {
         },
         {
           id: 'oll_25',
-          name: 'L (Bowtie)',
+          name: 'L',
           category: '2-LOOK OLL',
           alg: "y F' (r U R' U') r' F R",
           view: 'top',
@@ -402,27 +434,9 @@ export const CFOP_DATA = {
         },
         {
           id: 'oll_23',
-          name: 'U (Headlights)',
+          name: 'U',
           category: '2-LOOK OLL',
           alg: "R2 D (R' U2 R) D' (R' U2 R')",
-          view: 'top',
-          maskMode: 'oll',
-          yellowTop: true
-        },
-        {
-          id: 'oll_27',
-          name: 'Sune',
-          category: '2-LOOK OLL',
-          alg: "(R U R' U) (R U2 R')",
-          view: 'top',
-          maskMode: 'oll',
-          yellowTop: true
-        },
-        {
-          id: 'oll_26',
-          name: 'Anti-Sune',
-          category: '2-LOOK OLL',
-          alg: "(R U2 R') (U' R U' R')",
           view: 'top',
           maskMode: 'oll',
           yellowTop: true
@@ -432,144 +446,144 @@ export const CFOP_DATA = {
   ],
 
   // ==========================================
-  // FULL OLL (57 CAS CLASSÉS PAR FORMES)
+  // FULL OLL (57 CAS COMPLETS)
   // ==========================================
   OLL: [
     {
       group: 'Croix orientée (OCLL)',
       cases: [
-        { id: 'foll_21', name: 'H (21)', category: 'OLL', alg: "(R U2 R') (U' R U R') (U' R U' R')", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_22', name: 'Pi (22)', category: 'OLL', alg: "R U2 R2 U' R2 U' R2 U2 R", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_23', name: 'U (23)', category: 'OLL', alg: "R2 D (R' U2 R) D' (R' U2 R')", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_24', name: 'T (24)', category: 'OLL', alg: "(r U R' U') (r' F R F')", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_25', name: 'L (25)', category: 'OLL', alg: "y F' (r U R' U') r' F R", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_26', name: 'Anti-Sune (26)', category: 'OLL', alg: "(R U2 R') (U' R U' R')", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_27', name: 'Sune (27)', category: 'OLL', alg: "(R U R' U) (R U2 R')", view: 'top', maskMode: 'oll', yellowTop: true }
+        { id: 'foll_26', name: 'Antisune', category: 'OLL', alg: "R U2 R' U' R U' R'", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_27', name: 'Sune', category: 'OLL', alg: "R U R' U R U2 R'", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_21', name: 'H', category: 'OLL', alg: "(R U2 R') (U' R U R') (U' R U' R')", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_22', name: 'Pi', category: 'OLL', alg: "R U2 R2 U' R2 U' R2 U2 R", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_24', name: 'T', category: 'OLL', alg: "(r U R' U') (r' F R F')", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_25', name: 'L', category: 'OLL', alg: "y F' (r U R' U') r' F R", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_23', name: 'U', category: 'OLL', alg: "R2 D (R' U2 R) D' (R' U2 R')", view: 'top', maskMode: 'oll', yellowTop: true }
       ]
     },
     {
       group: 'Formes en T',
       cases: [
-        { id: 'foll_33', name: 'Key (33)', category: 'OLL', alg: "(R U R' U') (R' F R F')", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_45', name: 'T (45)', category: 'OLL', alg: "F (R U R' U') F'", view: 'top', maskMode: 'oll', yellowTop: true }
+        { id: 'foll_33', name: 'Key', category: 'OLL', alg: "(R U R' U') (R' F R F')", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_45', name: 'T', category: 'OLL', alg: "F (R U R' U') F'", view: 'top', maskMode: 'oll', yellowTop: true }
       ]
     },
     {
-      group: 'Carrés (Squares)',
+      group: 'Carrés',
       cases: [
-        { id: 'foll_5', name: 'Lefty Square (5)', category: 'OLL', alg: "(r' U2 R U R' U r)", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_6', name: 'Righty Square (6)', category: 'OLL', alg: "(r U2 R' U' R U' r')", view: 'top', maskMode: 'oll', yellowTop: true }
+        { id: 'foll_5', name: 'Lefty Square', category: 'OLL', alg: "(r' U2 R U R' U r)", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_6', name: 'Righty Square', category: 'OLL', alg: "(r U2 R' U' R U' r')", view: 'top', maskMode: 'oll', yellowTop: true }
       ]
     },
     {
       group: 'Formes en C',
       cases: [
-        { id: 'foll_34', name: 'C-Horizontal (34)', category: 'OLL', alg: "(R U R2 U') (R' F R U) R U' F'", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_46', name: 'C-Vertical (46)', category: 'OLL', alg: "R' U' (R' F R F') U R", view: 'top', maskMode: 'oll', yellowTop: true }
+        { id: 'foll_34', name: 'City (C and T)', category: 'OLL', alg: "(R U R2 U') (R' F R U) R U' F'", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_46', name: "Seein' Headlights (C and headlights)", category: 'OLL', alg: "R' U' (R' F R F') U R", view: 'top', maskMode: 'oll', yellowTop: true }
       ]
     },
     {
       group: 'Formes en W',
       cases: [
-        { id: 'foll_36', name: 'W-Left (36)', category: 'OLL', alg: "(L' U' L U') (L' U L U) (L F' L' F)", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_38', name: 'W-Right (38)', category: 'OLL', alg: "(R U R' U) (R U' R' U') (R' F R F')", view: 'top', maskMode: 'oll', yellowTop: true }
+        { id: 'foll_36', name: 'Wario', category: 'OLL', alg: "(R' U' R U') (R' U R U) l U' R' U x", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_38', name: 'Mario', category: 'OLL', alg: "(R U R' U) (R U' R' U') (R' F R F')", view: 'top', maskMode: 'oll', yellowTop: true }
       ]
     },
     {
-      group: 'Coins tous orientés',
+      group: 'Coins corrects, arêtes inversées',
       cases: [
-        { id: 'foll_28', name: 'Stealth (28)', category: 'OLL', alg: "(r U R' U') r' R (U R U' R')", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_57', name: 'H-Line (57)', category: 'OLL', alg: "(R U R' U') M' (U R U' r')", view: 'top', maskMode: 'oll', yellowTop: true }
+        { id: 'foll_28', name: 'Arrow', category: 'OLL', alg: "(r U R' U') M (U R U' R')", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_57', name: 'Mummy', category: 'OLL', alg: "(R U R' U') M' (U R U' r')", view: 'top', maskMode: 'oll', yellowTop: true }
       ]
     },
     {
       group: 'Formes en P',
       cases: [
-        { id: 'foll_31', name: 'P-Back Left (31)', category: 'OLL', alg: "(R' U' F) (U R U' R') F' R", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_32', name: 'P-Back Right (32)', category: 'OLL', alg: "L U F' (U' L' U L) F L'", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_43', name: 'P-Front Left (43)', category: 'OLL', alg: "f' (L' U' L U) f", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_44', name: 'P-Front Right (44)', category: 'OLL', alg: "f (R U R' U') f'", view: 'top', maskMode: 'oll', yellowTop: true }
+        { id: 'foll_31', name: 'Couch', category: 'OLL', alg: "(R' U' F) (U R U' R') F' R", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_32', name: 'Anti-Couch', category: 'OLL', alg: "R U B' (U' R' U) (R B R')", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_43', name: 'Anti-P', category: 'OLL', alg: "y R' U' F' U F R", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_44', name: 'P', category: 'OLL', alg: "f (R U R' U') f'", view: 'top', maskMode: 'oll', yellowTop: true }
       ]
     },
     {
-      group: 'Formes en I (Lignes)',
+      group: 'Formes en I',
       cases: [
-        { id: 'foll_51', name: 'Bottlecap (51)', category: 'OLL', alg: "f (R U R' U') (R U R' U') f'", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_52', name: 'Rice Cooker (52)', category: 'OLL', alg: "(R U R' U) R U' B U' B' R'", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_55', name: 'Highway (55)', category: 'OLL', alg: "R' F R U R U' R2 F' R2 U' R' (U R U R')", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_56', name: 'Streetlights (56)', category: 'OLL', alg: "r' U' r (U' R' U R) (U' R' U R) r' U r", view: 'top', maskMode: 'oll', yellowTop: true }
+        { id: 'foll_51', name: 'Bottlecap', category: 'OLL', alg: "f (R U R' U') (R U R' U') f'", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_56', name: 'Streetlights', category: 'OLL', alg: "r' U' r (U' R' U R) (U' R' U R) r' U r", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_52', name: 'Rice Cooker', category: 'OLL', alg: "(R' U' R U' R' U) y' (R' U R) B", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_55', name: 'Highway', category: 'OLL', alg: "y (R' F R U) (R U' R2 F') R2 U' R' (U R U R')", view: 'top', maskMode: 'oll', yellowTop: true }
       ]
     },
     {
-      group: 'Poissons (Fish Shapes)',
+      group: 'Formes de poisson',
       cases: [
-        { id: 'foll_9', name: 'Kite (9)', category: 'OLL', alg: "(R U R' U') R' F (R2 U R' U') F'", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_10', name: 'Anti-Kite (10)', category: 'OLL', alg: "(R U R' U) (R' F R F') (R U2 R')", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_35', name: 'Fish Salad (35)', category: 'OLL', alg: "(R U2) (R2 F R F') (R U2 R')", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_37', name: 'Mounted Fish (37)', category: 'OLL', alg: "F (R' F' R U) (R U' R')", view: 'top', maskMode: 'oll', yellowTop: true }
+        { id: 'foll_9', name: 'Kite', category: 'OLL', alg: "(R U R' U') R' F (R2 U R' U') F'", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_10', name: 'Anti-Kite', category: 'OLL', alg: "(R U R' U) (R' F R F') (R U2 R')", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_35', name: 'Fish Salad', category: 'OLL', alg: "(R U2) (R2 F R F') (R U2 R')", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_37', name: 'Mounted Fish', category: 'OLL', alg: "F (R U' R' U') (R U R' F')", view: 'top', maskMode: 'oll', yellowTop: true }
       ]
     },
     {
-      group: 'Éclairs (Lightning Bolts)',
+      group: 'Formes de cavalier',
       cases: [
-        { id: 'foll_7', name: 'Wide Sune (7)', category: 'OLL', alg: "(r U R' U) (R U2 r')", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_8', name: 'Wide Anti-Sune (8)', category: 'OLL', alg: "(r' U' R U') (R' U2 r)", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_11', name: 'Downstairs (11)', category: 'OLL', alg: "(r U R' U) (R' F R F') (R U2 r')", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_12', name: 'Upstairs (12)', category: 'OLL', alg: "M' (R' U' R U') (R' U2 R) U' M", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_39', name: 'Big Lightning Left (39)', category: 'OLL', alg: "L F' (L' U' L U) F U' L'", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_40', name: 'Big Lightning Right (40)', category: 'OLL', alg: "R' F (R U R' U') F' U R", view: 'top', maskMode: 'oll', yellowTop: true }
+        { id: 'foll_13', name: 'Gun', category: 'OLL', alg: "(r U' r') (U' r U r') y' (R' U R)", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_14', name: 'Anti-Gun', category: 'OLL', alg: "(R' F R) (U R' F' R) (F U' F')", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_16', name: 'Squeegee', category: 'OLL', alg: "(r U r') (R U R' U') (r U' r')", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_15', name: 'Anti-Squeegee', category: 'OLL', alg: "(r' U' r) (R' U' R U) (r' U r)", view: 'top', maskMode: 'oll', yellowTop: true }
       ]
     },
     {
-      group: 'Cavaliers (Knight Move Shapes)',
+      group: 'Formes bizarres',
       cases: [
-        { id: 'foll_13', name: 'Gun (13)', category: 'OLL', alg: "F U R U2 R' U' R U R' F'", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_14', name: 'Anti-Gun (14)', category: 'OLL', alg: "R' F R U R' F' R F U' F'", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_15', name: 'Squeegee Left (15)', category: 'OLL', alg: "(r' U' r) (L' U' L U) (r' U r)", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_16', name: 'Squeegee Right (16)', category: 'OLL', alg: "(r U r') (R U R' U') (r U' r')", view: 'top', maskMode: 'oll', yellowTop: true }
+        { id: 'foll_29', name: 'Spotted Chameleon', category: 'OLL', alg: "y (R U R' U') (R U' R') (F' U' F) (R U R')", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_30', name: 'Anti-Spotted Chameleon', category: 'OLL', alg: "y' F U (R U2 R' U') (R U2 R' U') F'", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_41', name: 'Awkward Fish', category: 'OLL', alg: "(R U R' U R U2 R') F (R U R' U') F'", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_42', name: 'Lefty Awkward Fish', category: 'OLL', alg: "(R' U' R U' R' U2 R) F (R U R' U') F'", view: 'top', maskMode: 'oll', yellowTop: true }
       ]
     },
     {
-      group: 'Petites formes en L',
+      group: 'Formes en L',
       cases: [
-        { id: 'foll_47', name: 'Anti-Breakneck (47)', category: 'OLL', alg: "R' U' (R' F R F') (R' F R F') U R", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_48', name: 'Breakneck (48)', category: 'OLL', alg: "F (R U R' U') (R U R' U') F'", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_49', name: 'Right Back Squeezy (49)', category: 'OLL', alg: "r U' r2 U r2 U r2 U' r", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_50', name: 'Right Front Squeezy (50)', category: 'OLL', alg: "r' U r2 U' r2 U' r2 U r'", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_53', name: 'Frying Pan Left (53)', category: 'OLL', alg: "(r' U2 R U R' U') (R U R' U r)", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_54', name: 'Frying Pan Right (54)', category: 'OLL', alg: "(r U2 R' U' R U) (R' U' R U' r')", view: 'top', maskMode: 'oll', yellowTop: true }
+        { id: 'foll_48', name: 'Breakneck', category: 'OLL', alg: "F (R U R' U') (R U R' U') F'", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_47', name: 'Anti-Breakneck', category: 'OLL', alg: "F' (L' U' L U) (L' U' L U) F", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_49', name: 'Right back squeezy', category: 'OLL', alg: "r U' r2 U r2 U r2 U' r", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_50', name: 'Right front squeezy', category: 'OLL', alg: "r' U r2 U' r2 U' r2 U r'", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_53', name: 'Frying Pan', category: 'OLL', alg: "(r' U' R U') (R' U R U') R' U2 r", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_54', name: 'Anti-Frying Pan', category: 'OLL', alg: "(r U R' U) (R U' R' U) R U2 r'", view: 'top', maskMode: 'oll', yellowTop: true }
       ]
     },
     {
-      group: 'Formes maladroites (Awkward Shapes)',
+      group: 'Éclairs',
       cases: [
-        { id: 'foll_29', name: 'Spotted Chameleon (29)', category: 'OLL', alg: "(R U R' U') (R U' R') (F' U' F) (R U R')", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_30', name: 'Anti-Spotted Chameleon (30)', category: 'OLL', alg: "F R' F R2 U' R' U' (R U R') F2", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_41', name: 'Dalmatian (41)', category: 'OLL', alg: "(R U R' U) (R U2 R') F (R U R' U') F'", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_42', name: 'Anti-Dalmatian (42)', category: 'OLL', alg: "(R' U' R U') (R' U2 R) F (R U R' U') F'", view: 'top', maskMode: 'oll', yellowTop: true }
+        { id: 'foll_7', name: 'Wide Sune', category: 'OLL', alg: "(r U R' U R U2 r')", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_8', name: 'Wide Anti-sune', category: 'OLL', alg: "(r' U' R U' R' U2 r)", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_11', name: 'Downstairs', category: 'OLL', alg: "r' (R2 U R' U R U2 R') U M'", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_12', name: 'Upstairs', category: 'OLL', alg: "M' (R' U' R U' R' U2 R) U' M", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_39', name: 'Fung', category: 'OLL', alg: "(L F') (L' U' L U) F U' L'", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_40', name: 'Anti-Fung', category: 'OLL', alg: "(R' F) (R U R' U') F' U R", view: 'top', maskMode: 'oll', yellowTop: true }
       ]
     },
     {
-      group: 'Points (Aucune arête orientée - Dot Cases)',
+      group: 'Aucune arête retournée correctement',
       cases: [
-        { id: 'foll_1', name: 'Runway (1)', category: 'OLL', alg: "(R U2) (R2 F R F') U2 (R' F R F')", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_2', name: 'Zamboni (2)', category: 'OLL', alg: "F (R U R' U') F' f (R U R' U') f'", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_3', name: 'Anti-Mouse (3)', category: 'OLL', alg: "f (R U R' U') f' U' F (R U R' U') F'", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_4', name: 'Mouse (4)', category: 'OLL', alg: "f (R U R' U') f' U F (R U R' U') F'", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_17', name: 'Slash (17)', category: 'OLL', alg: "(R U R' U) (R' F R F') U2 (R' F R F')", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_18', name: 'Crown (18)', category: 'OLL', alg: "(r U R' U) (R U2 r2) (U' R U' R') U2 r", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_19', name: 'Bunny (19)', category: 'OLL', alg: "r' R U (R U R' U') r (R2 F R F')", view: 'top', maskMode: 'oll', yellowTop: true },
-        { id: 'foll_20', name: 'X-Checkers (20)', category: 'OLL', alg: "(r U R' U') M2 (U R U' R') U' M'", view: 'top', maskMode: 'oll', yellowTop: true }
+        { id: 'foll_1', name: 'Runway', category: 'OLL', alg: "(R U2) (R2 F R F') U2 (R' F R F')", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_2', name: 'Zamboni', category: 'OLL', alg: "F (R U R' U') F' f (R U R' U') f'", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_3', name: 'Anti-Nazi', category: 'OLL', alg: "f (R U R' U') f' U' F (R U R' U') F'", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_4', name: 'Nazi', category: 'OLL', alg: "f (R U R' U') f' U F (R U R' U') F'", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_18', name: 'Crown', category: 'OLL', alg: "y R U2 (R2 F R F') U2 M' (U R U' r')", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_19', name: 'Bunny', category: 'OLL', alg: "M U (R U R' U') M' (R' F R F')", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_17', name: 'Diagonal', category: 'OLL', alg: "(R U R' U) (R' F R F') U2 (R' F R F')", view: 'top', maskMode: 'oll', yellowTop: true },
+        { id: 'foll_20', name: 'X', category: 'OLL', alg: "M U (R U R' U') M2 (U R U' r')", view: 'top', maskMode: 'oll', yellowTop: true }
       ]
     }
   ],
 
   // ==========================================
-  // F2L (CAS COMPLETS EN VUE ISOMÉTRIQUE 3D)
+  // F2L (41 CAS COMPLETS CONFORMES AUX CAPTURES)
   // ==========================================
   F2L: [
     {
-      group: 'Cas fondamentaux (Insertions directes)',
+      group: 'Insertions de base',
       cases: [
         { id: 'f2l_1', name: '1', category: 'F2L', alg: "U (R U' R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
         { id: 'f2l_2', name: '2', category: 'F2L', alg: "y' U' (R' U R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
@@ -578,45 +592,50 @@ export const CFOP_DATA = {
       ]
     },
     {
-      group: 'Blanc sur un côté, couleurs opposées en haut',
+      group: 'Blanc sur un côté, couleurs différentes en haut',
       cases: [
-        { id: 'f2l_5', name: '5', category: 'F2L', alg: "U' (R U R' U') (R U' R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
-        { id: 'f2l_6', name: '6', category: 'F2L', alg: "y' U (R' U' R U) (R' U R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
-        { id: 'f2l_7', name: '7', category: 'F2L', alg: "U' (R U2 R' U') (R U' R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
-        { id: 'f2l_8', name: '8', category: 'F2L', alg: "y' U (R' U2 R U) (R' U R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
-        { id: 'f2l_9', name: '9', category: 'F2L', alg: "y' U (R' U' R U') (R' U' R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
-        { id: 'f2l_10', name: '10', category: 'F2L', alg: "U' (R U R' U) (R U R')", view: 'iso', maskMode: 'f2l', yellowTop: true }
+        { id: 'f2l_5', name: '5', category: 'F2L', alg: "U' (R U' R' U) y' (R' U' R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
+        { id: 'f2l_6', name: '6', category: 'F2L', alg: "y' U (R' U' R U') (R' U' R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
+        { id: 'f2l_7', name: '7', category: 'F2L', alg: "U' (R U2 R' U) y' (R' U' R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
+        { id: 'f2l_8', name: '8', category: 'F2L', alg: "y' R' U2 R2 U R2 U R", view: 'iso', maskMode: 'f2l', yellowTop: true },
+        { id: 'f2l_9', name: '9', category: 'F2L', alg: "y' U (R' U R U') (R' U' R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
+        { id: 'f2l_10', name: '10', category: 'F2L', alg: "U' (R U' R' U) (R U R')", view: 'iso', maskMode: 'f2l', yellowTop: true }
       ]
     },
     {
       group: 'Blanc sur un côté, mêmes couleurs en haut',
       cases: [
-        { id: 'f2l_11', name: '11', category: 'F2L', alg: "(U' R U' R') U2 (R U' R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
-        { id: 'f2l_12', name: '12', category: 'F2L', alg: "y' (U R' U R) U2 (R' U R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
+        { id: 'f2l_11', name: '11', category: 'F2L', alg: "(U' R U R') U2 (R U' R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
+        { id: 'f2l_12', name: '12', category: 'F2L', alg: "y' (U R' U' R) U2 (R' U R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
         { id: 'f2l_13', name: '13', category: 'F2L', alg: "U' (R U2 R') U2 (R U' R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
-        { id: 'f2l_14', name: '14', category: 'F2L', alg: "y' U (R' U2 R) U2 (R' U R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
-        { id: 'f2l_15', name: '15', category: 'F2L', alg: "(R U' R' U2) y' (R' U' R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
-        { id: 'f2l_16', name: '16', category: 'F2L', alg: "y' (R' U R U2) y (R U R')", view: 'iso', maskMode: 'f2l', yellowTop: true }
+        { id: 'f2l_14', name: '14', category: 'F2L', alg: "y' U (R' U2 R) U2 (R' U R)", view: 'iso', maskMode: 'f2l', yellowTop: true }
       ]
     },
     {
-      group: 'Blanc vers le haut (Face U)',
+      group: 'Blanc en haut, arête en haut',
       cases: [
-        { id: 'f2l_17', name: '17', category: 'F2L', alg: "(R U2 R' U') (R U R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
-        { id: 'f2l_18', name: '18', category: 'F2L', alg: "y' (R' U2 R U) (R' U' R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
-        { id: 'f2l_19', name: '19', category: 'F2L', alg: "U (R U2 R' U) (R U' R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
-        { id: 'f2l_20', name: '20', category: 'F2L', alg: "y' U' (R' U2 R U') (R' U R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
-        { id: 'f2l_21', name: '21', category: 'F2L', alg: "U2 (R U R' U) (R U' R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
-        { id: 'f2l_22', name: '22', category: 'F2L', alg: "y' U2 (R' U' R U') (R' U R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
-        { id: 'f2l_23', name: '23', category: 'F2L', alg: "(R U R' U2) (R U R' U') (R U R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
-        { id: 'f2l_24', name: '24', category: 'F2L', alg: "y' (R' U' R U2) (R' U' R U) (R' U' R)", view: 'iso', maskMode: 'f2l', yellowTop: true }
+        { id: 'f2l_15', name: '15', category: 'F2L', alg: "U (R U2 R') U (R U' R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
+        { id: 'f2l_16', name: '16', category: 'F2L', alg: "y' U' (R' U2 R) U' (R' U R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
+        { id: 'f2l_17', name: '17', category: 'F2L', alg: "U2 (R U R' U) (R U' R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
+        { id: 'f2l_18', name: '18', category: 'F2L', alg: "y' U2 (R' U' R) U' (R' U R)", view: 'iso', maskMode: 'f2l', yellowTop: true }
+      ]
+    },
+    {
+      group: 'Pièces en haut, mal connectées',
+      cases: [
+        { id: 'f2l_19', name: '19', category: 'F2L', alg: "y' (R' U R) U2 y (R U R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
+        { id: 'f2l_20', name: '20', category: 'F2L', alg: "(R U' R' U2) y' (R' U' R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
+        { id: 'f2l_21', name: '21', category: 'F2L', alg: "(R U2 R') U' (R U R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
+        { id: 'f2l_22', name: '22', category: 'F2L', alg: "y' (R' U2 R) U (R' U' R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
+        { id: 'f2l_23', name: '23', category: 'F2L', alg: "U (R U' R' U') (R U' R' U) (R U' R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
+        { id: 'f2l_24', name: '24', category: 'F2L', alg: "y' U' (R' U R U) (R' U R U') (R' U R)", view: 'iso', maskMode: 'f2l', yellowTop: true }
       ]
     },
     {
       group: 'Coin dans le slot (Bas)',
       cases: [
-        { id: 'f2l_25', name: '25', category: 'F2L', alg: "U' (R' F R F') (R U R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
-        { id: 'f2l_26', name: '26', category: 'F2L', alg: "U (R U' R') (F R' F' R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
+        { id: 'f2l_25', name: '25', category: 'F2L', alg: "U' F' (R U R' U') R' F R", view: 'iso', maskMode: 'f2l', yellowTop: true },
+        { id: 'f2l_26', name: '26', category: 'F2L', alg: "U (R U' R') U' (F' U F)", view: 'iso', maskMode: 'f2l', yellowTop: true },
         { id: 'f2l_27', name: '27', category: 'F2L', alg: "(R U' R' U) (R U' R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
         { id: 'f2l_28', name: '28', category: 'F2L', alg: "y' (R' U R U') (R' U R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
         { id: 'f2l_29', name: '29', category: 'F2L', alg: "y' (R' U' R U) (R' U' R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
@@ -627,27 +646,27 @@ export const CFOP_DATA = {
       group: 'Arête dans le slot (Milieu)',
       cases: [
         { id: 'f2l_31', name: '31', category: 'F2L', alg: "(R U' R' U) y' (R' U R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
-        { id: 'f2l_32', name: '32', category: 'F2L', alg: "(R U R' U') (R U R' U') (R U R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
-        { id: 'f2l_33', name: '33', category: 'F2L', alg: "U' (R U' R') U2 (R U' R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
+        { id: 'f2l_32', name: '32', category: 'F2L', alg: "(U R U' R') (U R U' R') (U R U' R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
+        { id: 'f2l_33', name: '33', category: 'F2L', alg: "(U' R U' R') U2 (R U' R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
         { id: 'f2l_34', name: '34', category: 'F2L', alg: "U (R U R') U2 (R U R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
-        { id: 'f2l_35', name: '35', category: 'F2L', alg: "U' (R U R') U y' (R' U' R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
-        { id: 'f2l_36', name: '36', category: 'F2L', alg: "y' U (R' U' R) U' y (R U R')", view: 'iso', maskMode: 'f2l', yellowTop: true }
+        { id: 'f2l_35', name: '35', category: 'F2L', alg: "(U' R U R') U y' (R' U' R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
+        { id: 'f2l_36', name: '36', category: 'F2L', alg: "U (F' U' F) U' (R U R')", view: 'iso', maskMode: 'f2l', yellowTop: true }
       ]
     },
     {
       group: 'Coin et Arête déjà dans le slot',
       cases: [
         { id: 'f2l_37', name: '37', category: 'F2L', alg: "(R U' R') d (R' U2 R) U2 (R' U R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
-        { id: 'f2l_38', name: '38', category: 'F2L', alg: "(R U R' U') (R U2 R' U') (R U R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
-        { id: 'f2l_39', name: '39', category: 'F2L', alg: "(R U R' U) (R U' R' U2) (R U' R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
-        { id: 'f2l_40', name: '40', category: 'F2L', alg: "(R U' R' U') (R U R' U2) (R U' R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
-        { id: 'f2l_41', name: '41', category: 'F2L', alg: "(R U' R') U' (R U R') U2 (R U' R')", view: 'iso', maskMode: 'f2l', yellowTop: true }
+        { id: 'f2l_38', name: '38', category: 'F2L', alg: "(R U' R' U') R U R' U2 (R U' R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
+        { id: 'f2l_39', name: '39', category: 'F2L', alg: "(R U' R' U) (R U2 R') U (R U' R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
+        { id: 'f2l_40', name: '40', category: 'F2L', alg: "(F' U F) U2 (R U R' U) (R U' R')", view: 'iso', maskMode: 'f2l', yellowTop: true },
+        { id: 'f2l_41', name: '41', category: 'F2L', alg: "(R U R' U') (R U' R') U2 y' (R' U' R)", view: 'iso', maskMode: 'f2l', yellowTop: true }
       ]
     }
   ]
 };
 
-// Génération automatique de la section 2-LOOK PLL à partir des cas marqués twoLook
+// Génération automatique de la section 2-LOOK PLL
 CFOP_DATA['2-LOOK PLL'] = [
   {
     group: 'Étape 1 : Permutation des coins (Diagonal ou Adjacent)',

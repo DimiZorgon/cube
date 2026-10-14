@@ -55,7 +55,7 @@ export function invertSingleMove(move) {
   return `${move}'`;
 }
 
-export function invertAlgo(algString, includeOptional = false) {
+export function invertAlgo(algString, includeOptional = true) {
   const tokens = parseAlgoTokens(algString).filter(t => includeOptional || !t.isOptional);
   return tokens
     .slice()
@@ -189,11 +189,13 @@ export function createCaseCubies({
   let cubies = generateInitialCubies(size);
 
   if (yellowTop) {
-    cubies = applyAlgoInstant(cubies, "x2 y'", size, true);
+    // Pour les F2L : Jaune en haut (+Y), Rouge devant (+Z) et Vert à droite (+X) -> "x2 y"
+    // Pour OLL/PLL : "x2 y'" pour conserver l'alignement exact des couleurs latérales PLL
+    const orientAlg = maskMode === 'f2l' ? 'x2 y' : "x2 y'";
+    cubies = applyAlgoInstant(cubies, orientAlg, size, true);
   }
 
   const outer = size === 2 ? 0.5 : 1;
-  // Quand yellowTop = true, la 1ère couronne blanche est en bas (-outer). Sinon elle est en haut (+outer).
   const firstLayerY = yellowTop ? -outer : outer;
 
   cubies = cubies.map(c => {
@@ -252,7 +254,23 @@ export function createCaseCubies({
   });
 
   if (applySetup) {
-    const setupMoves = setup !== null ? setup : invertAlgo(alg, false);
+    // En F2L, si l'algorithme contient des rotations de cube (y, y') ou de tranche équatoriale (d),
+    // on pré-oriente l'état résolu afin qu'après l'application de l'inverse, les centres Rouge (F)
+    // et Vert (R) ainsi que le slot cible reviennent exactement devant à droite.
+    if (maskMode === 'f2l' && setup === null) {
+      const allLayers = size === 2 ? [-0.5, 0.5] : [-1, 0, 1];
+      const forwardTokens = parseAlgoTokens(alg).filter(t => !t.isOptional);
+      for (const tok of forwardTokens) {
+        const params = getMoveParams(tok.move, size);
+        if (params && params.value.some(v => Math.abs(v) < 0.1)) {
+          for (let i = 0; i < params.quarterTurns; i++) {
+            cubies = applyQuarterTurn(cubies, params.axis, allLayers, params.direction);
+          }
+        }
+      }
+    }
+
+    const setupMoves = setup !== null ? setup : invertAlgo(alg, true);
     cubies = applyAlgoInstant(cubies, setupMoves, size, true);
   }
 

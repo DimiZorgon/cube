@@ -1,6 +1,5 @@
 import React from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
 import { generateInitialCubies } from '../store/useCubeStore';
 import { Cubie } from './Cubie';
 
@@ -17,7 +16,6 @@ export function MiniCube({ size }) {
             <Cubie key={data.id} position={data.position} initialPosition={data.initialPosition} rotation={data.rotation} />
           ))}
         </group>
-        <OrbitControls autoRotate autoRotateSpeed={2} enableZoom={false} enablePan={false} enableRotate={false} />
       </Canvas>
     </div>
   );

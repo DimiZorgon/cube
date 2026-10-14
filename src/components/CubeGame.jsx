@@ -226,17 +226,16 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
         </div>
       </header>
 
-      <main className="main-area" style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <main className="main-area">
         <button
-          className="shuffle-btn"
+          className="shuffle-btn game-back-btn"
           onClick={onBack}
-          style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 100 }}
         >
           <ArrowLeft size={16} />
           <span>{trainingCase ? "Retour aux algos" : "Menu Cubes"}</span>
         </button>
 
-        <div className="stats-container" style={{ display: 'flex', gap: '2rem', alignItems: 'center', position: 'relative', zIndex: 3, marginTop: '0.75rem' }}>
+        <div className="stats-container">
           <div className="timer">{formatTime(time)}</div>
           <div className="moves-count">Mouvements : {moveCount}</div>
         </div>

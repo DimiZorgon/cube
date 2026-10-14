@@ -91,9 +91,9 @@ export default function App() {
       <div className="main-menu-container">
         <div className="menu-header-block">
           <span className="menu-eyebrow">Simulateur 3D</span>
-          <h1 className="main-menu-title">Choisissez votre Cube</h1>
+          <h1 className="main-menu-title">Choisissez un cube</h1>
           <p className="main-menu-subtitle">
-            Sélectionnez un format pour lancer une session chronométrée ou libre.
+            Choisissez un format et lancez votre partie.
           </p>
         </div>
 
@@ -107,8 +107,8 @@ export default function App() {
           >
             <MiniCube size={2} />
             <div className="menu-card-Meta">
-              <span className="menu-card-title">Pocket Cube 2x2</span>
-              <span className="menu-card-sub">Rapide & nerveux</span>
+              <span className="menu-card-title">Cube 2 × 2</span>
+              <span className="menu-card-sub">Petit format, parties rapides</span>
             </div>
           </button>
 
@@ -121,8 +121,8 @@ export default function App() {
           >
             <MiniCube size={3} />
             <div className="menu-card-Meta">
-              <span className="menu-card-title">Rubik&apos;s Cube 3x3</span>
-              <span className="menu-card-sub">Format classique WCA</span>
+              <span className="menu-card-title">Cube 3 × 3</span>
+              <span className="menu-card-sub">Le format classique</span>
             </div>
           </button>
         </div>
@@ -140,10 +140,10 @@ export default function App() {
     return (
       <div className="main-menu-container">
         <div className="menu-header-block">
-          <span className="menu-eyebrow">Apprentissage & Entraînement</span>
-          <h1 className="main-menu-title">Guides & Algorithmes</h1>
+          <span className="menu-eyebrow">Guides et entraînement</span>
+          <h1 className="main-menu-title">Méthodes de résolution</h1>
           <p className="main-menu-subtitle">
-            Explorez les méthodes pas à pas ou entraînez-vous sur les cas officiels.
+            Découvrez les étapes de chaque méthode et entraînez-vous sur des cas.
           </p>
         </div>
 
@@ -153,10 +153,10 @@ export default function App() {
               <Compass size={26} />
             </div>
             <div className="method-card-body">
-              <div className="method-card-tag">2x2 • Débutant</div>
-              <h3 className="method-card-title">Méthode Simple 2x2</h3>
+              <div className="method-card-tag">2 × 2 · Débutant</div>
+              <h3 className="method-card-title">Méthode débutant · 2 × 2</h3>
               <p className="method-card-desc">
-                Résolvez le 2x2 pas à pas avec 3 étapes visuelles ultra simples.
+                Apprenez à résoudre le 2 × 2 en trois étapes illustrées.
               </p>
             </div>
             <ChevronRight size={20} className="method-card-arrow" />
@@ -167,10 +167,10 @@ export default function App() {
               <Zap size={26} />
             </div>
             <div className="method-card-body">
-              <div className="method-card-tag">2x2 • Intermédiaire / Speed</div>
-              <h3 className="method-card-title">Méthode Ortega 2x2</h3>
+              <div className="method-card-tag">2 × 2 · Intermédiaire</div>
+              <h3 className="method-card-title">Méthode Ortega · 2 × 2</h3>
               <p className="method-card-desc">
-                1ère face, 7 OLL et 5 PBL pour descendre sous les 5 secondes.
+                Apprenez les étapes Ortega et entraînez-vous aux cas OLL et PBL.
               </p>
             </div>
             <ChevronRight size={20} className="method-card-arrow" />
@@ -181,10 +181,10 @@ export default function App() {
               <Layers size={26} />
             </div>
             <div className="method-card-body">
-              <div className="method-card-tag">3x3 • Débutant</div>
-              <h3 className="method-card-title">Méthode Simple 3x3</h3>
+              <div className="method-card-tag">3 × 3 · Débutant</div>
+              <h3 className="method-card-title">Méthode débutant · 3 × 3</h3>
               <p className="method-card-desc">
-                Le guide complet en 7 étapes illustrées (Marguerite, Belge, Chaise).
+                Résolvez le 3 × 3 en sept étapes illustrées.
               </p>
             </div>
             <ChevronRight size={20} className="method-card-arrow" />
@@ -195,10 +195,10 @@ export default function App() {
               <Flame size={26} />
             </div>
             <div className="method-card-body">
-              <div className="method-card-tag">3x3 • Avancé (Fridrich)</div>
-              <h3 className="method-card-title">Méthode CFOP 3x3</h3>
+              <div className="method-card-tag">3 × 3 · Avancé</div>
+              <h3 className="method-card-title">Méthode CFOP · 3 × 3</h3>
               <p className="method-card-desc">
-                Répertoire complet F2L, 2-Look & Full OLL (57) et PLL (21).
+                Retrouvez les algorithmes F2L, OLL et PLL de la méthode CFOP.
               </p>
             </div>
             <ChevronRight size={20} className="method-card-arrow" />
@@ -217,10 +217,10 @@ export default function App() {
   return (
     <div className="main-menu-container">
       <div className="menu-header-block">
-        <span className="menu-eyebrow">Application Interactive 3D</span>
+        <span className="menu-eyebrow">Simulateur de cube en 3D</span>
         <h1 className="main-menu-title">Cube Studio</h1>
         <p className="main-menu-subtitle">
-          Entraînez-vous au Speedcubing, visualisez les algorithmes en 3D et maîtrisez chaque méthode.
+          Jouez au 2 × 2 et au 3 × 3, ou découvrez de nouvelles méthodes.
         </p>
       </div>
 
@@ -235,7 +235,7 @@ export default function App() {
             </div>
             <div className="menu-card-Meta">
               <span className="menu-card-title">Jouer</span>
-              <span className="menu-card-sub">Simulateur 2x2 & 3x3 chronométré</span>
+              <span className="menu-card-sub">Parties en 2 × 2 et 3 × 3</span>
             </div>
           </div>
         </button>
@@ -249,8 +249,8 @@ export default function App() {
               <BookOpen size={24} />
             </div>
             <div className="menu-card-Meta">
-              <span className="menu-card-title">Algorithmes</span>
-              <span className="menu-card-sub">Guides Débutant, Ortega & CFOP</span>
+              <span className="menu-card-title">Apprendre</span>
+              <span className="menu-card-sub">Guides débutant, Ortega et CFOP</span>
             </div>
           </div>
         </button>
