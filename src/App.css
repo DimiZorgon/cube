@@ -1,22 +1,63 @@
+/* src/App.css */
+
+/* =========================================================
+   MENU PRINCIPAL & SOUS-MENUS (STYLE SHADCN / KHROMA)
+   ========================================================= */
 .main-menu-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: 15vh; /* Titre plus haut */
-  height: 100vh;
-  background: #2c3e50;
-  color: white;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  min-height: 100vh;
+  background: radial-gradient(circle at 50% 0%, #34495e 0%, #1e293b 70%, #0f172a 100%);
+  color: #f8fafc;
   box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.menu-header-block {
+  text-align: center;
+  max-width: 620px;
+  margin-bottom: 2.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.menu-eyebrow {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 0.3rem 0.85rem;
+  border-radius: 999px;
 }
 
 .main-menu-title {
-  margin-bottom: 3rem;
-  font-size: 3.5rem;
+  margin: 0;
+  font-size: clamp(2.2rem, 4vw, 3.1rem);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: #ffffff;
+}
+
+.main-menu-subtitle {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #94a3b8;
+  line-height: 1.55;
 }
 
 .main-menu-buttons {
   display: flex;
-  gap: 3rem;
+  gap: 2rem;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .menu-btn {
@@ -24,23 +65,972 @@
   flex-direction: column;
   align-items: center;
   padding: 1.5rem;
-  font-size: 1.8rem;
   cursor: pointer;
-  background: #34495e;
-  border: none;
-  border-radius: 12px;
-  color: white;
-  transition: transform 0.2s, background 0.2s;
+  background: rgba(30, 41, 59, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 16px;
+  color: #f8fafc;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
 
 .menu-btn:hover {
-  background: #415b76;
-  transform: scale(1.05);
+  background: rgba(51, 65, 85, 0.88);
+  border-color: #38bdf8;
+  transform: translateY(-4px);
+  box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.6);
+}
+
+.primary-pole-card {
+  width: 300px;
+  padding: 1.25rem;
+  gap: 1rem;
+}
+
+.pole-preview-wrapper {
+  width: 100%;
+  height: 190px;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.1) 0%, rgba(15, 23, 42, 0.65) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.algo-hub-graphic {
+  color: #38bdf8;
+}
+
+.pole-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.25rem 0.25rem 0;
+}
+
+.pole-icon-badge {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #38bdf8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pole-icon-badge.accent {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: rgba(168, 85, 247, 0.35);
+  color: #c084fc;
+}
+
+.cube-select-card {
+  width: 260px;
+  gap: 0.75rem;
+}
+
+.menu-card-Meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.menu-card-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.menu-card-sub {
+  font-size: 0.88rem;
+  color: #94a3b8;
 }
 
 .mini-cube-container {
-  width: 180px; /* Boutons légèrement plus gros */
+  width: 180px;
   height: 180px;
   pointer-events: none;
-  margin-bottom: 0.5rem;
+}
+
+/* Grille des 4 méthodes dans le sous-menu Algorithmes */
+.algo-methods-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.15rem;
+  max-width: 860px;
+  width: 100%;
+}
+
+.method-select-card {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+  padding: 1.25rem 1.4rem;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 14px;
+  color: #f8fafc;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.method-select-card:hover {
+  background: rgba(51, 65, 85, 0.9);
+  border-color: #38bdf8;
+  transform: translateY(-2px);
+}
+
+.method-card-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.method-card-icon.cyan {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.method-card-icon.amber {
+  background: rgba(250, 204, 21, 0.15);
+  color: #facc15;
+  border: 1px solid rgba(250, 204, 21, 0.3);
+}
+
+.method-card-icon.emerald {
+  background: rgba(52, 211, 153, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+.method-card-icon.rose {
+  background: rgba(251, 113, 133, 0.15);
+  color: #fb7185;
+  border: 1px solid rgba(251, 113, 133, 0.3);
+}
+
+.method-card-body {
+  flex: 1;
+}
+
+.method-card-tag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+  margin-bottom: 0.2rem;
+}
+
+.method-card-title {
+  margin: 0 0 0.3rem 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.method-card-desc {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #cbd5e1;
+  line-height: 1.45;
+}
+
+.method-card-arrow {
+  color: #64748b;
+  flex-shrink: 0;
+  transition: transform 0.15s, color 0.15s;
+}
+
+.method-select-card:hover .method-card-arrow {
+  color: #38bdf8;
+  transform: translateX(3px);
+}
+
+.menu-back-btn {
+  margin-top: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.65rem 1.35rem;
+  background: rgba(30, 41, 59, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 10px;
+  color: #e2e8f0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.menu-back-btn:hover {
+  background: #334155;
+  border-color: #38bdf8;
+  color: #ffffff;
+}
+
+/* =========================================================
+   PAGES ALGORITHMES & TRAINER
+   ========================================================= */
+.trainer-page {
+  height: 100vh;
+  width: 100vw;
+  overflow-y: auto;
+  background-color: #1e293b;
+  color: #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  touch-action: pan-y;
+}
+
+.trainer-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.5rem;
+  background-color: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.trainer-topbar-center {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.trainer-topbar-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+  color: #ffffff;
+}
+
+.trainer-progress-pill {
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #38bdf8;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.trainer-icon-btn {
+  background: #334155;
+  color: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 8px;
+  padding: 0.5rem 0.95rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  transition: all 0.15s;
+}
+
+.trainer-icon-btn:hover {
+  background: #475569;
+  border-color: #38bdf8;
+}
+
+/* Barre d'onglets rapide + filtre */
+.trainer-tabs-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
+  background: #0f172a;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  flex-wrap: wrap;
+}
+
+.trainer-tabs-scroll {
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+}
+
+.trainer-tab-btn {
+  background: transparent;
+  color: #94a3b8;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 0.45rem 0.95rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.trainer-tab-btn:hover {
+  background: rgba(51, 65, 85, 0.6);
+  color: #f8fafc;
+}
+
+.trainer-tab-btn.active {
+  background: #38bdf8;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.trainer-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: #1e293b;
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.trainer-filter-chip.active {
+  background: rgba(34, 197, 94, 0.18);
+  border-color: #22c55e;
+  color: #4ade80;
+}
+
+/* Tiroir latéral (Drawer) */
+.trainer-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.75);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.trainer-drawer {
+  width: 300px;
+  max-width: 85vw;
+  background: #0f172a;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.6);
+  border-left: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.trainer-drawer-banner {
+  padding: 1.25rem 1.4rem;
+  background: #1e293b;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.trainer-drawer-banner-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.trainer-drawer-banner-sub {
+  font-size: 0.82rem;
+  color: #94a3b8;
+  margin-top: 0.15rem;
+}
+
+.trainer-drawer-nav {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem;
+  gap: 0.25rem;
+}
+
+.trainer-drawer-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #cbd5e1;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.trainer-drawer-item:hover,
+.trainer-drawer-item.active {
+  background: #1e293b;
+  color: #38bdf8;
+}
+
+/* Grille de cartes d'algorithmes */
+.trainer-content {
+  max-width: 1240px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 1.5rem 1.5rem 4rem;
+}
+
+.trainer-group-section {
+  margin-bottom: 2.25rem;
+}
+
+.trainer-group-header {
+  margin: 0 0 0.85rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.trainer-group-desc {
+  margin: 0 0 1rem 0;
+  color: #94a3b8;
+  font-size: 0.95rem;
+}
+
+.trainer-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1.1rem;
+}
+
+.trainer-algo-card {
+  background: #0f172a;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 12px;
+  padding: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.trainer-algo-card:hover {
+  transform: translateY(-3px);
+  border-color: #38bdf8;
+  box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.5);
+}
+
+.trainer-algo-card.is-learned {
+  border-color: rgba(34, 197, 94, 0.65);
+}
+
+.card-learned-badge {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  background: #1e293b;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: #64748b;
+  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.card-learned-badge:hover {
+  border-color: #94a3b8;
+  color: #cbd5e1;
+}
+
+.card-learned-badge.learned {
+  background: #16a34a;
+  border-color: #22c55e;
+  color: #ffffff;
+}
+
+.trainer-card-diagram {
+  background: #1e293b;
+  border-radius: 10px;
+  padding: 0.45rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.trainer-card-formula {
+  margin-top: 0.85rem;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #facc15;
+  background: #1e293b;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  padding: 0.45rem 0.65rem;
+  border-radius: 8px;
+  width: 100%;
+  line-height: 1.35;
+}
+
+.trainer-card-name {
+  margin-top: 0.55rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.trainer-card-name span {
+  color: #4ade80;
+  font-weight: 700;
+}
+
+.trainer-card-subdesc {
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  line-height: 1.45;
+}
+
+.trainer-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 0.9rem;
+}
+
+.card-mini-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  background: #1e293b;
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.card-mini-btn:hover {
+  background: #334155;
+  border-color: #38bdf8;
+  color: #ffffff;
+}
+
+.card-mini-btn.test {
+  background: rgba(56, 189, 248, 0.14);
+  border-color: rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+}
+
+.card-mini-btn.test:hover {
+  background: #38bdf8;
+  color: #0f172a;
+}
+
+/* =========================================================
+   ACCORDÉONS DES MÉTHODES SIMPLES (2x2 & 3x3)
+   ========================================================= */
+.accordion-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.step-accordion {
+  background: #0f172a;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.step-accordion.open {
+  border-color: rgba(56, 189, 248, 0.5);
+}
+
+.step-accordion-header {
+  width: 100%;
+  padding: 1.1rem 1.35rem;
+  background: #0f172a;
+  border: none;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.step-accordion-header:hover {
+  background: #162032;
+}
+
+.step-badge-num {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+  font-size: 1.05rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.step-header-texts {
+  flex: 1;
+}
+
+.step-header-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.step-header-sub {
+  font-size: 0.88rem;
+  color: #94a3b8;
+  margin-top: 0.15rem;
+}
+
+.step-chevron {
+  color: #64748b;
+  display: flex;
+  align-items: center;
+}
+
+.step-accordion-body {
+  padding: 1.35rem;
+  background: #1e293b;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.step-explanations {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.4rem;
+}
+
+.step-explanations p {
+  margin: 0;
+  padding: 0.95rem 1.15rem;
+  background: #0f172a;
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-left: 4px solid #38bdf8;
+  border-radius: 8px;
+  font-size: 0.96rem;
+  line-height: 1.6;
+  color: #e2e8f0;
+  white-space: pre-line;
+}
+
+/* =========================================================
+   MODALE DE DÉMONSTRATION 3D (AlgoDemoModal.jsx)
+   ========================================================= */
+.algo-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.8);
+  backdrop-filter: blur(6px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.algo-modal-card {
+  background: #0f172a;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 16px;
+  max-width: 540px;
+  width: 100%;
+  padding: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  color: #f8fafc;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75);
+}
+
+.algo-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.algo-modal-header-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.algo-modal-badge {
+  display: inline-block;
+  align-self: flex-start;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+}
+
+.algo-modal-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.algo-modal-close {
+  background: #1e293b;
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.algo-modal-close:hover {
+  background: #334155;
+  color: #ffffff;
+}
+
+.algo-modal-desc {
+  margin: 0;
+  font-size: 0.92rem;
+  color: #cbd5e1;
+  line-height: 1.5;
+}
+
+/* Zone Canvas 3D de la modale */
+.algo-modal-canvas-wrapper {
+  position: relative;
+  width: 100%;
+  height: 270px;
+  background: radial-gradient(circle at 50% 50%, #1e293b 0%, #090d16 100%);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.algo-modal-canvas-topbar {
+  position: absolute;
+  top: 0.65rem;
+  left: 0.75rem;
+  right: 0.75rem;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+}
+
+.canvas-Interactive-pill,
+.canvas-step-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: #cbd5e1;
+}
+
+.canvas-step-pill {
+  color: #38bdf8;
+}
+
+.algo-modal-progress-track {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: rgba(30, 41, 59, 0.9);
+}
+
+.algo-modal-progress-fill {
+  height: 100%;
+  background: #38bdf8;
+  transition: width 0.2s ease;
+}
+
+/* Tokens de la formule */
+.algo-formula-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  justify-content: center;
+  padding: 0.85rem;
+  background: #1e293b;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 10px;
+}
+
+.algo-token {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.05rem;
+  font-weight: 700;
+  padding: 0.28rem 0.6rem;
+  border-radius: 6px;
+  color: #cbd5e1;
+  background: #0f172a;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  transition: all 0.15s ease;
+}
+
+.algo-token.active {
+  background: #facc15;
+  color: #0f172a;
+  border-color: #fde047;
+  transform: scale(1.12);
+  box-shadow: 0 0 12px rgba(250, 204, 21, 0.4);
+}
+
+.algo-token.done {
+  color: #4ade80;
+  border-color: rgba(74, 222, 128, 0.35);
+}
+
+.algo-token.optional {
+  opacity: 0.6;
+}
+
+/* Boutons du lecteur */
+.algo-player-controls {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.55rem;
+}
+
+.player-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.6rem 0.75rem;
+  background: #1e293b;
+  color: #f1f5f9;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.player-btn:hover:not(:disabled) {
+  background: #334155;
+  border-color: #38bdf8;
+}
+
+.player-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.player-btn.primary {
+  background: #38bdf8;
+  color: #0f172a;
+  border-color: #7dd3fc;
+  font-weight: 700;
+}
+
+.player-btn.primary:hover {
+  background: #7dd3fc;
+}
+
+/* Pied de modale */
+.algo-modal-footer {
+  display: flex;
+  gap: 0.65rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.15);
+  flex-wrap: wrap;
+}
+
+.learned-toggle-btn,
+.test-algo-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.learned-toggle-btn {
+  background: #1e293b;
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.learned-toggle-btn.learned {
+  background: rgba(22, 163, 74, 0.2);
+  border-color: #22c55e;
+  color: #4ade80;
+}
+
+.test-algo-btn {
+  background: #2563eb;
+  color: #ffffff;
+  border: 1px solid #3b82f6;
+}
+
+.test-algo-btn:hover {
+  background: #1d4ed8;
 }

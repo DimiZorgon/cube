@@ -1,15 +1,218 @@
-import React from 'react';
+// src/components/algos/MethodeCFOP3x3.jsx
+import React, { useState, useEffect } from 'react';
+import {
+  ArrowLeft,
+  Menu,
+  Check,
+  Play,
+  Gamepad2,
+  BookOpen,
+  Filter,
+  X
+} from 'lucide-react';
+import { CFOP_SECTIONS, CFOP_DATA } from '../../data/cfopData';
+import { CubeDiagram2D } from './CubeDiagram2D';
+import { AlgoDemoModal } from './AlgoDemoModal';
 
-export function MethodeCFOP3x3({ onBack }) {
+const LEARNED_STORAGE_KEY = 'rubiks_learned_algos';
+
+export function MethodeCFOP3x3({ onBack, onTestAlgo }) {
+  const [activeSection, setActiveSection] = useState('PLL');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedCase, setSelectedCase] = useState(null);
+  const [showOnlyUnlearned, setShowOnlyUnlearned] = useState(false);
+  const [learnedIds, setLearnedIds] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(LEARNED_STORAGE_KEY) || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem(LEARNED_STORAGE_KEY, JSON.stringify(learnedIds));
+  }, [learnedIds]);
+
+  const toggleLearned = (id, e) => {
+    if (e) e.stopPropagation();
+    setLearnedIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
+  };
+
+  const groups = CFOP_DATA[activeSection] || [];
+  const totalCases = groups.reduce((acc, g) => acc + g.cases.length, 0);
+  const learnedCount = groups.reduce(
+    (acc, g) => acc + g.cases.filter(c => learnedIds.includes(c.id)).length,
+    0
+  );
+
   return (
-    <div className="main-menu-container">
-      <h1 className="main-menu-title">Méthode CFOP 3x3</h1>
-      <div style={{ flex: 1, padding: '2rem', textAlign: 'center' }}>
-        <p>Ajoutez vos algorithmes ici...</p>
+    <div className="trainer-page">
+      <header className="trainer-topbar">
+        <button className="trainer-icon-btn" onClick={onBack} aria-label="Retour">
+          <ArrowLeft size={16} />
+          <span>Retour</span>
+        </button>
+        <div className="trainer-topbar-center">
+          <h1 className="trainer-topbar-title">Algorithmes CFOP • {activeSection}</h1>
+          <span className="trainer-progress-pill">
+            {learnedCount} / {totalCases} appris
+          </span>
+        </div>
+        <button
+          className="trainer-icon-btn"
+          onClick={() => setDrawerOpen(true)}
+          aria-label="Ouvrir le menu des catégories"
+        >
+          <Menu size={16} />
+          <span>Catégories</span>
+        </button>
+      </header>
+
+      <div className="trainer-tabs-bar">
+        <div className="trainer-tabs-scroll">
+          {CFOP_SECTIONS.map(sec => (
+            <button
+              key={sec.id}
+              className={`trainer-tab-btn ${activeSection === sec.id ? 'active' : ''}`}
+              onClick={() => setActiveSection(sec.id)}
+            >
+              {sec.label}
+            </button>
+          ))}
+        </div>
+        <button
+          className={`trainer-filter-chip ${showOnlyUnlearned ? 'active' : ''}`}
+          onClick={() => setShowOnlyUnlearned(v => !v)}
+        >
+          <Filter size={14} />
+          <span>{showOnlyUnlearned ? 'À apprendre uniquement' : 'Tout afficher'}</span>
+        </button>
       </div>
-      <button className="menu-btn" style={{ marginTop: 'auto', marginBottom: '2rem' }} onClick={onBack}>
-        Retour
-      </button>
+
+      {drawerOpen && (
+        <div className="trainer-drawer-backdrop" onClick={() => setDrawerOpen(false)}>
+          <aside className="trainer-drawer" onClick={e => e.stopPropagation()}>
+            <div className="trainer-drawer-banner">
+              <div>
+                <div className="trainer-drawer-banner-title">Entraînement CFOP 3x3</div>
+                <div className="trainer-drawer-banner-sub">Sélectionnez une étape</div>
+              </div>
+              <button className="algo-modal-close" onClick={() => setDrawerOpen(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            <nav className="trainer-drawer-nav">
+              {CFOP_SECTIONS.map(sec => (
+                <button
+                  key={sec.id}
+                  className={`trainer-drawer-item ${activeSection === sec.id ? 'active' : ''}`}
+                  onClick={() => {
+                    setActiveSection(sec.id);
+                    setDrawerOpen(false);
+                  }}
+                >
+                  <BookOpen size={18} />
+                  <span>{sec.label}</span>
+                </button>
+              ))}
+            </nav>
+          </aside>
+        </div>
+      )}
+
+      <main className="trainer-content">
+        {groups.map(group => {
+          const filteredCases = showOnlyUnlearned
+            ? group.cases.filter(c => !learnedIds.includes(c.id))
+            : group.cases;
+
+          if (filteredCases.length === 0) return null;
+
+          return (
+            <section key={group.group} className="trainer-group-section">
+              <h2 className="trainer-group-header">{group.group}</h2>
+              <div className="trainer-cards-grid">
+                {filteredCases.map(item => {
+                  const isLearned = learnedIds.includes(item.id);
+                  return (
+                    <div
+                      key={item.id}
+                      className={`trainer-algo-card ${isLearned ? 'is-learned' : ''}`}
+                      onClick={() => setSelectedCase(item)}
+                    >
+                      <button
+                        className={`card-learned-badge ${isLearned ? 'learned' : ''}`}
+                        onClick={e => toggleLearned(item.id, e)}
+                        title={isLearned ? 'Marqué comme appris' : 'Marquer comme appris'}
+                      >
+                        <Check size={16} strokeWidth={2.5} />
+                      </button>
+
+                      <div className="trainer-card-diagram">
+                        <CubeDiagram2D
+                          size={3}
+                          alg={item.alg}
+                          setup={item.setup}
+                          yellowTop={item.yellowTop}
+                          maskMode={item.maskMode}
+                          view={item.view}
+                          arrows={item.arrows}
+                        />
+                      </div>
+
+                      <div className="trainer-card-formula">{item.alg}</div>
+
+                      <div className="trainer-card-name">
+                        Nom : <span>{item.name}</span>
+                      </div>
+
+                      <div className="trainer-card-actions" onClick={e => e.stopPropagation()}>
+                        <button
+                          className="card-mini-btn"
+                          onClick={() => setSelectedCase(item)}
+                        >
+                          <Play size={14} />
+                          <span>Démo 3D</span>
+                        </button>
+                        <button
+                          className="card-mini-btn test"
+                          onClick={() =>
+                            onTestAlgo &&
+                            onTestAlgo({
+                              ...item,
+                              size: 3
+                            })
+                          }
+                        >
+                          <Gamepad2 size={15} />
+                          <span>Tester</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })}
+      </main>
+
+      {selectedCase && (
+        <AlgoDemoModal
+          algoCase={selectedCase}
+          size={3}
+          isLearned={learnedIds.includes(selectedCase.id)}
+          onToggleLearned={id => toggleLearned(id)}
+          onTestAlgo={caseObj =>
+            onTestAlgo &&
+            onTestAlgo({
+              ...caseObj,
+              size: 3
+            })
+          }
+          onClose={() => setSelectedCase(null)}
+        />
+      )}
     </div>
   );
 }

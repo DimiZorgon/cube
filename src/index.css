@@ -1,8 +1,12 @@
+/* src/index.css */
 :root {
-  --bg-color: #ffe5be;
-  --text-color: #111111;
-  --border-size: 3px;
-  --btn-size: clamp(50px, 8vmin, 120px);
+  --bg-color: #2c3e50;
+  --surface-color: #34495e;
+  --surface-hover: #415b76;
+  --text-color: #ecf0f1;
+  --accent-color: #38bdf8;
+  --border-size: 2px;
+  --btn-size: clamp(50px, 8vmin, 110px);
 }
 
 * {
@@ -20,10 +24,9 @@ body {
   padding: 0;
   background-color: var(--bg-color);
   color: var(--text-color);
-  font-family: 'Courier New', Courier, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   touch-action: none;
   overscroll-behavior: none;
-
 }
 
 .app-container {
@@ -32,6 +35,7 @@ body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  background-color: var(--bg-color);
 }
 
 .cube-container {
@@ -58,15 +62,15 @@ body {
   pointer-events: auto;
 }
 
-
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 2rem;
-  background-color: var(--bg-color);
-  border-bottom: var(--border-size) solid var(--text-color);
+  padding: 0.9rem 2rem;
+  background-color: #233140;
+  border-bottom: 2px solid #415b76;
   z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
 .header-left,
@@ -74,13 +78,12 @@ body {
 .header-right {
   display: flex;
   flex: 1;
-  align-items: baseline;
-
+  align-items: center;
 }
 
 .header-left {
   justify-content: flex-start;
-  gap: 2rem;
+  gap: 1.5rem;
 }
 
 .header-center {
@@ -92,75 +95,83 @@ body {
 }
 
 .timer {
-  font-size: 2.5rem;
-  font-weight: 900;
-  letter-spacing: -2px;
+  font-size: 2.4rem;
+  font-weight: 800;
+  font-family: 'Courier New', Courier, monospace;
+  color: #ffffff;
   margin-left: 2rem;
 }
 
 .highscore {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
-  letter-spacing: -2px;
+  color: #ecf0f1;
 }
 
 .shuffle-btn {
-  padding: 0.5rem 1.5rem;
-  font-size: 1.2rem;
-  font-weight: bold;
+  padding: 0.55rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 700;
   font-family: inherit;
-  background-color: var(--bg-color);
+  background-color: var(--surface-color);
   color: var(--text-color);
-  border: var(--border-size) solid var(--text-color);
+  border: 2px solid #4a6583;
+  border-radius: 10px;
   cursor: pointer;
-  text-transform: uppercase;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.shuffle-btn:hover {
+  background-color: var(--surface-hover);
 }
 
 .shuffle-btn:active {
-  background-color: var(--text-color);
-  color: var(--bg-color);
+  transform: scale(0.97);
 }
 
 /* === BOUTONS DE MOUVEMENT === */
-
 .move-btn {
   width: var(--btn-size);
   height: var(--btn-size);
-  font-size: calc(var(--btn-size) * 0.4);
-  font-weight: bold;
-  font-family: inherit;
-  background-color: var(--bg-color);
-  color: var(--text-color);
-  border: var(--border-size) solid var(--text-color);
+  font-size: calc(var(--btn-size) * 0.38);
+  font-weight: 800;
+  font-family: 'Courier New', Courier, monospace;
+  background-color: rgba(52, 73, 94, 0.92);
+  color: #ffffff;
+  border: 2px solid #577696;
   cursor: pointer;
   display: flex;
   justify-content: center;
   align-items: center;
+  transition: background 0.12s;
+}
+
+.move-btn:hover {
+  background-color: var(--surface-hover);
 }
 
 .move-btn:active {
-  background-color: var(--text-color);
-  color: var(--bg-color);
+  background-color: #38bdf8;
+  color: #111827;
 }
 
 .btn-group {
   display: flex;
   flex-direction: column;
   gap: 0;
-  /* Les boutons se collent pour un effet bloc */
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .btn-group .move-btn:first-child {
   border-bottom: none;
-  /* Evite d'avoir une double bordure entre les boutons collés */
 }
 
 /* === POSITIONNEMENT RESPONSIVE === */
-
 .pos-top {
   position: absolute;
   top: 100px;
-  /* Sous le header */
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -190,50 +201,87 @@ body {
   transform: translateY(-50%);
 }
 
-/* Petit ajustement pour Mobile */
 @media (max-width: 768px) {
-  .pos-left {
-    left: 1rem;
-  }
+  .pos-left { left: 1rem; }
+  .pos-right { right: 1rem; }
+  .pos-top { top: 75px; gap: 1rem; }
+  .pos-bottom { bottom: 3.5rem; gap: 1rem; }
+  .timer { font-size: 1.3rem; margin-left: 0.5rem; }
+  .moves-count { font-size: 1rem !important; }
+  .highscore { font-size: 0.95rem; }
+  :root { --btn-size: clamp(42px, 12vw, 60px); }
+  .header { padding: 0.6rem; }
+  .shuffle-btn { padding: 0.4rem 0.7rem; font-size: 0.85rem; }
+}
 
-  .pos-right {
-    right: 1rem;
-  }
+/* À ajouter en bas de src/index.css */
+.shuffle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+}
 
-  .pos-top {
-    top: 70px;
-    gap: 1rem;
-  }
+.shuffle-btn.active-toggle {
+  background-color: #38bdf8;
+  color: #0f172a;
+  border-color: #7dd3fc;
+}
 
-  .pos-bottom {
-    bottom: 3.5rem;
-    gap: 1rem;
-  }
+.highscore {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
 
-  .timer {
-    font-size: 1.2rem;
-    margin-left: 0.5rem;
-  }
+.inline-icon.accent {
+  color: #38bdf8;
+}
 
-  .moves-count {
-    font-size: 1rem !important;
-  }
+.inline-icon.amber {
+  color: #facc15;
+}
 
-  .highscore {
-    font-size: 0.9rem;
-    letter-spacing: -1px;
-  }
+.moves-count {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #cbd5e1;
+}
 
-  :root {
-    --btn-size: clamp(40px, 12vw, 60px);
-  }
+.training-algo-banner {
+  position: relative;
+  z-index: 10;
+  margin: 0.5rem auto;
+  padding: 0.65rem 1.4rem;
+  background-color: rgba(15, 23, 42, 0.92);
+  color: #facc15;
+  border: 1px solid #38bdf8;
+  border-radius: 10px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.2rem;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
 
-  .header {
-    padding: 0.5rem;
-  }
-  
-  .shuffle-btn {
-    padding: 0.4rem 0.6rem;
-    font-size: 0.85rem;
-  }
+.solved-banner-modal {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0f172a;
+  color: #ffffff;
+  border: 1px solid rgba(56, 189, 248, 0.5);
+  padding: 1.6rem 2.4rem;
+  border-radius: 16px;
+  text-align: center;
+  z-index: 1000;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.65);
+}
+
+.solved-banner-icon {
+  color: #4ade80;
+  margin-bottom: 0.5rem;
+  display: flex;
+  justify-content: center;
 }

@@ -1,6 +1,7 @@
+// src/components/Cubie.jsx
 import React from 'react';
 
-export function Cubie({ position, initialPosition, rotation }) {
+export function Cubie({ position, initialPosition, rotation, faceColors }) {
     const [ix, iy, iz] = initialPosition;
 
     const COLORS = {
@@ -14,10 +15,13 @@ export function Cubie({ position, initialPosition, rotation }) {
     };
 
     const getColors = () => {
+        if (faceColors && faceColors.length === 6) {
+            return faceColors;
+        }
         return [
             ix > 0.1 ? COLORS.right : COLORS.core, // droite
             ix < -0.1 ? COLORS.left : COLORS.core, // gauche
-            iy > 0.1 ? COLORS.up : COLORS.core, // haut
+            iy > 0.1 ? COLORS.up : COLORS.core,    // haut
             iy < -0.1 ? COLORS.down : COLORS.core, // bas
             iz > 0.1 ? COLORS.front : COLORS.core, // avant
             iz < -0.1 ? COLORS.back : COLORS.core, // arriere
@@ -27,13 +31,10 @@ export function Cubie({ position, initialPosition, rotation }) {
 
     return (
         <mesh position={position} rotation={rotation}>
-            {/* petit espace noir entre les cubes */}
             <boxGeometry args={[0.95, 0.95, 0.95]} />
-
-            {/* tableau des matériaux générés par notre liste de couleurs */}
             {colors.map((color, index) => (
                 <meshStandardMaterial key={index} attach={`material-${index}`} color={color} />
             ))}
         </mesh>
     );
-};
+}

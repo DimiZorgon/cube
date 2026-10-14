@@ -1,14 +1,16 @@
+// src/components/Cube2x2.jsx
 import React from 'react';
 import { CubeGame } from './CubeGame';
 import { MoveButton } from './MoveButton';
 
-export function Cube2x2({ onBack }) {
+export function Cube2x2({ onBack, trainingCase = null }) {
     const keyboardMapping = {
         'r': 'R', 'l': 'L', 'u': 'U', 'd': 'D', 'f': 'F', 'b': 'B',
-        'R': "R'", 'L': "L'", 'U': "U'", 'D': "D'", 'F': "F'", 'B': "B'"
+        'R': "R'", 'L': "L'", 'U': "U'", 'D': "D'", 'F': "F'", 'B': "B'",
+        'x': 'x', 'X': "x'", 'y': 'y', 'Y': "y'", 'z': 'z', 'Z': "z'"
     };
 
-    const shuffleMoves = ["R", "L", "U", "D", "F", "B", "R'", "L'", "U'", "D'", "F'", "B'"];
+    const shuffleMoves = ["R", "U", "F", "R'", "U'", "F'"];
 
     const renderControls = (handleMove) => (
         <>
@@ -39,7 +41,6 @@ export function Cube2x2({ onBack }) {
                     <MoveButton label="F" onMove={(m) => handleMove(m, true)} />
                     <MoveButton label="F'" onMove={(m) => handleMove(m, true)} />
                 </div>
-                {/* No M button in 2x2 */}
                 <div className="btn-group">
                     <MoveButton label="D" onMove={(m) => handleMove(m, true)} />
                     <MoveButton label="D'" onMove={(m) => handleMove(m, true)} />
@@ -55,6 +56,7 @@ export function Cube2x2({ onBack }) {
             keyboardMapping={keyboardMapping}
             shuffleMoves={shuffleMoves}
             controlsRenderer={renderControls}
+            trainingCase={trainingCase}
         />
     );
 }

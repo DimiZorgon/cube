@@ -1,42 +1,56 @@
+// src/store/useCubeStore.js
 import { create } from 'zustand';
 import * as THREE from 'three';
 import { checkIsSolved, generateInitialCubies } from '../utils/cubeMath';
 
 export { generateInitialCubies };
 
-// Zustand store for cube state management
+const getDefaultMapping = (size) => size === 3 ? {
+    Right: { axis: 'x', value: 1, dirMultiplier: 1 },
+    Up: { axis: 'y', value: 1, dirMultiplier: 1 },
+    Front: { axis: 'z', value: 1, dirMultiplier: 1 },
+    Left: { axis: 'x', value: -1, dirMultiplier: 1 },
+    Down: { axis: 'y', value: -1, dirMultiplier: 1 },
+    Back: { axis: 'z', value: -1, dirMultiplier: 1 }
+} : {
+    Right: { axis: 'x', value: 0.5, dirMultiplier: 1 },
+    Up: { axis: 'y', value: 0.5, dirMultiplier: 1 },
+    Front: { axis: 'z', value: 0.5, dirMultiplier: 1 },
+    Left: { axis: 'x', value: -0.5, dirMultiplier: 1 },
+    Down: { axis: 'y', value: -0.5, dirMultiplier: 1 },
+    Back: { axis: 'z', value: -0.5, dirMultiplier: 1 }
+};
+
 export const useCubeStore = create((set) => ({
     size: 3,
     cubies: generateInitialCubies(3),
     isSolved: true,
     history: [],
-    // default state for camera mapping
-    cameraMapping: {
-        Right: { axis: 'x', value: 1, dirMultiplier: 1 },
-        Up: { axis: 'y', value: 1, dirMultiplier: 1 },
-        Front: { axis: 'z', value: 1, dirMultiplier: 1 },
-        Left: { axis: 'x', value: -1, dirMultiplier: 1 },
-        Down: { axis: 'y', value: -1, dirMultiplier: 1 },
-        Back: { axis: 'z', value: -1, dirMultiplier: 1 }
-    },
+    cameraMapping: getDefaultMapping(3),
 
     initCube: (size) => {
-        const mapping = size === 3 ? {
-            Right: { axis: 'x', value: 1, dirMultiplier: 1 },
-            Up: { axis: 'y', value: 1, dirMultiplier: 1 },
-            Front: { axis: 'z', value: 1, dirMultiplier: 1 },
-            Left: { axis: 'x', value: -1, dirMultiplier: 1 },
-            Down: { axis: 'y', value: -1, dirMultiplier: 1 },
-            Back: { axis: 'z', value: -1, dirMultiplier: 1 }
-        } : {
-            Right: { axis: 'x', value: 0.5, dirMultiplier: 1 },
-            Up: { axis: 'y', value: 0.5, dirMultiplier: 1 },
-            Front: { axis: 'z', value: 0.5, dirMultiplier: 1 },
-            Left: { axis: 'x', value: -0.5, dirMultiplier: 1 },
-            Down: { axis: 'y', value: -0.5, dirMultiplier: 1 },
-            Back: { axis: 'z', value: -0.5, dirMultiplier: 1 }
-        };
-        set({ size, cubies: generateInitialCubies(size), isSolved: true, rotationFile: [], activeRotation: null, cameraMapping: mapping, history: [] });
+        set({
+            size,
+            cubies: generateInitialCubies(size),
+            isSolved: true,
+            rotationFile: [],
+            activeRotation: null,
+            cameraMapping: getDefaultMapping(size),
+            history: []
+        });
+    },
+
+    // Charge un pattern spécifique (mode "Tester l'algo")
+    setCustomCubies: (size, customCubies) => {
+        set({
+            size,
+            cubies: customCubies,
+            isSolved: false,
+            rotationFile: [],
+            activeRotation: null,
+            cameraMapping: getDefaultMapping(size),
+            history: []
+        });
     },
 
     setCameraMapping: (mapping) => set({ cameraMapping: mapping }),

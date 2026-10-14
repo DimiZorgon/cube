@@ -1,11 +1,13 @@
+// src/components/Cube3x3.jsx
 import React from 'react';
 import { CubeGame } from './CubeGame';
 import { MoveButton } from './MoveButton';
 
-export function Cube3x3({ onBack }) {
+export function Cube3x3({ onBack, trainingCase = null }) {
     const keyboardMapping = {
         'r': 'R', 'l': 'L', 'u': 'U', 'd': 'D', 'f': 'F', 'b': 'B', 'm': 'M',
-        'R': "R'", 'L': "L'", 'U': "U'", 'D': "D'", 'F': "F'", 'B': "B'", 'M': "M'"
+        'R': "R'", 'L': "L'", 'U': "U'", 'D': "D'", 'F': "F'", 'B': "B'", 'M': "M'",
+        'x': 'x', 'X': "x'", 'y': 'y', 'Y': "y'", 'z': 'z', 'Z': "z'"
     };
 
     const shuffleMoves = ["R", "L", "U", "D", "F", "B", "R'", "L'", "U'", "D'", "F'", "B'"];
@@ -58,6 +60,7 @@ export function Cube3x3({ onBack }) {
             keyboardMapping={keyboardMapping}
             shuffleMoves={shuffleMoves}
             controlsRenderer={renderControls}
+            trainingCase={trainingCase}
         />
     );
 }
