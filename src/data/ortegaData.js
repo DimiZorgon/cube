@@ -106,9 +106,9 @@ export const ORTEGA_DATA = [
       },
       {
         id: 'ort_oll_l',
-        name: 'L (Bowtie)',
+        name: 'L',
         category: 'Ortega - OLL',
-        alg: "F R' F' R U R U' R'",
+        alg: "F R U' (R' U' R U) R' F'",
         view: 'top',
         maskMode: 'oll',
         yellowTop: true
