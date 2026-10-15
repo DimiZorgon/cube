@@ -132,6 +132,16 @@ export const SIMPLE_3X3_STEPS = [
         maskMode: 'oll',
         yellowTop: true,
         description: 'Mets le petit virage jaune en haut à gauche (9h00) et fais 2 fois l’Ascenseur au milieu.'
+      },
+      {
+        id: 's3_yc_dot',
+        name: 'Depuis le point',
+        category: 'Étape 4 - Croix Jaune',
+        alg: "F (R U R' U') F' f (R U R' U') f'",
+        view: 'top',
+        maskMode: 'oll',
+        yellowTop: true,
+        description: 'Si tu n’as qu’un point jaune, fais la formule 2 fois de suite : la première fois pour former l’Horloge, la deuxième pour former la Croix.'
       }
     ]
   },
