@@ -348,7 +348,7 @@ export const CFOP_DATA = {
       cases: [
         {
           id: '2oll_line',
-          name: 'Ligne (Line)',
+          name: 'Line',
           category: '2-LOOK OLL',
           alg: "F (R U R' U') F'",
           view: 'top',
@@ -357,7 +357,7 @@ export const CFOP_DATA = {
         },
         {
           id: '2oll_l',
-          name: 'Virage (L-Shape)',
+          name: 'L-Shape',
           category: '2-LOOK OLL',
           alg: "f (R U R' U') f'",
           view: 'top',
@@ -366,7 +366,7 @@ export const CFOP_DATA = {
         },
         {
           id: '2oll_dot',
-          name: 'Point (Dot)',
+          name: 'Dot',
           category: '2-LOOK OLL',
           alg: "F (R U R' U') F' f (R U R' U') f'",
           view: 'top',
@@ -597,7 +597,7 @@ export const CFOP_DATA = {
         { id: 'f2l_5', name: '5', category: 'F2L', alg: "U' (R U' R' U) y' (R' U' R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
         { id: 'f2l_6', name: '6', category: 'F2L', alg: "y' U (R' U' R U') (R' U' R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
         { id: 'f2l_7', name: '7', category: 'F2L', alg: "U' (R U2 R' U) y' (R' U' R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
-        { id: 'f2l_8', name: '8', category: 'F2L', alg: "y' R' U2 R2 U R2 U R", view: 'iso', maskMode: 'f2l', yellowTop: true },
+        { id: 'f2l_8', name: '8', category: 'F2L', alg: "R' U2 R2 U R2 U R", view: 'iso', maskMode: 'f2l', yellowTop: true },
         { id: 'f2l_9', name: '9', category: 'F2L', alg: "y' U (R' U R U') (R' U' R)", view: 'iso', maskMode: 'f2l', yellowTop: true },
         { id: 'f2l_10', name: '10', category: 'F2L', alg: "U' (R U' R' U) (R U R')", view: 'iso', maskMode: 'f2l', yellowTop: true }
       ]
