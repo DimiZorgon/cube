@@ -1,5 +1,6 @@
 // src/App.jsx
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Gamepad2,
   BookOpen,
@@ -18,6 +19,7 @@ import { Cube2x2 } from './components/Cube2x2';
 import { Cube3x3 } from './components/Cube3x3';
 import { Cube4x4 } from './components/Cube4x4';
 import { MiniCube } from './components/MiniCube';
+import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { MethodeSimple2x2 } from './components/algos/MethodeSimple2x2';
 import { MethodeOrtega2x2 } from './components/algos/MethodeOrtega2x2';
 import { MethodeSimple3x3 } from './components/algos/MethodeSimple3x3';
@@ -25,12 +27,25 @@ import { MethodeCFOP3x3 } from './components/algos/MethodeCFOP3x3';
 import { MethodeBlind3x3 } from './components/algos/MethodeBlind3x3';
 import { MethodeSimple4x4 } from './components/algos/MethodeSimple4x4';
 import { MethodeYau4x4 } from './components/algos/MethodeYau4x4';
-
+import { ENGLISH_TRANSLATION_READY } from './i18n';
 
 export default function App() {
+  const { t, i18n } = useTranslation();
   const [mode, setMode] = useState('menu');
   const [trainingCase, setTrainingCase] = useState(null);
   const [returnMode, setReturnMode] = useState('play_menu');
+
+  if (i18n.resolvedLanguage === 'en' && !ENGLISH_TRANSLATION_READY) {
+    return (
+      <main className="main-menu-container">
+        <div className="menu-header-block">
+          <h1 className="main-menu-title">{t('english.title')}</h1>
+          <p className="main-menu-subtitle">{t('english.description')}</p>
+          <a className="menu-back-btn" href="/">{t('english.back')}</a>
+        </div>
+      </main>
+    );
+  }
 
   const handleTestAlgo = (caseData, currentAlgoPage) => {
     setTrainingCase(caseData);
@@ -129,11 +144,12 @@ export default function App() {
   if (mode === 'play_menu') {
     return (
       <div className="main-menu-container">
+        <LanguageSwitcher className="menu-language-switcher" />
         <div className="menu-header-block">
-          <span className="menu-eyebrow">Simulateur 3D</span>
-          <h1 className="main-menu-title">Choisissez votre Cube</h1>
+          <span className="menu-eyebrow">{t('app.play.eyebrow')}</span>
+          <h1 className="main-menu-title">{t('app.play.title')}</h1>
           <p className="main-menu-subtitle">
-            Sélectionnez un format pour lancer une session chronométrée ou libre.
+            {t('app.play.description')}
           </p>
         </div>
 
@@ -147,8 +163,8 @@ export default function App() {
           >
             <MiniCube size={2} />
             <div className="menu-card-Meta">
-              <span className="menu-card-title">Pocket Cube 2x2</span>
-              <span className="menu-card-sub">Rapide & nerveux</span>
+              <span className="menu-card-title">{t('app.play.2x2.title')}</span>
+              <span className="menu-card-sub">{t('app.play.2x2.description')}</span>
             </div>
           </button>
 
@@ -161,8 +177,8 @@ export default function App() {
           >
             <MiniCube size={3} />
             <div className="menu-card-Meta">
-              <span className="menu-card-title">Rubik&apos;s Cube 3x3</span>
-              <span className="menu-card-sub">Format classique WCA</span>
+              <span className="menu-card-title">{t('app.play.3x3.title')}</span>
+              <span className="menu-card-sub">{t('app.play.3x3.description')}</span>
             </div>
           </button>
 
@@ -175,15 +191,15 @@ export default function App() {
           >
             <MiniCube size={4} />
             <div className="menu-card-Meta">
-              <span className="menu-card-title">Master Cube 4x4</span>
-              <span className="menu-card-sub">Centres mobiles & Parités</span>
+              <span className="menu-card-title">{t('app.play.4x4.title')}</span>
+              <span className="menu-card-sub">{t('app.play.4x4.description')}</span>
             </div>
           </button>
         </div>
 
         <button className="menu-back-btn" onClick={() => setMode('menu')}>
           <ArrowLeft size={18} />
-          <span>Retour à l&apos;accueil</span>
+          <span>{t('common.backHome')}</span>
         </button>
       </div>
     );
@@ -193,11 +209,12 @@ export default function App() {
   if (mode === 'algos') {
     return (
       <div className="main-menu-container">
+        <LanguageSwitcher className="menu-language-switcher" />
         <div className="menu-header-block">
-          <span className="menu-eyebrow">Apprentissage & Entraînement</span>
-          <h1 className="main-menu-title">Guides & Algorithmes</h1>
+          <span className="menu-eyebrow">{t('app.algos.eyebrow')}</span>
+          <h1 className="main-menu-title">{t('app.algos.title')}</h1>
           <p className="main-menu-subtitle">
-            Explorez les méthodes pas à pas ou entraînez-vous sur les cas officiels.
+            {t('app.algos.description')}
           </p>
         </div>
 
@@ -207,11 +224,9 @@ export default function App() {
               <Compass size={26} />
             </div>
             <div className="method-card-body">
-              <div className="method-card-tag">2x2 • Débutant</div>
-              <h3 className="method-card-title">Méthode Simple 2x2</h3>
-              <p className="method-card-desc">
-                Résolvez le 2x2 pas à pas avec 3 étapes visuelles ultra simples.
-              </p>
+              <div className="method-card-tag">{t('app.algos.simple2x2.tag')}</div>
+              <h3 className="method-card-title">{t('app.algos.simple2x2.title')}</h3>
+              <p className="method-card-desc">{t('app.algos.simple2x2.description')}</p>
             </div>
             <ChevronRight size={20} className="method-card-arrow" />
           </button>
@@ -221,11 +236,9 @@ export default function App() {
               <Zap size={26} />
             </div>
             <div className="method-card-body">
-              <div className="method-card-tag">2x2 • Intermédiaire / Speed</div>
-              <h3 className="method-card-title">Méthode Ortega 2x2</h3>
-              <p className="method-card-desc">
-                1ère face, 7 OLL et 5 PBL pour descendre sous les 5 secondes.
-              </p>
+              <div className="method-card-tag">{t('app.algos.ortega2x2.tag')}</div>
+              <h3 className="method-card-title">{t('app.algos.ortega2x2.title')}</h3>
+              <p className="method-card-desc">{t('app.algos.ortega2x2.description')}</p>
             </div>
             <ChevronRight size={20} className="method-card-arrow" />
           </button>
@@ -235,11 +248,9 @@ export default function App() {
               <Layers size={26} />
             </div>
             <div className="method-card-body">
-              <div className="method-card-tag">3x3 • Débutant</div>
-              <h3 className="method-card-title">Méthode Simple 3x3</h3>
-              <p className="method-card-desc">
-                Le guide complet en 7 étapes illustrées (Marguerite, Belge, Chaise).
-              </p>
+              <div className="method-card-tag">{t('app.algos.simple3x3.tag')}</div>
+              <h3 className="method-card-title">{t('app.algos.simple3x3.title')}</h3>
+              <p className="method-card-desc">{t('app.algos.simple3x3.description')}</p>
             </div>
             <ChevronRight size={20} className="method-card-arrow" />
           </button>
@@ -249,11 +260,9 @@ export default function App() {
               <Flame size={26} />
             </div>
             <div className="method-card-body">
-              <div className="method-card-tag">3x3 • Avancé (Fridrich)</div>
-              <h3 className="method-card-title">Méthode CFOP 3x3</h3>
-              <p className="method-card-desc">
-                Répertoire complet F2L, 2-Look & Full OLL (57) et PLL (21).
-              </p>
+              <div className="method-card-tag">{t('app.algos.cfop3x3.tag')}</div>
+              <h3 className="method-card-title">{t('app.algos.cfop3x3.title')}</h3>
+              <p className="method-card-desc">{t('app.algos.cfop3x3.description')}</p>
             </div>
             <ChevronRight size={20} className="method-card-arrow" />
           </button>
@@ -263,11 +272,9 @@ export default function App() {
               <EyeOff size={26} />
             </div>
             <div className="method-card-body">
-              <div className="method-card-tag">3x3 • Blindfolded (À l&apos;aveugle)</div>
-              <h3 className="method-card-title">Méthode Old Pochmann (Speffz)</h3>
-              <p className="method-card-desc">
-                Patron Speffz A–X interactif, Buffers B/A, Setups Arêtes & Coins et Parité.
-              </p>
+              <div className="method-card-tag">{t('app.algos.blind3x3.tag')}</div>
+              <h3 className="method-card-title">{t('app.algos.blind3x3.title')}</h3>
+              <p className="method-card-desc">{t('app.algos.blind3x3.description')}</p>
             </div>
             <ChevronRight size={20} className="method-card-arrow" />
           </button>
@@ -277,11 +284,9 @@ export default function App() {
               <Grid size={26} />
             </div>
             <div className="method-card-body">
-              <div className="method-card-tag">4x4 • Débutant (Réduction)</div>
-              <h3 className="method-card-title">Méthode Simple 4x4</h3>
-              <p className="method-card-desc">
-                6 Centres, paires d&apos;arêtes, réduction en 3x3 et Parités OLL/PLL.
-              </p>
+              <div className="method-card-tag">{t('app.algos.simple4x4.tag')}</div>
+              <h3 className="method-card-title">{t('app.algos.simple4x4.title')}</h3>
+              <p className="method-card-desc">{t('app.algos.simple4x4.description')}</p>
             </div>
             <ChevronRight size={20} className="method-card-arrow" />
           </button>
@@ -291,11 +296,9 @@ export default function App() {
               <Cpu size={26} />
             </div>
             <div className="method-card-body">
-              <div className="method-card-tag">4x4 • Avancé (Speed / CFOP)</div>
-              <h3 className="method-card-title">Méthode Yau 4x4</h3>
-              <p className="method-card-desc">
-                Croix directe, 4 derniers centres, appariement 3-2-3 et Parités Speed.
-              </p>
+              <div className="method-card-tag">{t('app.algos.yau4x4.tag')}</div>
+              <h3 className="method-card-title">{t('app.algos.yau4x4.title')}</h3>
+              <p className="method-card-desc">{t('app.algos.yau4x4.description')}</p>
             </div>
             <ChevronRight size={20} className="method-card-arrow" />
           </button>
@@ -303,7 +306,7 @@ export default function App() {
 
         <button className="menu-back-btn" onClick={() => setMode('menu')}>
           <ArrowLeft size={18} />
-          <span>Retour à l&apos;accueil</span>
+          <span>{t('common.backHome')}</span>
         </button>
       </div>
     );
@@ -311,11 +314,12 @@ export default function App() {
 
   return (
     <div className="main-menu-container">
+      <LanguageSwitcher className="menu-language-switcher" />
       <div className="menu-header-block">
-        <span className="menu-eyebrow">Application Interactive 3D</span>
-        <h1 className="main-menu-title">Cube Studio</h1>
+        <span className="menu-eyebrow">{t('app.home.eyebrow')}</span>
+        <h1 className="main-menu-title">{t('app.home.title')}</h1>
         <p className="main-menu-subtitle">
-          Entraînez-vous au Speedcubing, visualisez les algorithmes en 3D et maîtrisez chaque méthode.
+          {t('app.home.description')}
         </p>
       </div>
 
@@ -329,8 +333,8 @@ export default function App() {
               <Gamepad2 size={24} />
             </div>
             <div className="menu-card-Meta">
-              <span className="menu-card-title">Jouer</span>
-              <span className="menu-card-sub">Simulateur 2x2, 3x3 & 4x4</span>
+              <span className="menu-card-title">{t('app.home.play.title')}</span>
+              <span className="menu-card-sub">{t('app.home.play.description')}</span>
             </div>
           </div>
         </button>
@@ -344,8 +348,8 @@ export default function App() {
               <BookOpen size={24} />
             </div>
             <div className="menu-card-Meta">
-              <span className="menu-card-title">Algorithmes</span>
-              <span className="menu-card-sub">Guides 2x2, 3x3, CFOP, Ortega & Yau</span>
+              <span className="menu-card-title">{t('app.home.learn.title')}</span>
+              <span className="menu-card-sub">{t('app.home.learn.description')}</span>
             </div>
           </div>
         </button>

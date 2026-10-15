@@ -1,5 +1,6 @@
 // src/components/algos/AlgoDemoModal.jsx
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import {
@@ -93,6 +94,7 @@ export function AlgoDemoModal({
   onTestAlgo,
   onClose
 }) {
+  const { t } = useTranslation();
   const allTokens = useMemo(() => parseAlgoTokens(algoCase.alg), [algoCase.alg]);
   const tokens = useMemo(
     () => allTokens.filter(t => !t.isOptional),
@@ -212,7 +214,7 @@ export function AlgoDemoModal({
             <span className="algo-modal-badge">{algoCase.category || `Cube ${size}x${size}`}</span>
             <h2 className="algo-modal-title">{algoCase.name}</h2>
           </div>
-          <button className="algo-modal-close" onClick={onClose} aria-label="Fermer">
+          <button className="algo-modal-close" onClick={onClose} aria-label={t('common.close')}>
             <X size={20} />
           </button>
         </div>
@@ -226,10 +228,10 @@ export function AlgoDemoModal({
           <div className="algo-modal-canvas-topbar">
             <span className="canvas-Interactive-pill">
               <Move3d size={14} />
-              <span>Glisser pour orienter</span>
+              <span>{t('algo.dragToRotate')}</span>
             </span>
             <span className="canvas-step-pill">
-              Étape {stepIndex} / {tokens.length}
+              {t('algo.step', { current: stepIndex, total: tokens.length })}
             </span>
           </div>
 
@@ -277,19 +279,19 @@ export function AlgoDemoModal({
           <button
             className="player-btn"
             onClick={handleReset}
-            title="Retour au début"
+            title={t('algo.titleBack')}
           >
             <RotateCcw size={16} />
-            <span>Début</span>
+            <span>{t('algo.start')}</span>
           </button>
           <button
             className="player-btn"
             onClick={triggerStepBackward}
             disabled={stepIndex <= 0 || !!activeAnim}
-            title="Mouvement précédent"
+            title={t('algo.titlePrevious')}
           >
             <SkipBack size={16} />
-            <span>Préc.</span>
+            <span>{t('algo.previous')}</span>
           </button>
           <button
             className="player-btn primary"
@@ -298,17 +300,17 @@ export function AlgoDemoModal({
             {isPlaying ? (
               <>
                 <Pause size={16} />
-                <span>Pause</span>
+                <span>{t('algo.pause')}</span>
               </>
             ) : stepIndex >= tokens.length ? (
               <>
                 <RotateCcw size={16} />
-                <span>Rejouer</span>
+                <span>{t('algo.replay')}</span>
               </>
             ) : (
               <>
                 <Play size={16} />
-                <span>Lecture</span>
+                <span>{t('algo.play')}</span>
               </>
             )}
           </button>
@@ -319,9 +321,9 @@ export function AlgoDemoModal({
               triggerStepForward();
             }}
             disabled={stepIndex >= tokens.length || !!activeAnim}
-            title="Mouvement suivant"
+            title={t('algo.titleNext')}
           >
-            <span>Suiv.</span>
+            <span>{t('algo.next')}</span>
             <SkipForward size={16} />
           </button>
         </div>
@@ -334,7 +336,7 @@ export function AlgoDemoModal({
               onClick={() => onToggleLearned(algoCase.id)}
             >
               {isLearned ? <CheckCircle2 size={18} /> : <Circle size={18} />}
-              <span>{isLearned ? 'Appris' : 'Marquer comme appris'}</span>
+              <span>{isLearned ? t('common.learned') : t('common.markLearned')}</span>
             </button>
           )}
           {onTestAlgo && (
@@ -343,7 +345,7 @@ export function AlgoDemoModal({
               onClick={() => onTestAlgo({ ...algoCase, size })}
             >
               <Gamepad2 size={18} />
-              <span>Tester sur le Cube</span>
+              <span>{t('algo.testOnCube')}</span>
             </button>
           )}
         </div>

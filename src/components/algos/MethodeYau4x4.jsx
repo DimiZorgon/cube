@@ -1,13 +1,22 @@
 // src/components/algos/MethodeYau4x4.jsx
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Check, Play, Gamepad2 } from 'lucide-react';
 import { YAU_SECTIONS, YAU_DATA } from '../../data/yau4x4Data';
 import { CubeDiagram2D } from './CubeDiagram2D';
 import { AlgoDemoModal } from './AlgoDemoModal';
+import { LanguageSwitcher } from '../LanguageSwitcher';
+import { localizeCases, localizeGroups } from '../../i18n/localizeData';
 
 const LEARNED_STORAGE_KEY = 'rubiks_learned_algos';
 
 export function MethodeYau4x4({ onBack, onTestAlgo }) {
+  const { t } = useTranslation();
+  const sections = YAU_SECTIONS.map(section => ({
+    ...section,
+    label: t(`data.section.yau.${section.id}`)
+  }));
+  const groups = localizeGroups('yau', YAU_DATA, t);
   const [activeFilter, setActiveFilter] = useState('ALL');
   const [selectedCase, setSelectedCase] = useState(null);
   const [learnedIds, setLearnedIds] = useState(() => {
@@ -29,25 +38,25 @@ export function MethodeYau4x4({ onBack, onTestAlgo }) {
 
   const visibleGroups =
     activeFilter === 'ALL'
-      ? YAU_DATA
-      : YAU_DATA.filter(g => g.section === activeFilter);
+      ? groups
+      : groups.filter(g => g.section === activeFilter);
 
   return (
     <div className="trainer-page">
       <header className="trainer-topbar">
         <button className="trainer-icon-btn" onClick={onBack}>
           <ArrowLeft size={16} />
-          <span>Retour</span>
+          <span>{t('common.back')}</span>
         </button>
         <div className="trainer-topbar-center">
-          <h1 className="trainer-topbar-title">Méthode Yau 4x4 (Speedcubing / CFOP)</h1>
+          <h1 className="trainer-topbar-title">{t('method.yau4x4.title')}</h1>
         </div>
-        <div style={{ width: '90px' }} />
+        <LanguageSwitcher className="trainer-icon-btn" />
       </header>
 
       <div className="trainer-tabs-bar">
         <div className="trainer-tabs-scroll">
-          {YAU_SECTIONS.map(sec => (
+          {sections.map(sec => (
             <button
               key={sec.id}
               className={`trainer-tab-btn ${activeFilter === sec.id ? 'active' : ''}`}
@@ -67,7 +76,7 @@ export function MethodeYau4x4({ onBack, onTestAlgo }) {
               <p className="trainer-group-desc">{group.description}</p>
             )}
             <div className="trainer-cards-grid">
-              {group.cases.map(item => {
+              {localizeCases(group.cases, t).map(item => {
                 const isLearned = learnedIds.includes(item.id);
                 return (
                   <div
@@ -78,7 +87,7 @@ export function MethodeYau4x4({ onBack, onTestAlgo }) {
                     <button
                       className={`card-learned-badge ${isLearned ? 'learned' : ''}`}
                       onClick={e => toggleLearned(item.id, e)}
-                      title="Marquer comme appris"
+                      title={t('common.markLearned')}
                     >
                       <Check size={16} strokeWidth={2.5} />
                     </button>
@@ -97,7 +106,7 @@ export function MethodeYau4x4({ onBack, onTestAlgo }) {
 
                     <div className="trainer-card-formula">{item.alg}</div>
                     <div className="trainer-card-name">
-                      Nom : <span>{item.name}</span>
+                      {t('common.nameLabel')} <span>{item.name}</span>
                     </div>
                     {item.description && (
                       <p className="trainer-card-subdesc">{item.description}</p>
@@ -109,7 +118,7 @@ export function MethodeYau4x4({ onBack, onTestAlgo }) {
                         onClick={() => setSelectedCase(item)}
                       >
                         <Play size={14} />
-                        <span>Démo 3D</span>
+                        <span>{t('common.demo3d')}</span>
                       </button>
                       <button
                         className="card-mini-btn test"
@@ -122,7 +131,7 @@ export function MethodeYau4x4({ onBack, onTestAlgo }) {
                         }
                       >
                         <Gamepad2 size={15} />
-                        <span>Tester</span>
+                        <span>{t('common.test')}</span>
                       </button>
                     </div>
                   </div>

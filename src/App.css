@@ -4,6 +4,7 @@
    MENU PRINCIPAL & SOUS-MENUS (STYLE SHADCN / KHROMA)
    ========================================================= */
 .main-menu-container {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -15,6 +16,35 @@
   box-sizing: border-box;
   overflow-y: auto;
   touch-action: pan-y;
+}
+
+.language-switcher {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 40px;
+  padding: 0.4rem 0.65rem;
+  background: #252b2e;
+  border: 1px solid #41494c;
+  border-radius: 6px;
+  color: #b9c9bf;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.language-switcher:hover {
+  background: #2b3336;
+  border-color: #9eb5aa;
+}
+
+.menu-language-switcher {
+  position: absolute;
+  top: 0.75rem;
+  right: 1.25rem;
+  z-index: 20;
 }
 
 .menu-header-block {
@@ -307,6 +337,13 @@
   gap: 0.85rem;
   flex-wrap: wrap;
   justify-content: center;
+}
+
+.trainer-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 .trainer-topbar-title {
@@ -1033,6 +1070,11 @@
     padding: calc(2rem + env(safe-area-inset-top)) 1rem calc(1.5rem + env(safe-area-inset-bottom));
   }
 
+  .menu-language-switcher {
+    top: calc(0.75rem + env(safe-area-inset-top));
+    right: 0.75rem;
+  }
+
   .menu-header-block {
     max-width: 34rem;
     margin-bottom: 1.5rem;
@@ -1132,6 +1174,10 @@
   .trainer-icon-btn {
     min-height: 40px;
     padding: 0.45rem 0.65rem;
+  }
+
+  .trainer-topbar-actions {
+    gap: 0.35rem;
   }
 
   .trainer-tabs-bar {

@@ -1,11 +1,16 @@
 // src/components/algos/MethodeSimple2x2.jsx
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, ChevronUp, ChevronDown, Play, Gamepad2 } from 'lucide-react';
 import { SIMPLE_2X2_STEPS } from '../../data/simple2x2Data';
 import { CubeDiagram2D } from './CubeDiagram2D';
 import { AlgoDemoModal } from './AlgoDemoModal';
+import { LanguageSwitcher } from '../LanguageSwitcher';
+import { localizeSteps } from '../../i18n/localizeData';
 
 export function MethodeSimple2x2({ onBack, onTestAlgo }) {
+  const { t } = useTranslation();
+  const steps = localizeSteps(SIMPLE_2X2_STEPS, t);
   const [openStepId, setOpenStepId] = useState(SIMPLE_2X2_STEPS[0].id);
   const [selectedCase, setSelectedCase] = useState(null);
 
@@ -18,16 +23,16 @@ export function MethodeSimple2x2({ onBack, onTestAlgo }) {
       <header className="trainer-topbar">
         <button className="trainer-icon-btn" onClick={onBack}>
           <ArrowLeft size={16} />
-          <span>Retour</span>
+          <span>{t('common.back')}</span>
         </button>
         <div className="trainer-topbar-center">
-          <h1 className="trainer-topbar-title">Méthode Simple 2x2 (Débutant)</h1>
+          <h1 className="trainer-topbar-title">{t('method.simple2x2.title')}</h1>
         </div>
-        <div style={{ width: '90px' }} />
+        <LanguageSwitcher className="trainer-icon-btn" />
       </header>
 
       <main className="trainer-content accordion-container">
-        {SIMPLE_2X2_STEPS.map((step, index) => {
+        {steps.map((step, index) => {
           const isOpen = openStepId === step.id;
           return (
             <div key={step.id} className={`step-accordion ${isOpen ? 'open' : ''}`}>
@@ -73,7 +78,7 @@ export function MethodeSimple2x2({ onBack, onTestAlgo }) {
                         </div>
                         <div className="trainer-card-formula">{item.alg}</div>
                         <div className="trainer-card-name">
-                          Cas : <span>{item.name}</span>
+                            {t('common.case')} : <span>{item.name}</span>
                         </div>
                         {item.description && (
                           <p className="trainer-card-subdesc">{item.description}</p>
@@ -87,7 +92,7 @@ export function MethodeSimple2x2({ onBack, onTestAlgo }) {
                             onClick={() => setSelectedCase(item)}
                           >
                             <Play size={14} />
-                            <span>Démo 3D</span>
+                            <span>{t('common.demo3d')}</span>
                           </button>
                           <button
                             className="card-mini-btn test"
@@ -100,7 +105,7 @@ export function MethodeSimple2x2({ onBack, onTestAlgo }) {
                             }
                           >
                             <Gamepad2 size={15} />
-                            <span>Tester</span>
+                            <span>{t('common.test')}</span>
                           </button>
                         </div>
                       </div>

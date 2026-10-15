@@ -1,5 +1,6 @@
 // src/components/algos/MethodeCFOP3x3.jsx
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
   Menu,
@@ -13,10 +14,17 @@ import {
 import { CFOP_SECTIONS, CFOP_DATA } from '../../data/cfopData';
 import { CubeDiagram2D } from './CubeDiagram2D';
 import { AlgoDemoModal } from './AlgoDemoModal';
+import { LanguageSwitcher } from '../LanguageSwitcher';
+import { localizeCFOPGroups, localizeCases } from '../../i18n/localizeData';
 
 const LEARNED_STORAGE_KEY = 'rubiks_learned_algos';
 
 export function MethodeCFOP3x3({ onBack, onTestAlgo }) {
+  const { t } = useTranslation();
+  const sections = CFOP_SECTIONS.map(section => ({
+    ...section,
+    label: t(`data.section.cfop.${section.id}`)
+  }));
   const [activeSection, setActiveSection] = useState('PLL');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedCase, setSelectedCase] = useState(null);
@@ -38,7 +46,8 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo }) {
     setLearnedIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
   };
 
-  const groups = CFOP_DATA[activeSection] || [];
+  const groups = localizeCFOPGroups(activeSection, CFOP_DATA[activeSection] || [], t);
+  const activeSectionLabel = sections.find(section => section.id === activeSection)?.label || activeSection;
   const totalCases = groups.reduce((acc, g) => acc + g.cases.length, 0);
   const learnedCount = groups.reduce(
     (acc, g) => acc + g.cases.filter(c => learnedIds.includes(c.id)).length,
@@ -48,29 +57,32 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo }) {
   return (
     <div className="trainer-page">
       <header className="trainer-topbar">
-        <button className="trainer-icon-btn" onClick={onBack} aria-label="Retour">
+        <button className="trainer-icon-btn" onClick={onBack} aria-label={t('common.back')}>
           <ArrowLeft size={16} />
-          <span>Retour</span>
+          <span>{t('common.back')}</span>
         </button>
         <div className="trainer-topbar-center">
-          <h1 className="trainer-topbar-title">Algorithmes CFOP • {activeSection}</h1>
+          <h1 className="trainer-topbar-title">{t('method.cfop3x3.title', { section: activeSectionLabel })}</h1>
           <span className="trainer-progress-pill">
-            {learnedCount} / {totalCases} appris
+            {t('algo.learnedCount', { count: learnedCount, total: totalCases })}
           </span>
         </div>
-        <button
-          className="trainer-icon-btn"
-          onClick={() => setDrawerOpen(true)}
-          aria-label="Ouvrir le menu des catégories"
-        >
-          <Menu size={16} />
-          <span>Catégories</span>
-        </button>
+        <div className="trainer-topbar-actions">
+          <button
+            className="trainer-icon-btn"
+            onClick={() => setDrawerOpen(true)}
+            aria-label={t('algo.categoryMenu')}
+          >
+            <Menu size={16} />
+            <span>{t('algo.categories')}</span>
+          </button>
+          <LanguageSwitcher className="trainer-icon-btn" />
+        </div>
       </header>
 
       <div className="trainer-tabs-bar">
         <div className="trainer-tabs-scroll">
-          {CFOP_SECTIONS.map(sec => (
+          {sections.map(sec => (
             <button
               key={sec.id}
               className={`trainer-tab-btn ${activeSection === sec.id ? 'active' : ''}`}
@@ -85,7 +97,7 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo }) {
           onClick={() => setShowOnlyUnlearned(v => !v)}
         >
           <Filter size={14} />
-          <span>{showOnlyUnlearned ? 'À apprendre uniquement' : 'Tout afficher'}</span>
+          <span>{showOnlyUnlearned ? t('algo.onlyToLearn') : t('algo.showAll')}</span>
         </button>
       </div>
 
@@ -94,15 +106,15 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo }) {
           <aside className="trainer-drawer" onClick={e => e.stopPropagation()}>
             <div className="trainer-drawer-banner">
               <div>
-                <div className="trainer-drawer-banner-title">Entraînement CFOP 3x3</div>
-                <div className="trainer-drawer-banner-sub">Sélectionnez une étape</div>
+                <div className="trainer-drawer-banner-title">{t('algo.training')}</div>
+                <div className="trainer-drawer-banner-sub">{t('algo.selectStage')}</div>
               </div>
               <button className="algo-modal-close" onClick={() => setDrawerOpen(false)}>
                 <X size={18} />
               </button>
             </div>
             <nav className="trainer-drawer-nav">
-              {CFOP_SECTIONS.map(sec => (
+              {sections.map(sec => (
                 <button
                   key={sec.id}
                   className={`trainer-drawer-item ${activeSection === sec.id ? 'active' : ''}`}
@@ -132,7 +144,7 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo }) {
             <section key={group.group} className="trainer-group-section">
               <h2 className="trainer-group-header">{group.group}</h2>
               <div className="trainer-cards-grid">
-                {filteredCases.map(item => {
+                {localizeCases(filteredCases, t).map(item => {
                   const isLearned = learnedIds.includes(item.id);
                   return (
                     <div
@@ -143,7 +155,7 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo }) {
                       <button
                         className={`card-learned-badge ${isLearned ? 'learned' : ''}`}
                         onClick={e => toggleLearned(item.id, e)}
-                        title={isLearned ? 'Marqué comme appris' : 'Marquer comme appris'}
+                        title={isLearned ? t('algo.markedLearned') : t('algo.notMarkedLearned')}
                       >
                         <Check size={16} strokeWidth={2.5} />
                       </button>
@@ -163,7 +175,7 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo }) {
                       <div className="trainer-card-formula">{item.alg}</div>
 
                       <div className="trainer-card-name">
-                        Nom : <span>{item.name}</span>
+                        {t('common.nameLabel')} <span>{item.name}</span>
                       </div>
 
                       <div className="trainer-card-actions" onClick={e => e.stopPropagation()}>
@@ -172,7 +184,7 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo }) {
                           onClick={() => setSelectedCase(item)}
                         >
                           <Play size={14} />
-                          <span>Démo 3D</span>
+                          <span>{t('common.demo3d')}</span>
                         </button>
                         <button
                           className="card-mini-btn test"
@@ -185,7 +197,7 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo }) {
                           }
                         >
                           <Gamepad2 size={15} />
-                          <span>Tester</span>
+                          <span>{t('common.test')}</span>
                         </button>
                       </div>
                     </div>

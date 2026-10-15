@@ -1,6 +1,8 @@
 import React, { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export const MoveButton = ({ label, onMove }) => {
+  const { t } = useTranslation();
   const timerRef = useRef(null);
 
   const handlePointerDown = () => {
@@ -21,7 +23,7 @@ export const MoveButton = ({ label, onMove }) => {
   return (
     <button
       className="move-btn"
-      aria-label={`Move ${label}`}
+      aria-label={t('move.ariaLabel', { label })}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}

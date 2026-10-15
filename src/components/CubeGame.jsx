@@ -1,5 +1,6 @@
 // src/components/CubeGame.jsx
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Canvas } from '@react-three/fiber';
 import { TrackballControls } from '@react-three/drei';
 import {
@@ -15,6 +16,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { RubiksCube } from './RubiksCube';
+import { LanguageSwitcher } from './LanguageSwitcher';
 import { useCubeStore } from '../store/useCubeStore';
 import { CameraMapper } from './CameraMapper';
 import { CustomLockControls } from './LockCamera';
@@ -22,6 +24,7 @@ import { createCaseCubies } from '../utils/algoParser';
 import confetti from 'canvas-confetti';
 
 export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves, onBack, trainingCase = null }) {
+  const { t } = useTranslation();
   const [time, setTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [showAlgo, setShowAlgo] = useState(false);
@@ -213,12 +216,12 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
           {trainingCase ? (
             <div className="highscore">
               <Target size={18} className="inline-icon accent" />
-              <span>Cas : {trainingCase.name}</span>
+              <span>{t('game.case', { name: trainingCase.name })}</span>
             </div>
           ) : (
             <div className="highscore">
               <Trophy size={18} className="inline-icon amber" />
-              <span>Record : {highScore ? formatTime(highScore) : "-"}</span>
+              <span>{t('game.record', { time: highScore ? formatTime(highScore) : '-' })}</span>
             </div>
           )}
         </div>
@@ -227,12 +230,12 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
             {trainingCase ? (
               <>
                 <RotateCcw size={16} />
-                <span>Réinitialiser le cas</span>
+                <span>{t('game.resetCase')}</span>
               </>
             ) : (
               <>
                 <Shuffle size={16} />
-                <span>Mélanger</span>
+                <span>{t('game.shuffle')}</span>
               </>
             )}
           </button>
@@ -242,15 +245,16 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
               onClick={() => setShowAlgo(prev => !prev)}
             >
               {showAlgo ? <EyeOff size={16} /> : <Eye size={16} />}
-              <span>{showAlgo ? "Cacher l'algo" : "Afficher l'algo"}</span>
+              <span>{showAlgo ? t('game.hideAlgorithm') : t('game.showAlgorithm')}</span>
             </button>
           )}
         </div>
         <div className="header-right">
           <button className="shuffle-btn" onClick={() => setIsLocked(!isLocked)}>
             {isLocked ? <Lock size={16} /> : <Unlock size={16} />}
-            <span>{isLocked ? "Verrouillé" : "Libre"}</span>
+            <span>{isLocked ? t('game.locked') : t('game.free')}</span>
           </button>
+          <LanguageSwitcher className="shuffle-btn" />
         </div>
       </header>
 
@@ -260,12 +264,12 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
           onClick={onBack}
         >
           <ArrowLeft size={16} />
-          <span>{trainingCase ? "Retour aux algos" : "Menu Cubes"}</span>
+          <span>{trainingCase ? t('common.backAlgos') : t('common.backCubes')}</span>
         </button>
 
         <div className="stats-container">
           <div className="timer">{formatTime(time)}</div>
-          <div className="moves-count">Mouvements : {moveCount}</div>
+          <div className="moves-count">{t('game.moves', { count: moveCount })}</div>
         </div>
 
         {trainingCase && showAlgo && (
@@ -280,14 +284,14 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
               <CheckCircle2 size={36} />
             </div>
             <h2 style={{ margin: '0 0 0.4rem 0', fontSize: '1.75rem' }}>
-              {trainingCase ? "Cas Résolu !" : "Cube Résolu !"}
+              {trainingCase ? t('game.caseSolved') : t('game.cubeSolved')}
             </h2>
             <p style={{ margin: '0 0 1.2rem 0', fontSize: '1.05rem', color: '#94a3b8' }}>
-              Temps : {formatTime(time)} • Mouvements : {moveCount}
+              {t('game.result', { time: formatTime(time), count: moveCount })}
             </p>
             <button className="shuffle-btn primary-action" onClick={handleShuffle}>
               <RotateCcw size={16} />
-              <span>{trainingCase ? "Recommencer ce cas" : "Rejouer"}</span>
+              <span>{trainingCase ? t('game.retryCase') : t('game.replay')}</span>
             </button>
           </div>
         )}

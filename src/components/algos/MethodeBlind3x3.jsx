@@ -1,5 +1,6 @@
 // src/components/algos/MethodeBlind3x3.jsx
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
   ChevronUp,
@@ -21,11 +22,13 @@ import {
 } from '../../data/blind3x3Data';
 import { CubeDiagram2D } from './CubeDiagram2D';
 import { AlgoDemoModal } from './AlgoDemoModal';
+import { LanguageSwitcher } from '../LanguageSwitcher';
+import { localizeCases, localizeSteps } from '../../i18n/localizeData';
 
 const LEARNED_STORAGE_KEY = 'rubiks_learned_algos';
 
 // Composant SVG du Patron Speffz (cliquable pour inspecter chaque lettre A-X)
-function SpeffzNetSVG({ mode, onSelectLetter }) {
+function SpeffzNetSVG({ mode, onSelectLetter, t }) {
   // Position des 4 lettres (A, B, C, D dans le sens horaire) selon qu'on regarde les Arêtes ou les Coins
   const getLetterCoords = (index, type) => {
     if (type === 'edges') {
@@ -48,11 +51,11 @@ function SpeffzNetSVG({ mode, onSelectLetter }) {
 
   const getRoleBadge = (letter, type) => {
     if (type === 'edges') {
-      if (letter === 'B' || letter === 'M') return 'BUFFER';
-      if (letter === 'D') return 'CIBLE';
+      if (letter === 'B' || letter === 'M') return t('bld.roleBuffer');
+      if (letter === 'D') return t('bld.roleTarget');
     } else {
-      if (letter === 'A' || letter === 'E' || letter === 'R') return 'BUFFER';
-      if (letter === 'P') return 'CIBLE';
+      if (letter === 'A' || letter === 'E' || letter === 'R') return t('bld.roleBuffer');
+      if (letter === 'P') return t('bld.roleTarget');
     }
     return null;
   };
@@ -156,6 +159,15 @@ function SpeffzNetSVG({ mode, onSelectLetter }) {
 }
 
 export function MethodeBlind3x3({ onBack, onTestAlgo }) {
+  const { t } = useTranslation();
+  const tabs = BLD_TABS.map(tab => ({
+    ...tab,
+    label: t(`data.section.bld.${tab.id}`)
+  }));
+  const guideSteps = localizeSteps(BLD_GUIDE_STEPS, t);
+  const coreCases = localizeCases(BLD_CORE_CASES, t);
+  const edgeSetups = localizeCases(EDGE_SETUPS, t);
+  const cornerSetups = localizeCases(CORNER_SETUPS, t);
   const [activeTab, setActiveTab] = useState('GUIDE');
   const [netMode, setNetMode] = useState('edges'); // 'edges' | 'corners'
   const [openStepId, setOpenStepId] = useState(BLD_GUIDE_STEPS[0].id);
@@ -180,14 +192,14 @@ export function MethodeBlind3x3({ onBack, onTestAlgo }) {
   };
 
   const handleSelectNetLetter = letter => {
-    const list = netMode === 'edges' ? EDGE_SETUPS : CORNER_SETUPS;
+    const list = netMode === 'edges' ? edgeSetups : cornerSetups;
     const found = list.find(item => item.letter === letter);
     if (found && found.role !== 'buffer') {
       setSelectedCase(found);
     }
   };
 
-  const currentSetupList = activeTab === 'CORNERS_SETUP' ? CORNER_SETUPS : EDGE_SETUPS;
+  const currentSetupList = activeTab === 'CORNERS_SETUP' ? cornerSetups : edgeSetups;
   const filteredSetups =
     faceFilter === 'ALL'
       ? currentSetupList
@@ -198,19 +210,19 @@ export function MethodeBlind3x3({ onBack, onTestAlgo }) {
       <header className="trainer-topbar">
         <button className="trainer-icon-btn" onClick={onBack}>
           <ArrowLeft size={16} />
-          <span>Retour</span>
+          <span>{t('common.back')}</span>
         </button>
         <div className="trainer-topbar-center">
           <EyeOff size={20} style={{ color: '#38bdf8' }} />
-          <h1 className="trainer-topbar-title">3x3 Blindfolded (Old Pochmann • Speffz)</h1>
+          <h1 className="trainer-topbar-title">{t('bld.title')}</h1>
         </div>
-        <div style={{ width: '90px' }} />
+        <LanguageSwitcher className="trainer-icon-btn" />
       </header>
 
       {/* Barre d'onglets principale */}
       <div className="trainer-tabs-bar">
         <div className="trainer-tabs-scroll">
-          {BLD_TABS.map(tab => (
+          {tabs.map(tab => (
             <button
               key={tab.id}
               className={`trainer-tab-btn ${activeTab === tab.id ? 'active' : ''}`}
@@ -230,10 +242,10 @@ export function MethodeBlind3x3({ onBack, onTestAlgo }) {
               <div className="bld-net-header">
                 <div>
                   <h2 className="trainer-group-header" style={{ border: 'none', margin: 0 }}>
-                    Patron Interactif des Notations Speffz (A → X)
+                    {t('bld.interactivePattern')}
                   </h2>
                   <p className="trainer-group-desc" style={{ margin: '0.25rem 0 0' }}>
-                    Cliquez sur une lettre du patron pour visualiser son Setup Move et l&apos;exécution en 3D.
+                    {t('bld.patternHelp')}
                   </p>
                 </div>
                 <div className="bld-net-toggle-group">
@@ -242,36 +254,36 @@ export function MethodeBlind3x3({ onBack, onTestAlgo }) {
                     onClick={() => setNetMode('edges')}
                   >
                     <Layers size={15} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
-                    Arêtes (Buffer B → Cible D)
+                    {t('bld.edges')}
                   </button>
                   <button
                     className={`trainer-tab-btn ${netMode === 'corners' ? 'active' : ''}`}
                     onClick={() => setNetMode('corners')}
                   >
                     <Grid size={15} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
-                    Coins (Buffer A → Cible P)
+                    {t('bld.corners')}
                   </button>
                 </div>
               </div>
 
               <div className="bld-net-body">
-                <SpeffzNetSVG mode={netMode} onSelectLetter={handleSelectNetLetter} />
+                <SpeffzNetSVG mode={netMode} onSelectLetter={handleSelectNetLetter} t={t} />
                 <div className="bld-net-legend">
                   <span className="bld-legend-item">
-                    <span className="bld-dot buffer" /> Buffer ({netMode === 'edges' ? 'B / M' : 'A / E / R'})
+                    <span className="bld-dot buffer" /> {t('bld.buffer')} ({netMode === 'edges' ? 'B / M' : 'A / E / R'})
                   </span>
                   <span className="bld-legend-item">
-                    <span className="bld-dot target" /> Cible ({netMode === 'edges' ? 'D (T-Perm)' : 'P (Y-Perm mod.)'})
+                    <span className="bld-dot target" /> {t('bld.target')} ({netMode === 'edges' ? 'D (T-Perm)' : 'P (Y-Perm mod.)'})
                   </span>
                   <span className="bld-legend-item">
-                    Orientation : <strong>Blanc en Haut (U)</strong> • <strong>Vert Devant (F)</strong>
+                    {t('bld.orientation')}
                   </span>
                 </div>
               </div>
             </div>
 
             <div className="accordion-container" style={{ marginTop: '1.5rem' }}>
-              {BLD_GUIDE_STEPS.map((step, index) => {
+              {guideSteps.map((step, index) => {
                 const isOpen = openStepId === step.id;
                 return (
                   <div key={step.id} className={`step-accordion ${isOpen ? 'open' : ''}`}>
@@ -309,13 +321,13 @@ export function MethodeBlind3x3({ onBack, onTestAlgo }) {
         {activeTab === 'CORE_ALGOS' && (
           <section className="trainer-group-section">
             <h2 className="trainer-group-header">
-              Les 3 Algorithmes d&apos;Exécution (Arêtes, Coins & Parité)
+              {t('bld.coreAlgorithms')}
             </h2>
             <p className="trainer-group-desc">
-              Toute la résolution à l&apos;aveugle repose uniquement sur ces 3 algorithmes issus de CFOP.
+              {t('bld.coreHelp')}
             </p>
             <div className="trainer-cards-grid">
-              {BLD_CORE_CASES.map(item => {
+              {coreCases.map(item => {
                 const isLearned = learnedIds.includes(item.id);
                 return (
                   <div
@@ -326,7 +338,7 @@ export function MethodeBlind3x3({ onBack, onTestAlgo }) {
                     <button
                       className={`card-learned-badge ${isLearned ? 'learned' : ''}`}
                       onClick={e => toggleLearned(item.id, e)}
-                      title="Marquer comme appris"
+                      title={t('common.markLearned')}
                     >
                       <Check size={16} strokeWidth={2.5} />
                     </button>
@@ -351,14 +363,14 @@ export function MethodeBlind3x3({ onBack, onTestAlgo }) {
                     <div className="trainer-card-actions" onClick={e => e.stopPropagation()}>
                       <button className="card-mini-btn" onClick={() => setSelectedCase(item)}>
                         <Play size={14} />
-                        <span>Démo 3D</span>
+                        <span>{t('common.demo3d')}</span>
                       </button>
                       <button
                         className="card-mini-btn test"
                         onClick={() => onTestAlgo && onTestAlgo({ ...item, size: 3 })}
                       >
                         <Gamepad2 size={15} />
-                        <span>Tester</span>
+                        <span>{t('common.test')}</span>
                       </button>
                     </div>
                   </div>
@@ -375,11 +387,11 @@ export function MethodeBlind3x3({ onBack, onTestAlgo }) {
               <div>
                 <h2 className="trainer-group-header" style={{ border: 'none', margin: 0 }}>
                   {activeTab === 'EDGES_SETUP'
-                    ? 'Table des Setups Arêtes (Buffer B → Cible D + T-Perm)'
-                    : 'Table des Setups Coins (Buffer A → Cible P + Y-Perm modifiée)'}
+                    ? t('bld.setups.edges')
+                    : t('bld.setups.corners')}
                 </h2>
                 <p className="trainer-group-desc" style={{ margin: '0.25rem 0 0' }}>
-                  Cliquez sur une lettre pour voir l&apos;animation 3D complète : Setup + Algorithme + Undo Setup.
+                  {t('bld.setups.help')}
                 </p>
               </div>
 
@@ -391,7 +403,7 @@ export function MethodeBlind3x3({ onBack, onTestAlgo }) {
                     className={`trainer-tab-btn ${faceFilter === f ? 'active' : ''}`}
                     onClick={() => setFaceFilter(f)}
                   >
-                    {f === 'ALL' ? 'Toutes (24)' : `Face ${f}`}
+                    {f === 'ALL' ? t('bld.allFaces') : t('bld.face', { face: f })}
                   </button>
                 ))}
               </div>
@@ -415,14 +427,14 @@ export function MethodeBlind3x3({ onBack, onTestAlgo }) {
                       <div className={`bld-letter-badge ${item.role}`}>{item.letter}</div>
                       <div className="bld-setup-meta">
                         <span className="bld-setup-face">{item.face}</span>
-                        <span className="bld-setup-pos">Pièce {item.pos}</span>
+                        <span className="bld-setup-pos">{t('bld.piece', { position: item.pos })}</span>
                       </div>
                       {!isBuffer && (
                         <button
                           className={`card-learned-badge ${isLearned ? 'learned' : ''}`}
                           style={{ position: 'static' }}
                           onClick={e => toggleLearned(item.id, e)}
-                          title="Marquer ce setup comme appris"
+                          title={t('bld.learnSetup')}
                         >
                           <Check size={15} strokeWidth={2.5} />
                         </button>
@@ -431,14 +443,14 @@ export function MethodeBlind3x3({ onBack, onTestAlgo }) {
 
                     <div className="bld-setup-moves-box">
                       <div className="bld-setup-line">
-                        <span className="bld-setup-label">Setup :</span>
+                        <span className="bld-setup-label">{t('bld.setup')}</span>
                         <code className="bld-setup-code">
-                          {isBuffer ? 'Buffer (Aucun)' : isTarget ? 'Cible (Aucun)' : item.setupMove}
+                          {isBuffer ? `${t('bld.buffer')} (${t('bld.noSetup')})` : isTarget ? `${t('bld.target')} (${t('bld.noSetup')})` : item.setupMove}
                         </code>
                       </div>
                       {item.role === 'normal' && (
                         <div className="bld-setup-line">
-                          <span className="bld-setup-label">Undo :</span>
+                          <span className="bld-setup-label">{t('bld.undo')}</span>
                           <code className="bld-setup-code undo">{item.undo}</code>
                         </div>
                       )}
@@ -453,14 +465,14 @@ export function MethodeBlind3x3({ onBack, onTestAlgo }) {
                           onClick={() => setSelectedCase(item)}
                         >
                           <Play size={14} />
-                          <span>Voir Setup + Algo</span>
+                          <span>{t('bld.viewSetup')}</span>
                         </button>
                         <button
                           className="card-mini-btn test"
                           onClick={() => onTestAlgo && onTestAlgo({ ...item, size: 3 })}
                         >
                           <Gamepad2 size={15} />
-                          <span>Tester</span>
+                          <span>{t('common.test')}</span>
                         </button>
                       </div>
                     )}
