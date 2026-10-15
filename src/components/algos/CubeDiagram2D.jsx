@@ -1,5 +1,5 @@
 // src/components/algos/CubeDiagram2D.jsx
-import React, { useMemo } from 'react';
+import React, { useMemo, useId } from 'react';
 import { createCaseCubies, getStickerColor } from '../../utils/algoParser';
 
 export function CubeDiagram2D({
@@ -17,6 +17,9 @@ export function CubeDiagram2D({
     () => createCaseCubies({ size, alg, setup, yellowTop, maskMode, applySetup: true }),
     [size, alg, setup, yellowTop, maskMode]
   );
+
+  const reactId = useId();
+  const markerId = `arrow_${reactId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
 
   const outer = (size - 1) / 2;
   const coords = Array.from({ length: size }, (_, i) => i - outer);
@@ -129,7 +132,11 @@ export function CubeDiagram2D({
     y: pad + row * cellSize + cellSize / 2
   });
 
-  const markerId = `arrow_${Math.random().toString(36).slice(2, 9)}`;  return ( <svg width={width} height={height} viewBox="0 0 140 140" className="cube-svg-diagram"> <defs> <marker id={`${markerId}_end`}
+  return (
+    <svg width={width} height={height} viewBox="0 0 140 140" className="cube-svg-diagram">
+      <defs>
+        <marker
+          id={`${markerId}_end`}
           viewBox="0 0 10 10"
           refX="7"
           refY="5"

@@ -1,6 +1,6 @@
 // src/utils/algoParser.js
 import * as THREE from 'three';
-import { generateInitialCubies } from './cubeMath';
+import { generateInitialCubies } from './cubeMath.js';
 
 export const STANDARD_COLORS = {
   right: '#B71234',  // Rouge (+X)

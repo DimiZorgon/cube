@@ -93,6 +93,8 @@ Object.assign(messages, {
   'timer.session.practice': 'Practice',
   'timer.session.warmup': 'Warm-up',
   'timer.clearSession': 'Clear current session',
+  'timer.exportCsTimer': 'Export session in csTimer format',
+  'timer.noSolvesToExport': 'No solves to export in this session',
   'timer.current': 'Current',
   'timer.best': 'Best',
   'timer.metric.time': 'Time',

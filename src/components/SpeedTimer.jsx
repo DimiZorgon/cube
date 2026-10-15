@@ -10,7 +10,8 @@ import {
   Check,
   Timer as TimerIcon,
   Eye,
-  EyeOff
+  EyeOff,
+  Download
 } from 'lucide-react';
 import { createCaseCubies, getStickerColor } from '../utils/algoParser';
 
@@ -245,7 +246,9 @@ export function SpeedTimer({ onBack }) {
   const [displayTime, setDisplayTime] = useState(0);
 
   const statusRef = useRef('idle');
-  statusRef.current = timerStatus;
+  useEffect(() => {
+    statusRef.current = timerStatus;
+  }, [timerStatus]);
 
   const holdTimeoutRef = useRef(null);
   const startTimeRef = useRef(0);
@@ -474,6 +477,47 @@ export function SpeedTimer({ onBack }) {
     setTimeout(() => setCopied(false), 1500);
   };
 
+  const handleExportCsTimer = () => {
+    if (!solves || solves.length === 0) {
+      alert(t('timer.noSolvesToExport'));
+      return;
+    }
+
+    const csSolves = [...solves].reverse().map(s => {
+      const penaltyCode = s.penalty === '+2' ? 2000 : s.penalty === 'DNF' ? -1 : 0;
+      const timeMs = s.time;
+      const timestampSec = Math.floor((Number(s.id) || Date.now()) / 1000);
+      return [
+        [penaltyCode, timeMs],
+        s.scramble || '',
+        '',
+        timestampSec
+      ];
+    });
+
+    const exportData = {
+      [`session${sessionId}`]: csSolves,
+      properties: {
+        sessionData: JSON.stringify({
+          [sessionId]: {
+            name: `${puzzleId} - Session ${sessionId}`,
+            opt: {}
+          }
+        })
+      }
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `cstimer_export_${puzzleId}_session${sessionId}_${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="cstimer-layout">
       {/* PANNEAU LATÉRAL GAUCHE (Sessions, Tableau Current/Best & Historique façon csTimer) */}
@@ -504,6 +548,13 @@ export function SpeedTimer({ onBack }) {
             <option value="2">2 - {t('timer.session.practice')}</option>
             <option value="3">3 - {t('timer.session.warmup')}</option>
           </select>
+          <button
+            className="cstimer-mini-icon-btn"
+            onClick={handleExportCsTimer}
+            title={t('timer.exportCsTimer')}
+          >
+            <Download size={15} />
+          </button>
           <button
             className="cstimer-mini-icon-btn danger"
             onClick={clearCurrentSession}

@@ -14,6 +14,13 @@ export default defineConfig({
         main: resolve(rootDir, 'index.html'),
         english: resolve(rootDir, 'en/index.html'),
       },
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/three') || id.includes('node_modules/@react-three')) {
+            return 'three-vendor';
+          }
+        },
+      },
     },
   },
 })

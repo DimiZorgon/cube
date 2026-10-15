@@ -101,6 +101,8 @@ const messages = {
     'timer.session.practice': 'Entraînement',
     'timer.session.warmup': 'Échauffement',
     'timer.clearSession': 'Vider la session actuelle',
+    'timer.exportCsTimer': 'Exporter la session au format csTimer',
+    'timer.noSolvesToExport': 'Aucun temps à exporter dans cette session',
     'timer.current': 'Actuel',
     'timer.best': 'Meilleur',
     'timer.metric.time': 'Temps',

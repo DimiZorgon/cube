@@ -1,5 +1,5 @@
 // src/data/blind3x3Data.js
-import { invertAlgo } from '../utils/algoParser';
+import { invertAlgo } from '../utils/algoParser.js';
 
 export const BLD_ALGOS = {
   T_PERM: "(R U R' U') (R' F R2 U') R' U' (R U R' F')",

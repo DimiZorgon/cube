@@ -1,5 +1,4 @@
-// src/App.jsx
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Gamepad2,
@@ -16,38 +15,27 @@ import {
   Timer
 } from 'lucide-react';
 import './App.css';
-import { Cube2x2 } from './components/Cube2x2';
-import { Cube3x3 } from './components/Cube3x3';
-import { Cube4x4 } from './components/Cube4x4';
 import { MiniCube } from './components/MiniCube';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
-import { MethodeSimple2x2 } from './components/algos/MethodeSimple2x2';
-import { MethodeOrtega2x2 } from './components/algos/MethodeOrtega2x2';
-import { MethodeSimple3x3 } from './components/algos/MethodeSimple3x3';
-import { MethodeCFOP3x3 } from './components/algos/MethodeCFOP3x3';
-import { MethodeBlind3x3 } from './components/algos/MethodeBlind3x3';
-import { MethodeSimple4x4 } from './components/algos/MethodeSimple4x4';
-import { MethodeYau4x4 } from './components/algos/MethodeYau4x4';
-import { SpeedTimer } from './components/SpeedTimer';
-import { ENGLISH_TRANSLATION_READY } from './i18n';
+
+const Cube2x2 = lazy(() => import('./components/Cube2x2').then(m => ({ default: m.Cube2x2 })));
+const Cube3x3 = lazy(() => import('./components/Cube3x3').then(m => ({ default: m.Cube3x3 })));
+const Cube4x4 = lazy(() => import('./components/Cube4x4').then(m => ({ default: m.Cube4x4 })));
+const SpeedTimer = lazy(() => import('./components/SpeedTimer').then(m => ({ default: m.SpeedTimer })));
+const MethodeSimple2x2 = lazy(() => import('./components/algos/MethodeSimple2x2').then(m => ({ default: m.MethodeSimple2x2 })));
+const MethodeOrtega2x2 = lazy(() => import('./components/algos/MethodeOrtega2x2').then(m => ({ default: m.MethodeOrtega2x2 })));
+const MethodeSimple3x3 = lazy(() => import('./components/algos/MethodeSimple3x3').then(m => ({ default: m.MethodeSimple3x3 })));
+const MethodeCFOP3x3 = lazy(() => import('./components/algos/MethodeCFOP3x3').then(m => ({ default: m.MethodeCFOP3x3 })));
+const MethodeBlind3x3 = lazy(() => import('./components/algos/MethodeBlind3x3').then(m => ({ default: m.MethodeBlind3x3 })));
+const MethodeSimple4x4 = lazy(() => import('./components/algos/MethodeSimple4x4').then(m => ({ default: m.MethodeSimple4x4 })));
+const MethodeYau4x4 = lazy(() => import('./components/algos/MethodeYau4x4').then(m => ({ default: m.MethodeYau4x4 })));
 
 export default function App() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [mode, setMode] = useState('menu');
   const [trainingCase, setTrainingCase] = useState(null);
   const [returnMode, setReturnMode] = useState('play_menu');
 
-  if (i18n.resolvedLanguage === 'en' && !ENGLISH_TRANSLATION_READY) {
-    return (
-      <main className="main-menu-container">
-        <div className="menu-header-block">
-          <h1 className="main-menu-title">{t('english.title')}</h1>
-          <p className="main-menu-subtitle">{t('english.description')}</p>
-          <a className="menu-back-btn" href="/">{t('english.back')}</a>
-        </div>
-      </main>
-    );
-  }
 
   const handleTestAlgo = (caseData, currentAlgoPage) => {
     setTrainingCase(caseData);
@@ -67,24 +55,40 @@ export default function App() {
     }
   };
 
+  const renderLazy = (element) => (
+    <Suspense
+      fallback={
+        <div className="main-menu-container">
+          <div className="menu-header-block">
+            <div className="trainer-progress-pill" style={{ fontSize: '1rem', padding: '0.6rem 1.2rem' }}>
+              Chargement...
+            </div>
+          </div>
+        </div>
+      }
+    >
+      {element}
+    </Suspense>
+  );
+
   if (mode === '2x2') {
-    return <Cube2x2 onBack={handleBackFromGame} trainingCase={trainingCase} />;
+    return renderLazy(<Cube2x2 onBack={handleBackFromGame} trainingCase={trainingCase} />);
   }
 
   if (mode === '3x3') {
-    return <Cube3x3 onBack={handleBackFromGame} trainingCase={trainingCase} />;
+    return renderLazy(<Cube3x3 onBack={handleBackFromGame} trainingCase={trainingCase} />);
   }
 
   if (mode === '4x4') {
-    return <Cube4x4 onBack={handleBackFromGame} trainingCase={trainingCase} />;
+    return renderLazy(<Cube4x4 onBack={handleBackFromGame} trainingCase={trainingCase} />);
   }
 
   if (mode === 'timer') {
-    return <SpeedTimer onBack={() => setMode('play_menu')} />;
+    return renderLazy(<SpeedTimer onBack={() => setMode('play_menu')} />);
   }
 
   if (mode === 'simple2x2') {
-    return (
+    return renderLazy(
       <MethodeSimple2x2
         onBack={() => setMode('algos')}
         onTestAlgo={c => handleTestAlgo(c, 'simple2x2')}
@@ -93,7 +97,7 @@ export default function App() {
   }
 
   if (mode === 'ortega2x2') {
-    return (
+    return renderLazy(
       <MethodeOrtega2x2
         onBack={() => setMode('algos')}
         onTestAlgo={c => handleTestAlgo(c, 'ortega2x2')}
@@ -102,7 +106,7 @@ export default function App() {
   }
 
   if (mode === 'simple3x3') {
-    return (
+    return renderLazy(
       <MethodeSimple3x3
         onBack={() => setMode('algos')}
         onTestAlgo={c => handleTestAlgo(c, 'simple3x3')}
@@ -111,7 +115,7 @@ export default function App() {
   }
 
   if (mode === 'cfop3x3') {
-    return (
+    return renderLazy(
       <MethodeCFOP3x3
         onBack={() => setMode('algos')}
         onTestAlgo={c => handleTestAlgo(c, 'cfop3x3')}
@@ -120,7 +124,7 @@ export default function App() {
   }
 
   if (mode === 'blind3x3') {
-    return (
+    return renderLazy(
       <MethodeBlind3x3
         onBack={() => setMode('algos')}
         onTestAlgo={c => handleTestAlgo(c, 'blind3x3')}
@@ -129,7 +133,7 @@ export default function App() {
   }
 
   if (mode === 'simple4x4') {
-    return (
+    return renderLazy(
       <MethodeSimple4x4
         onBack={() => setMode('algos')}
         onTestAlgo={c => handleTestAlgo(c, 'simple4x4')}
@@ -138,7 +142,7 @@ export default function App() {
   }
 
   if (mode === 'yau4x4') {
-    return (
+    return renderLazy(
       <MethodeYau4x4
         onBack={() => setMode('algos')}
         onTestAlgo={c => handleTestAlgo(c, 'yau4x4')}
