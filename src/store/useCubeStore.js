@@ -5,20 +5,16 @@ import { checkIsSolved, generateInitialCubies } from '../utils/cubeMath';
 
 export { generateInitialCubies };
 
-const getDefaultMapping = (size) => size === 3 ? {
-    Right: { axis: 'x', value: 1, dirMultiplier: 1 },
-    Up: { axis: 'y', value: 1, dirMultiplier: 1 },
-    Front: { axis: 'z', value: 1, dirMultiplier: 1 },
-    Left: { axis: 'x', value: -1, dirMultiplier: 1 },
-    Down: { axis: 'y', value: -1, dirMultiplier: 1 },
-    Back: { axis: 'z', value: -1, dirMultiplier: 1 }
-} : {
-    Right: { axis: 'x', value: 0.5, dirMultiplier: 1 },
-    Up: { axis: 'y', value: 0.5, dirMultiplier: 1 },
-    Front: { axis: 'z', value: 0.5, dirMultiplier: 1 },
-    Left: { axis: 'x', value: -0.5, dirMultiplier: 1 },
-    Down: { axis: 'y', value: -0.5, dirMultiplier: 1 },
-    Back: { axis: 'z', value: -0.5, dirMultiplier: 1 }
+const getDefaultMapping = (size) => {
+    const outer = (size - 1) / 2;
+    return {
+        Right: { axis: 'x', value: outer, dirMultiplier: 1 },
+        Up: { axis: 'y', value: outer, dirMultiplier: 1 },
+        Front: { axis: 'z', value: outer, dirMultiplier: 1 },
+        Left: { axis: 'x', value: -outer, dirMultiplier: 1 },
+        Down: { axis: 'y', value: -outer, dirMultiplier: 1 },
+        Back: { axis: 'z', value: -outer, dirMultiplier: 1 }
+    };
 };
 
 export const useCubeStore = create((set) => ({

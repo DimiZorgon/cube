@@ -18,15 +18,14 @@ export function CubeDiagram2D({
     [size, alg, setup, yellowTop, maskMode]
   );
 
-  const coords = size === 2 ? [-0.5, 0.5] : [-1, 0, 1];
-  const outer = size === 2 ? 0.5 : 1;
+  const outer = (size - 1) / 2;
+  const coords = Array.from({ length: size }, (_, i) => i - outer);
 
   if (view === 'iso') {
-    // Sommet central (cx, cy) = coin Avant-Haut-Droit (+X, +Y, +Z)
     const cx = 70;
     const cy = 70;
     const n = size;
-    const scale = size === 2 ? 29 : 19.5;
+    const scale = size === 2 ? 29 : size === 4 ? 14.5 : 19.5;
     const cos30 = Math.cos(Math.PI / 6);
     const sin30 = Math.sin(Math.PI / 6);
 

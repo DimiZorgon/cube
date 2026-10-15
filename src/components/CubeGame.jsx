@@ -102,7 +102,12 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
     }
 
     const { Right, Left, Up, Down, Front, Back } = cameraMapping;
-    const allLayers = size === 2 ? [-0.5, 0.5] : [-1, 0, 1];
+    const outer = (size - 1) / 2;
+    const allLayers = Array.from({ length: size }, (_, i) => i - outer);
+    // Sur 3x3 la 2e couche d'un mouvement large est 0, sur 4x4 c'est ±0.5 (soit Dir.value / 3)
+    const wideLayers = (dirObj) => size === 4 ? [dirObj.value, dirObj.value / 3] : [dirObj.value, 0];
+    const innerLayer = (dirObj) => size === 4 ? [dirObj.value / 3] : [0];
+
     const runMove = (axis, val, dir) => handleMoveAction(axis, val, dir);
 
     switch (move) {
@@ -112,26 +117,49 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
       case "D": runMove(Down.axis, [Down.value], 1 * Down.dirMultiplier); break;
       case "F": runMove(Front.axis, [Front.value], 1 * Front.dirMultiplier); break;
       case "B": runMove(Back.axis, [Back.value], 1 * Back.dirMultiplier); break;
-      case "M": runMove(Left.axis, [0], 1 * Left.dirMultiplier); break;
+      case "M": runMove(Left.axis, size === 4 ? [-0.5, 0.5] : [0], 1 * Left.dirMultiplier); break;
+
       case "R'": runMove(Right.axis, [Right.value], -1 * Right.dirMultiplier); break;
       case "L'": runMove(Left.axis, [Left.value], -1 * Left.dirMultiplier); break;
       case "U'": runMove(Up.axis, [Up.value], -1 * Up.dirMultiplier); break;
       case "D'": runMove(Down.axis, [Down.value], -1 * Down.dirMultiplier); break;
       case "F'": runMove(Front.axis, [Front.value], -1 * Front.dirMultiplier); break;
       case "B'": runMove(Back.axis, [Back.value], -1 * Back.dirMultiplier); break;
-      case "M'": runMove(Left.axis, [0], -1 * Left.dirMultiplier); break;
-      case "r": runMove(Right.axis, [Right.value, 0], 1 * Right.dirMultiplier); break;
-      case "l": runMove(Left.axis, [Left.value, 0], 1 * Left.dirMultiplier); break;
-      case "u": runMove(Up.axis, [Up.value, 0], 1 * Up.dirMultiplier); break;
-      case "d": runMove(Down.axis, [Down.value, 0], 1 * Down.dirMultiplier); break;
-      case "f": runMove(Front.axis, [Front.value, 0], 1 * Front.dirMultiplier); break;
-      case "b": runMove(Back.axis, [Back.value, 0], 1 * Back.dirMultiplier); break;
-      case "r'": runMove(Right.axis, [Right.value, 0], -1 * Right.dirMultiplier); break;
-      case "l'": runMove(Left.axis, [Left.value, 0], -1 * Left.dirMultiplier); break;
-      case "u'": runMove(Up.axis, [Up.value, 0], -1 * Up.dirMultiplier); break;
-      case "d'": runMove(Down.axis, [Down.value, 0], -1 * Down.dirMultiplier); break;
-      case "f'": runMove(Front.axis, [Front.value, 0], -1 * Front.dirMultiplier); break;
-      case "b'": runMove(Back.axis, [Back.value, 0], -1 * Back.dirMultiplier); break;
+      case "M'": runMove(Left.axis, size === 4 ? [-0.5, 0.5] : [0], -1 * Left.dirMultiplier); break;
+
+      case "r":
+      case "Rw": runMove(Right.axis, wideLayers(Right), 1 * Right.dirMultiplier); break;
+      case "l":
+      case "Lw": runMove(Left.axis, wideLayers(Left), 1 * Left.dirMultiplier); break;
+      case "u":
+      case "Uw": runMove(Up.axis, wideLayers(Up), 1 * Up.dirMultiplier); break;
+      case "d":
+      case "Dw": runMove(Down.axis, wideLayers(Down), 1 * Down.dirMultiplier); break;
+      case "f":
+      case "Fw": runMove(Front.axis, wideLayers(Front), 1 * Front.dirMultiplier); break;
+      case "b":
+      case "Bw": runMove(Back.axis, wideLayers(Back), 1 * Back.dirMultiplier); break;
+
+      case "r'":
+      case "Rw'": runMove(Right.axis, wideLayers(Right), -1 * Right.dirMultiplier); break;
+      case "l'":
+      case "Lw'": runMove(Left.axis, wideLayers(Left), -1 * Left.dirMultiplier); break;
+      case "u'":
+      case "Uw'": runMove(Up.axis, wideLayers(Up), -1 * Up.dirMultiplier); break;
+      case "d'":
+      case "Dw'": runMove(Down.axis, wideLayers(Down), -1 * Down.dirMultiplier); break;
+      case "f'":
+      case "Fw'": runMove(Front.axis, wideLayers(Front), -1 * Front.dirMultiplier); break;
+      case "b'":
+      case "Bw'": runMove(Back.axis, wideLayers(Back), -1 * Back.dirMultiplier); break;
+
+      case "2R": runMove(Right.axis, innerLayer(Right), 1 * Right.dirMultiplier); break;
+      case "2R'": runMove(Right.axis, innerLayer(Right), -1 * Right.dirMultiplier); break;
+      case "2L": runMove(Left.axis, innerLayer(Left), 1 * Left.dirMultiplier); break;
+      case "2L'": runMove(Left.axis, innerLayer(Left), -1 * Left.dirMultiplier); break;
+      case "2U": runMove(Up.axis, innerLayer(Up), 1 * Up.dirMultiplier); break;
+      case "2U'": runMove(Up.axis, innerLayer(Up), -1 * Up.dirMultiplier); break;
+
       case "x": runMove(Right.axis, allLayers, 1 * Right.dirMultiplier); break;
       case "x'": runMove(Right.axis, allLayers, -1 * Right.dirMultiplier); break;
       case "y": runMove(Up.axis, allLayers, 1 * Up.dirMultiplier); break;

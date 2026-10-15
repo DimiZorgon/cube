@@ -8,19 +8,23 @@ import {
   Zap,
   Layers,
   Flame,
+  Grid,
+  Cpu,
   ChevronRight
 } from 'lucide-react';
 import './App.css';
 import { Cube2x2 } from './components/Cube2x2';
 import { Cube3x3 } from './components/Cube3x3';
+import { Cube4x4 } from './components/Cube4x4';
 import { MiniCube } from './components/MiniCube';
 import { MethodeSimple2x2 } from './components/algos/MethodeSimple2x2';
 import { MethodeOrtega2x2 } from './components/algos/MethodeOrtega2x2';
 import { MethodeSimple3x3 } from './components/algos/MethodeSimple3x3';
 import { MethodeCFOP3x3 } from './components/algos/MethodeCFOP3x3';
+import { MethodeSimple4x4 } from './components/algos/MethodeSimple4x4';
+import { MethodeYau4x4 } from './components/algos/MethodeYau4x4';
 
 export default function App() {
-  // 'menu' | 'play_menu' | 'algos' | '2x2' | '3x3' | 'simple2x2' | 'ortega2x2' | 'simple3x3' | 'cfop3x3'
   const [mode, setMode] = useState('menu');
   const [trainingCase, setTrainingCase] = useState(null);
   const [returnMode, setReturnMode] = useState('play_menu');
@@ -28,7 +32,9 @@ export default function App() {
   const handleTestAlgo = (caseData, currentAlgoPage) => {
     setTrainingCase(caseData);
     setReturnMode(currentAlgoPage);
-    setMode(caseData.size === 2 ? '2x2' : '3x3');
+    if (caseData.size === 2) setMode('2x2');
+    else if (caseData.size === 4) setMode('4x4');
+    else setMode('3x3');
   };
 
   const handleBackFromGame = () => {
@@ -47,6 +53,10 @@ export default function App() {
 
   if (mode === '3x3') {
     return <Cube3x3 onBack={handleBackFromGame} trainingCase={trainingCase} />;
+  }
+
+  if (mode === '4x4') {
+    return <Cube4x4 onBack={handleBackFromGame} trainingCase={trainingCase} />;
   }
 
   if (mode === 'simple2x2') {
@@ -85,15 +95,33 @@ export default function App() {
     );
   }
 
-  // Sous-menu JOUER (2x2, 3x3 et futurs cubes)
+  if (mode === 'simple4x4') {
+    return (
+      <MethodeSimple4x4
+        onBack={() => setMode('algos')}
+        onTestAlgo={c => handleTestAlgo(c, 'simple4x4')}
+      />
+    );
+  }
+
+  if (mode === 'yau4x4') {
+    return (
+      <MethodeYau4x4
+        onBack={() => setMode('algos')}
+        onTestAlgo={c => handleTestAlgo(c, 'yau4x4')}
+      />
+    );
+  }
+
+  // Sous-menu JOUER (2x2, 3x3, 4x4)
   if (mode === 'play_menu') {
     return (
       <div className="main-menu-container">
         <div className="menu-header-block">
-          <span className="menu-eyebrow">Rubik's Cube 3D </span>
-          <h1 className="main-menu-title">Choisissez un cube</h1>
+          <span className="menu-eyebrow">Simulateur 3D</span>
+          <h1 className="main-menu-title">Choisissez votre Cube</h1>
           <p className="main-menu-subtitle">
-            Choisissez un format et lancez votre partie.
+            Sélectionnez un format pour lancer une session chronométrée ou libre.
           </p>
         </div>
 
@@ -107,8 +135,8 @@ export default function App() {
           >
             <MiniCube size={2} />
             <div className="menu-card-Meta">
-              <span className="menu-card-title">Cube 2 × 2</span>
-              <span className="menu-card-sub">Petit format : pocket cube</span>
+              <span className="menu-card-title">Pocket Cube 2x2</span>
+              <span className="menu-card-sub">Rapide & nerveux</span>
             </div>
           </button>
 
@@ -121,8 +149,22 @@ export default function App() {
           >
             <MiniCube size={3} />
             <div className="menu-card-Meta">
-              <span className="menu-card-title">Cube 3 × 3</span>
-              <span className="menu-card-sub">Format classique</span>
+              <span className="menu-card-title">Rubik&apos;s Cube 3x3</span>
+              <span className="menu-card-sub">Format classique WCA</span>
+            </div>
+          </button>
+
+          <button
+            className="menu-btn cube-select-card"
+            onClick={() => {
+              setTrainingCase(null);
+              setMode('4x4');
+            }}
+          >
+            <MiniCube size={4} />
+            <div className="menu-card-Meta">
+              <span className="menu-card-title">Master Cube 4x4</span>
+              <span className="menu-card-sub">Centres mobiles & Parités</span>
             </div>
           </button>
         </div>
@@ -135,15 +177,15 @@ export default function App() {
     );
   }
 
-  // Sous-menu ALGORITHMES
+  // Sous-menu ALGORITHMES (2x2, 3x3, 4x4)
   if (mode === 'algos') {
     return (
       <div className="main-menu-container">
         <div className="menu-header-block">
-          <span className="menu-eyebrow">Guides et entraînement</span>
-          <h1 className="main-menu-title">Méthodes de résolution</h1>
+          <span className="menu-eyebrow">Apprentissage & Entraînement</span>
+          <h1 className="main-menu-title">Guides & Algorithmes</h1>
           <p className="main-menu-subtitle">
-            Découvrez les étapes de chaque méthode et entraînez-vous sur des cas.
+            Explorez les méthodes pas à pas ou entraînez-vous sur les cas officiels.
           </p>
         </div>
 
@@ -153,10 +195,10 @@ export default function App() {
               <Compass size={26} />
             </div>
             <div className="method-card-body">
-              <div className="method-card-tag">2 × 2 · Débutant</div>
-              <h3 className="method-card-title">Méthode débutant · 2 × 2</h3>
+              <div className="method-card-tag">2x2 • Débutant</div>
+              <h3 className="method-card-title">Méthode Simple 2x2</h3>
               <p className="method-card-desc">
-                Apprenez à résoudre le 2 × 2 en trois étapes illustrées.
+                Résolvez le 2x2 pas à pas avec 3 étapes visuelles ultra simples.
               </p>
             </div>
             <ChevronRight size={20} className="method-card-arrow" />
@@ -167,10 +209,10 @@ export default function App() {
               <Zap size={26} />
             </div>
             <div className="method-card-body">
-              <div className="method-card-tag">2 × 2 · Intermédiaire</div>
-              <h3 className="method-card-title">Méthode Ortega · 2 × 2</h3>
+              <div className="method-card-tag">2x2 • Intermédiaire / Speed</div>
+              <h3 className="method-card-title">Méthode Ortega 2x2</h3>
               <p className="method-card-desc">
-                Apprenez les étapes Ortega et entraînez-vous aux cas OLL et PBL.
+                1ère face, 7 OLL et 5 PBL pour descendre sous les 5 secondes.
               </p>
             </div>
             <ChevronRight size={20} className="method-card-arrow" />
@@ -181,10 +223,10 @@ export default function App() {
               <Layers size={26} />
             </div>
             <div className="method-card-body">
-              <div className="method-card-tag">3 × 3 · Débutant</div>
-              <h3 className="method-card-title">Méthode débutant · 3 × 3</h3>
+              <div className="method-card-tag">3x3 • Débutant</div>
+              <h3 className="method-card-title">Méthode Simple 3x3</h3>
               <p className="method-card-desc">
-                Résolvez le 3 × 3 en sept étapes illustrées.
+                Le guide complet en 7 étapes illustrées (Marguerite, Belge, Chaise).
               </p>
             </div>
             <ChevronRight size={20} className="method-card-arrow" />
@@ -195,10 +237,38 @@ export default function App() {
               <Flame size={26} />
             </div>
             <div className="method-card-body">
-              <div className="method-card-tag">3 × 3 · Avancé</div>
-              <h3 className="method-card-title">Méthode CFOP · 3 × 3</h3>
+              <div className="method-card-tag">3x3 • Avancé (Fridrich)</div>
+              <h3 className="method-card-title">Méthode CFOP 3x3</h3>
               <p className="method-card-desc">
-                Retrouvez les algorithmes F2L, OLL et PLL de la méthode CFOP.
+                Répertoire complet F2L, 2-Look & Full OLL (57) et PLL (21).
+              </p>
+            </div>
+            <ChevronRight size={20} className="method-card-arrow" />
+          </button>
+
+          <button className="method-select-card" onClick={() => setMode('simple4x4')}>
+            <div className="method-card-icon cyan">
+              <Grid size={26} />
+            </div>
+            <div className="method-card-body">
+              <div className="method-card-tag">4x4 • Débutant (Réduction)</div>
+              <h3 className="method-card-title">Méthode Simple 4x4</h3>
+              <p className="method-card-desc">
+                6 Centres, paires d&apos;arêtes, réduction en 3x3 et Parités OLL/PLL.
+              </p>
+            </div>
+            <ChevronRight size={20} className="method-card-arrow" />
+          </button>
+
+          <button className="method-select-card" onClick={() => setMode('yau4x4')}>
+            <div className="method-card-icon amber">
+              <Cpu size={26} />
+            </div>
+            <div className="method-card-body">
+              <div className="method-card-tag">4x4 • Avancé (Speed / CFOP)</div>
+              <h3 className="method-card-title">Méthode Yau 4x4</h3>
+              <p className="method-card-desc">
+                Croix directe, 4 derniers centres, appariement 3-2-3 et Parités Speed.
               </p>
             </div>
             <ChevronRight size={20} className="method-card-arrow" />
@@ -213,14 +283,13 @@ export default function App() {
     );
   }
 
-  // MENU PRINCIPAL (2 Pôles : Jouer & Algorithmes)
   return (
     <div className="main-menu-container">
       <div className="menu-header-block">
-        <span className="menu-eyebrow">Rubik's cube 3D</span>
+        <span className="menu-eyebrow">Application Interactive 3D</span>
         <h1 className="main-menu-title">Cube Studio</h1>
         <p className="main-menu-subtitle">
-          2 × 2 ou 3 × 3 chronométré, ou méthode de résolution.
+          Entraînez-vous au Speedcubing, visualisez les algorithmes en 3D et maîtrisez chaque méthode.
         </p>
       </div>
 
@@ -235,7 +304,7 @@ export default function App() {
             </div>
             <div className="menu-card-Meta">
               <span className="menu-card-title">Jouer</span>
-              <span className="menu-card-sub"> 2 × 2 et 3 × 3</span>
+              <span className="menu-card-sub">Simulateur 2x2, 3x3 & 4x4</span>
             </div>
           </div>
         </button>
@@ -249,8 +318,8 @@ export default function App() {
               <BookOpen size={24} />
             </div>
             <div className="menu-card-Meta">
-              <span className="menu-card-title">Apprendre</span>
-              <span className="menu-card-sub">Guides débutant, Ortega et CFOP</span>
+              <span className="menu-card-title">Algorithmes</span>
+              <span className="menu-card-sub">Guides 2x2, 3x3, CFOP, Ortega & Yau</span>
             </div>
           </div>
         </button>

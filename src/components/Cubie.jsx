@@ -3,6 +3,8 @@ import React from 'react';
 
 export function Cubie({ position, initialPosition, rotation, faceColors }) {
     const [ix, iy, iz] = initialPosition;
+    const outer = Math.max(Math.abs(ix), Math.abs(iy), Math.abs(iz), 0.5);
+    const threshold = outer - 0.1;
 
     const COLORS = {
         right: "#B71234",  // rouge
@@ -19,12 +21,12 @@ export function Cubie({ position, initialPosition, rotation, faceColors }) {
             return faceColors;
         }
         return [
-            ix > 0.1 ? COLORS.right : COLORS.core, // droite
-            ix < -0.1 ? COLORS.left : COLORS.core, // gauche
-            iy > 0.1 ? COLORS.up : COLORS.core,    // haut
-            iy < -0.1 ? COLORS.down : COLORS.core, // bas
-            iz > 0.1 ? COLORS.front : COLORS.core, // avant
-            iz < -0.1 ? COLORS.back : COLORS.core, // arriere
+            ix > threshold ? COLORS.right : COLORS.core,  // droite
+            ix < -threshold ? COLORS.left : COLORS.core,  // gauche
+            iy > threshold ? COLORS.up : COLORS.core,     // haut
+            iy < -threshold ? COLORS.down : COLORS.core,  // bas
+            iz > threshold ? COLORS.front : COLORS.core,  // avant
+            iz < -threshold ? COLORS.back : COLORS.core,  // arriere
         ];
     };
     const colors = getColors();

@@ -66,49 +66,71 @@ export function invertAlgo(algString, includeOptional = true) {
 
 export function getMoveParams(move, size = 3) {
   if (!move) return null;
-  const isDouble = move.includes('2');
-  const isPrime = move.includes("'");
-  const base = move.replace(/[2']/g, '');
 
-  const outer = size === 2 ? 0.5 : 1;
-  const allLayers = size === 2 ? [-0.5, 0.5] : [-1, 0, 1];
-  const widePos = size === 2 ? [0.5] : [1, 0];
-  const wideNeg = size === 2 ? [-0.5] : [-1, 0];
+  // On distingue un préfixe "2" (ex: "2R2" -> tranche interne R) du suffixe "2" (double tour)
+  let working = move;
+  let isInnerSlice = false;
+  if (/^2[RLUDFB]/i.test(working)) {
+    isInnerSlice = true;
+    working = working.slice(1);
+  }
+
+  const isDouble = working.includes('2');
+  const isPrime = working.includes("'");
+  const base = working.replace(/[2']/g, '');
+
+  const outer = (size - 1) / 2; // 0.5 (2x2), 1 (3x3), 1.5 (4x4)
+  const inner = size === 4 ? 0.5 : 0;
+  const allLayers = Array.from({ length: size }, (_, i) => i - outer);
+  const widePos = size === 2 ? [0.5] : [outer, inner];
+  const wideNeg = size === 2 ? [-0.5] : [-outer, -inner];
 
   let axis = 'y';
   let value = [outer];
   let baseDir = 1;
 
-  switch (base) {
-    case 'R': axis = 'x'; value = [outer]; baseDir = 1; break;
-    case 'L': axis = 'x'; value = [-outer]; baseDir = -1; break;
-    case 'U': axis = 'y'; value = [outer]; baseDir = 1; break;
-    case 'D': axis = 'y'; value = [-outer]; baseDir = -1; break;
-    case 'F': axis = 'z'; value = [outer]; baseDir = 1; break;
-    case 'B': axis = 'z'; value = [-outer]; baseDir = -1; break;
+  if (isInnerSlice) {
+    switch (base.toUpperCase()) {
+      case 'R': axis = 'x'; value = [inner]; baseDir = 1; break;
+      case 'L': axis = 'x'; value = [-inner]; baseDir = -1; break;
+      case 'U': axis = 'y'; value = [inner]; baseDir = 1; break;
+      case 'D': axis = 'y'; value = [-inner]; baseDir = -1; break;
+      case 'F': axis = 'z'; value = [inner]; baseDir = 1; break;
+      case 'B': axis = 'z'; value = [-inner]; baseDir = -1; break;
+      default: return null;
+    }
+  } else {
+    switch (base) {
+      case 'R': axis = 'x'; value = [outer]; baseDir = 1; break;
+      case 'L': axis = 'x'; value = [-outer]; baseDir = -1; break;
+      case 'U': axis = 'y'; value = [outer]; baseDir = 1; break;
+      case 'D': axis = 'y'; value = [-outer]; baseDir = -1; break;
+      case 'F': axis = 'z'; value = [outer]; baseDir = 1; break;
+      case 'B': axis = 'z'; value = [-outer]; baseDir = -1; break;
 
-    case 'r':
-    case 'Rw': axis = 'x'; value = widePos; baseDir = 1; break;
-    case 'l':
-    case 'Lw': axis = 'x'; value = wideNeg; baseDir = -1; break;
-    case 'u':
-    case 'Uw': axis = 'y'; value = widePos; baseDir = 1; break;
-    case 'd':
-    case 'Dw': axis = 'y'; value = wideNeg; baseDir = -1; break;
-    case 'f':
-    case 'Fw': axis = 'z'; value = widePos; baseDir = 1; break;
-    case 'b':
-    case 'Bw': axis = 'z'; value = wideNeg; baseDir = -1; break;
+      case 'r':
+      case 'Rw': axis = 'x'; value = widePos; baseDir = 1; break;
+      case 'l':
+      case 'Lw': axis = 'x'; value = wideNeg; baseDir = -1; break;
+      case 'u':
+      case 'Uw': axis = 'y'; value = widePos; baseDir = 1; break;
+      case 'd':
+      case 'Dw': axis = 'y'; value = wideNeg; baseDir = -1; break;
+      case 'f':
+      case 'Fw': axis = 'z'; value = widePos; baseDir = 1; break;
+      case 'b':
+      case 'Bw': axis = 'z'; value = wideNeg; baseDir = -1; break;
 
-    case 'M': axis = 'x'; value = [0]; baseDir = -1; break;
-    case 'E': axis = 'y'; value = [0]; baseDir = -1; break;
-    case 'S': axis = 'z'; value = [0]; baseDir = 1; break;
+      case 'M': axis = 'x'; value = size === 4 ? [-0.5, 0.5] : [0]; baseDir = -1; break;
+      case 'E': axis = 'y'; value = size === 4 ? [-0.5, 0.5] : [0]; baseDir = -1; break;
+      case 'S': axis = 'z'; value = size === 4 ? [-0.5, 0.5] : [0]; baseDir = 1; break;
 
-    case 'x': axis = 'x'; value = allLayers; baseDir = 1; break;
-    case 'y': axis = 'y'; value = allLayers; baseDir = 1; break;
-    case 'z': axis = 'z'; value = allLayers; baseDir = 1; break;
-    default:
-      return null;
+      case 'x': axis = 'x'; value = allLayers; baseDir = 1; break;
+      case 'y': axis = 'y'; value = allLayers; baseDir = 1; break;
+      case 'z': axis = 'z'; value = allLayers; baseDir = 1; break;
+      default:
+        return null;
+    }
   }
 
   const direction = isPrime ? -baseDir : baseDir;
@@ -168,13 +190,16 @@ export function applyAlgoInstant(cubies, algString, size = 3, includeOptional = 
 
 export function getBaseCubieColors(initialPosition) {
   const [ix, iy, iz] = initialPosition;
+  const outer = Math.max(Math.abs(ix), Math.abs(iy), Math.abs(iz), 0.5);
+  const threshold = outer - 0.1;
+
   return [
-    ix > 0.1 ? STANDARD_COLORS.right : STANDARD_COLORS.core,
-    ix < -0.1 ? STANDARD_COLORS.left : STANDARD_COLORS.core,
-    iy > 0.1 ? STANDARD_COLORS.up : STANDARD_COLORS.core,
-    iy < -0.1 ? STANDARD_COLORS.down : STANDARD_COLORS.core,
-    iz > 0.1 ? STANDARD_COLORS.front : STANDARD_COLORS.core,
-    iz < -0.1 ? STANDARD_COLORS.back : STANDARD_COLORS.core
+    ix > threshold ? STANDARD_COLORS.right : STANDARD_COLORS.core,
+    ix < -threshold ? STANDARD_COLORS.left : STANDARD_COLORS.core,
+    iy > threshold ? STANDARD_COLORS.up : STANDARD_COLORS.core,
+    iy < -threshold ? STANDARD_COLORS.down : STANDARD_COLORS.core,
+    iz > threshold ? STANDARD_COLORS.front : STANDARD_COLORS.core,
+    iz < -threshold ? STANDARD_COLORS.back : STANDARD_COLORS.core
   ];
 }
 
@@ -189,19 +214,21 @@ export function createCaseCubies({
   let cubies = generateInitialCubies(size);
 
   if (yellowTop) {
-    // Pour les F2L : Jaune en haut (+Y), Rouge devant (+Z) et Vert à droite (+X) -> "x2 y"
-    // Pour OLL/PLL : "x2 y'" pour conserver l'alignement exact des couleurs latérales PLL
     const orientAlg = maskMode === 'f2l' ? 'x2 y' : "x2 y'";
     cubies = applyAlgoInstant(cubies, orientAlg, size, true);
   }
 
-  const outer = size === 2 ? 0.5 : 1;
+  const outer = (size - 1) / 2;
   const firstLayerY = yellowTop ? -outer : outer;
 
   cubies = cubies.map(c => {
     const baseColors = getBaseCubieColors(c.initialPosition);
     const [px, py, pz] = c.position;
     const euler = new THREE.Euler(c.rotation[0], c.rotation[1], c.rotation[2]);
+
+    const outerCount = [px, py, pz].filter(v => Math.abs(Math.abs(v) - outer) < 0.1).length;
+    const isCenterPiece = outerCount === 1;
+    const isEdgePiece = outerCount === 2;
 
     const faceColors = baseColors.map((col, idx) => {
       if (col === STANDARD_COLORS.core) return col;
@@ -216,34 +243,43 @@ export function createCaseCubies({
         return col;
       }
 
+      if (maskMode === 'centers') {
+        // Pour l'étape des centres du 4x4 : seuls les centres (blocs 2x2) sont colorés
+        return isCenterPiece ? col : STANDARD_COLORS.grey;
+      }
+
+      if (maskMode === 'edges_4x4') {
+        // Pour l'appariement des arêtes du 4x4 : centres et arêtes colorés, coins grisés
+        return (isCenterPiece || isEdgePiece) ? col : STANDARD_COLORS.grey;
+      }
+
+      if (maskMode === 'yau_cross') {
+        // Centres + les 3 arêtes de la croix blanche en bas
+        const isBottomEdge = Math.abs(py - firstLayerY) < 0.1 && isEdgePiece;
+        return (isCenterPiece || isBottomEdge) ? col : STANDARD_COLORS.grey;
+      }
+
       if (maskMode === 'f2l') {
-        const isFrontRightPair = px > 0.1 && pz > 0.1 && py < 0.1;
+        const isFrontRightPair = px > outer - 0.1 && pz > outer - 0.1 && py < outer - 0.1;
         if (isFrontRightPair) return col;
         if (Math.abs(py - outer) < 0.1) {
-          const isCenter = Math.abs(px) < 0.1 && Math.abs(pz) < 0.1;
-          return isCenter ? col : STANDARD_COLORS.grey;
+          return isCenterPiece ? col : STANDARD_COLORS.grey;
         }
         return col;
       }
 
       if (maskMode === 'cross') {
-        const zeros = [px, py, pz].filter(v => Math.abs(v) < 0.1).length;
-        const isCenter = zeros === 2;
-        const isCrossEdge = Math.abs(py - firstLayerY) < 0.1 && zeros === 1;
-        return (isCenter || isCrossEdge) ? col : STANDARD_COLORS.grey;
+        const isCrossEdge = Math.abs(py - firstLayerY) < 0.1 && isEdgePiece;
+        return (isCenterPiece || isCrossEdge) ? col : STANDARD_COLORS.grey;
       }
 
       if (maskMode === 'first_layer') {
-        const zeros = [px, py, pz].filter(v => Math.abs(v) < 0.1).length;
-        const isCenter = size === 3 && zeros === 2;
-        if (Math.abs(py - firstLayerY) < 0.1 || isCenter) return col;
+        if (Math.abs(py - firstLayerY) < 0.1 || isCenterPiece) return col;
         return STANDARD_COLORS.grey;
       }
 
       if (maskMode === 'f2l_all') {
-        const zeros = [px, py, pz].filter(v => Math.abs(v) < 0.1).length;
-        const isCenter = zeros === 2;
-        if (py < 0.1 || isCenter) return col;
+        if (py < outer - 0.1 || isCenterPiece) return col;
         return STANDARD_COLORS.grey;
       }
 
@@ -254,11 +290,8 @@ export function createCaseCubies({
   });
 
   if (applySetup) {
-    // En F2L, si l'algorithme contient des rotations de cube (y, y') ou de tranche équatoriale (d),
-    // on pré-oriente l'état résolu afin qu'après l'application de l'inverse, les centres Rouge (F)
-    // et Vert (R) ainsi que le slot cible reviennent exactement devant à droite.
     if (maskMode === 'f2l' && setup === null) {
-      const allLayers = size === 2 ? [-0.5, 0.5] : [-1, 0, 1];
+      const allLayers = Array.from({ length: size }, (_, i) => i - outer);
       const forwardTokens = parseAlgoTokens(alg).filter(t => !t.isOptional);
       for (const tok of forwardTokens) {
         const params = getMoveParams(tok.move, size);

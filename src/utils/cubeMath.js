@@ -1,51 +1,100 @@
+// src/utils/cubeMath.js
 import * as THREE from 'three';
 
+const LOCAL_NORMALS = [
+    new THREE.Vector3(1, 0, 0),  // 0: Right (+X)
+    new THREE.Vector3(-1, 0, 0), // 1: Left (-X)
+    new THREE.Vector3(0, 1, 0),  // 2: Up (+Y)
+    new THREE.Vector3(0, -1, 0), // 3: Down (-Y)
+    new THREE.Vector3(0, 0, 1),  // 4: Front (+Z)
+    new THREE.Vector3(0, 0, -1)  // 5: Back (-Z)
+];
+
+const OUTER_FACES = [
+    { axisIndex: 0, sign: 1, normal: new THREE.Vector3(1, 0, 0) },
+    { axisIndex: 0, sign: -1, normal: new THREE.Vector3(-1, 0, 0) },
+    { axisIndex: 1, sign: 1, normal: new THREE.Vector3(0, 1, 0) },
+    { axisIndex: 1, sign: -1, normal: new THREE.Vector3(0, -1, 0) },
+    { axisIndex: 2, sign: 1, normal: new THREE.Vector3(0, 0, 1) },
+    { axisIndex: 2, sign: -1, normal: new THREE.Vector3(0, 0, -1) }
+];
+
+// Retourne l'identifiant des 6 facettes d'origine d'un cubie
+const getInitialFaceStickers = (initialPosition, outer) => {
+    const [ix, iy, iz] = initialPosition;
+    const t = outer - 0.1;
+    return [
+        ix > t ? 'R' : null,
+        ix < -t ? 'L' : null,
+        iy > t ? 'U' : null,
+        iy < -t ? 'D' : null,
+        iz > t ? 'F' : null,
+        iz < -t ? 'B' : null
+    ];
+};
+
 export const checkIsSolved = (cubies) => {
-    if (cubies.length === 0) return true;
+    if (!cubies || cubies.length === 0) return true;
 
-    const firstCubie = cubies[0];
-    const qGlobal = new THREE.Quaternion().setFromEuler(
-        new THREE.Euler(firstCubie.rotation[0], firstCubie.rotation[1], firstCubie.rotation[2])
-    );
+    const outer = Math.max(...cubies.map(c => Math.abs(c.initialPosition[0])));
 
-    return cubies.every(c => {
-        const expectedPos = new THREE.Vector3(...c.initialPosition).applyQuaternion(qGlobal);
-        if (Math.abs(c.position[0] - expectedPos.x) > 0.1 ||
-            Math.abs(c.position[1] - expectedPos.y) > 0.1 ||
-            Math.abs(c.position[2] - expectedPos.z) > 0.1) {
-            return false;
+    // Pour chacune des 6 faces extérieures du cube, toutes les facettes orientées
+    // vers l'extérieur doivent appartenir à la même couleur d'origine.
+    for (const face of OUTER_FACES) {
+        const targetCoord = face.sign * outer;
+        const faceCubies = cubies.filter(
+            c => Math.abs(c.position[face.axisIndex] - targetCoord) < 0.1
+        );
+
+        let referenceSticker = null;
+
+        for (const cubie of faceCubies) {
+            const stickers = getInitialFaceStickers(cubie.initialPosition, outer);
+            const euler = new THREE.Euler(cubie.rotation[0], cubie.rotation[1], cubie.rotation[2]);
+
+            let visibleSticker = null;
+            for (let i = 0; i < 6; i++) {
+                const worldNormal = LOCAL_NORMALS[i].clone().applyEuler(euler);
+                if (worldNormal.dot(face.normal) > 0.9) {
+                    visibleSticker = stickers[i];
+                    break;
+                }
+            }
+
+            if (!visibleSticker) return false;
+            if (referenceSticker === null) {
+                referenceSticker = visibleSticker;
+            } else if (visibleSticker !== referenceSticker) {
+                return false;
+            }
         }
+    }
 
-        const zeros = c.initialPosition.filter(v => v === 0).length;
-        if (zeros < 2) {
-            const qC = new THREE.Quaternion().setFromEuler(
-                new THREE.Euler(c.rotation[0], c.rotation[1], c.rotation[2])
-            );
-            const dot = Math.abs(qGlobal.dot(qC));
-            if (dot < 0.99) return false;
-        }
-
-        return true;
-    });
+    return true;
 };
 
 export const generateInitialCubies = (size = 3) => {
     const cubies = [];
-    if (size === 3) {
-        for (let x = -1; x <= 1; x++) {
-            for (let y = -1; y <= 1; y++) {
-                for (let z = -1; z <= 1; z++) {
-                    cubies.push({ id: `cubie_${x}${y}${z}`, position: [x, y, z], rotation: [0, 0, 0], initialPosition: [x, y, z] });
-                }
-            }
-        }
-    } else if (size === 2) {
-        const coords = [-0.5, 0.5];
-        for (let x of coords) {
-            for (let y of coords) {
-                for (let z of coords) {
-                    cubies.push({ id: `cubie_${x}${y}${z}`, position: [x, y, z], rotation: [0, 0, 0], initialPosition: [x, y, z] });
-                }
+    const outer = (size - 1) / 2;
+    const coords = Array.from({ length: size }, (_, i) => i - outer);
+
+    for (const x of coords) {
+        for (const y of coords) {
+            for (const z of coords) {
+                // On ignore les pièces purement internes invisibles (cœur du 3x3 ou du 4x4)
+                const isSurface =
+                    Math.abs(Math.abs(x) - outer) < 0.1 ||
+                    Math.abs(Math.abs(y) - outer) < 0.1 ||
+                    Math.abs(Math.abs(z) - outer) < 0.1;
+
+                if (!isSurface) continue;
+
+                cubies.push({
+                    id: `cubie_${x}_${y}_${z}`,
+                    position: [x, y, z],
+                    rotation: [0, 0, 0],
+                    initialPosition: [x, y, z]
+                });
             }
         }
     }

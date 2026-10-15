@@ -200,7 +200,7 @@ export function AlgoDemoModal({
     setIsPlaying(prev => !prev);
   };
 
-  const camPos = size === 2 ? [3.4, 3.0, 3.6] : [4.3, 3.8, 4.6];
+  const camPos = size === 2 ? [3.4, 3.0, 3.6] : size === 4 ? [5.5, 4.8, 5.8] : [4.3, 3.8, 4.6];
   const progressPercent = tokens.length > 0 ? Math.round((stepIndex / tokens.length) * 100) : 0;
 
   return (
