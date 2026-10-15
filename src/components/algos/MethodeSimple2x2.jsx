@@ -5,7 +5,6 @@ import { ArrowLeft, ChevronUp, ChevronDown, Play, Gamepad2 } from 'lucide-react'
 import { SIMPLE_2X2_STEPS } from '../../data/simple2x2Data';
 import { CubeDiagram2D } from './CubeDiagram2D';
 import { AlgoDemoModal } from './AlgoDemoModal';
-import { LanguageSwitcher } from '../LanguageSwitcher';
 import { localizeSteps } from '../../i18n/localizeData';
 
 export function MethodeSimple2x2({ onBack, onTestAlgo }) {
@@ -28,7 +27,7 @@ export function MethodeSimple2x2({ onBack, onTestAlgo }) {
         <div className="trainer-topbar-center">
           <h1 className="trainer-topbar-title">{t('method.simple2x2.title')}</h1>
         </div>
-        <LanguageSwitcher className="trainer-icon-btn" />
+        <div style={{ width: '90px' }} />
       </header>
 
       <main className="trainer-content accordion-container">

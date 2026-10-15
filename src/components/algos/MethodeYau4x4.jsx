@@ -5,7 +5,6 @@ import { ArrowLeft, Check, Play, Gamepad2 } from 'lucide-react';
 import { YAU_SECTIONS, YAU_DATA } from '../../data/yau4x4Data';
 import { CubeDiagram2D } from './CubeDiagram2D';
 import { AlgoDemoModal } from './AlgoDemoModal';
-import { LanguageSwitcher } from '../LanguageSwitcher';
 import { localizeCases, localizeGroups } from '../../i18n/localizeData';
 
 const LEARNED_STORAGE_KEY = 'rubiks_learned_algos';
@@ -51,7 +50,7 @@ export function MethodeYau4x4({ onBack, onTestAlgo }) {
         <div className="trainer-topbar-center">
           <h1 className="trainer-topbar-title">{t('method.yau4x4.title')}</h1>
         </div>
-        <LanguageSwitcher className="trainer-icon-btn" />
+        <div style={{ width: '90px' }} />
       </header>
 
       <div className="trainer-tabs-bar">

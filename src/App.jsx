@@ -144,7 +144,6 @@ export default function App() {
   if (mode === 'play_menu') {
     return (
       <div className="main-menu-container">
-        <LanguageSwitcher className="menu-language-switcher" />
         <div className="menu-header-block">
           <span className="menu-eyebrow">{t('app.play.eyebrow')}</span>
           <h1 className="main-menu-title">{t('app.play.title')}</h1>
@@ -209,7 +208,6 @@ export default function App() {
   if (mode === 'algos') {
     return (
       <div className="main-menu-container">
-        <LanguageSwitcher className="menu-language-switcher" />
         <div className="menu-header-block">
           <span className="menu-eyebrow">{t('app.algos.eyebrow')}</span>
           <h1 className="main-menu-title">{t('app.algos.title')}</h1>

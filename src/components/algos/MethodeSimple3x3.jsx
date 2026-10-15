@@ -5,7 +5,6 @@ import { ArrowLeft, ChevronUp, ChevronDown, Play, Gamepad2 } from 'lucide-react'
 import { SIMPLE_3X3_STEPS } from '../../data/simple3x3Data';
 import { CubeDiagram2D } from './CubeDiagram2D';
 import { AlgoDemoModal } from './AlgoDemoModal';
-import { LanguageSwitcher } from '../LanguageSwitcher';
 import { localizeSteps } from '../../i18n/localizeData';
 
 export function MethodeSimple3x3({ onBack, onTestAlgo }) {
@@ -28,7 +27,7 @@ export function MethodeSimple3x3({ onBack, onTestAlgo }) {
         <div className="trainer-topbar-center">
           <h1 className="trainer-topbar-title">{t('method.simple3x3.title')}</h1>
         </div>
-        <LanguageSwitcher className="trainer-icon-btn" />
+        <div style={{ width: '90px' }} />
       </header>
 
       <main className="trainer-content accordion-container">

@@ -16,7 +16,6 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { RubiksCube } from './RubiksCube';
-import { LanguageSwitcher } from './LanguageSwitcher';
 import { useCubeStore } from '../store/useCubeStore';
 import { CameraMapper } from './CameraMapper';
 import { CustomLockControls } from './LockCamera';
@@ -254,7 +253,6 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
             {isLocked ? <Lock size={16} /> : <Unlock size={16} />}
             <span>{isLocked ? t('game.locked') : t('game.free')}</span>
           </button>
-          <LanguageSwitcher className="shuffle-btn" />
         </div>
       </header>
 

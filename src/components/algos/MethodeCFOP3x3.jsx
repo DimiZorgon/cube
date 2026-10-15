@@ -14,7 +14,6 @@ import {
 import { CFOP_SECTIONS, CFOP_DATA } from '../../data/cfopData';
 import { CubeDiagram2D } from './CubeDiagram2D';
 import { AlgoDemoModal } from './AlgoDemoModal';
-import { LanguageSwitcher } from '../LanguageSwitcher';
 import { localizeCFOPGroups, localizeCases } from '../../i18n/localizeData';
 
 const LEARNED_STORAGE_KEY = 'rubiks_learned_algos';
@@ -76,7 +75,6 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo }) {
             <Menu size={16} />
             <span>{t('algo.categories')}</span>
           </button>
-          <LanguageSwitcher className="trainer-icon-btn" />
         </div>
       </header>
 
