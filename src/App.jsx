@@ -200,9 +200,8 @@ export default function App() {
               <span className="menu-card-sub">{t('app.play.4x4.description')}</span>
             </div>
           </button>
-        </div>
 
-        <button
+          <button
             className="menu-btn cube-select-card"
             onClick={() => setMode('timer')}
           >
@@ -214,6 +213,7 @@ export default function App() {
               <span className="menu-card-sub">{t('app.play.timer.description')}</span>
             </div>
           </button>
+        </div>
 
         <button className="menu-back-btn" onClick={() => setMode('menu')}>
           <ArrowLeft size={18} />

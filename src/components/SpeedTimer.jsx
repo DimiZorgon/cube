@@ -3,12 +3,9 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
-  RotateCcw,
   Trash2,
   ChevronLeft,
   ChevronRight,
-  Flag,
-  AlertTriangle,
   Copy,
   Check,
   Timer as TimerIcon,
@@ -743,46 +740,6 @@ export function SpeedTimer({ onBack }) {
                 : '0.00'}
             </div>
 
-            <div className="cstimer-hint-pill">
-              {timerStatus === 'holding'
-                ? t('timer.hold')
-                : timerStatus === 'ready'
-                ? t('timer.ready')
-                : timerStatus === 'running'
-                ? t('timer.stopHint')
-                : t('timer.startHint')}
-            </div>
-
-            {/* Actions rapides sur le dernier temps (+2, DNF, Supprimer) */}
-            {timerStatus === 'idle' && latestSolve && (
-              <div className="cstimer-last-solve-toolbar" onClick={e => e.stopPropagation()}>
-                <button
-                  className={`cstimer-penalty-pill ${
-                    latestSolve.penalty === '+2' ? 'active' : ''
-                  }`}
-                  onClick={() => togglePenalty(latestSolve.id, '+2')}
-                >
-                  <Flag size={14} />
-                  <span>{t('timer.plusTwo')}</span>
-                </button>
-                <button
-                  className={`cstimer-penalty-pill dnf ${
-                    latestSolve.penalty === 'DNF' ? 'active' : ''
-                  }`}
-                  onClick={() => togglePenalty(latestSolve.id, 'DNF')}
-                >
-                  <AlertTriangle size={14} />
-                  <span>DNF</span>
-                </button>
-                <button
-                  className="cstimer-penalty-pill delete"
-                  onClick={() => deleteSolve(latestSolve.id)}
-                >
-                  <RotateCcw size={14} />
-                  <span>{t('timer.undoSolve')}</span>
-                </button>
-              </div>
-            )}
 
             {/* Affichage central ao5 / ao12 comme sur csTimer */}
             <div className="cstimer-center-averages">
