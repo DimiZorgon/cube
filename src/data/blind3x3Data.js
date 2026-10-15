@@ -33,7 +33,7 @@ export const BLD_CORE_CASES = [
     alg: BLD_ALGOS.T_PERM,
     setup: null,
     view: 'top',
-    maskMode: 'full',
+    maskMode: 'bld_swap',
     yellowTop: false,
     description: 'Échange le Buffer B (UR) avec la Cible D (UL), tout en échangeant les deux coins de droite (UFR ↔ UBR).',
     arrows: [
@@ -48,7 +48,7 @@ export const BLD_CORE_CASES = [
     alg: BLD_ALGOS.Y_PERM_MOD,
     setup: null,
     view: 'iso',
-    maskMode: 'full',
+    maskMode: 'bld_swap',
     yellowTop: false,
     description: "Y-Perm sans le F initial et le F' final : échange le Buffer A (UBL) directement avec la Cible P (sticker Rouge en bas devant à droite DFR), tout en échangeant les arêtes UB et UL."
   },
@@ -59,7 +59,7 @@ export const BLD_CORE_CASES = [
     alg: BLD_ALGOS.RA_PERM,
     setup: null,
     view: 'top',
-    maskMode: 'full',
+    maskMode: 'bld_swap',
     yellowTop: false,
     description: "À exécuter après les arêtes et avant les coins uniquement si vous avez mémorisé un nombre IMPAIR de lettres.",
     arrows: [
@@ -120,9 +120,9 @@ export const EDGE_SETUPS = RAW_EDGE_SETUPS.map(item => ({
   category: `BLD Arête • Face ${item.face}`,
   undo: item.role === 'normal' ? invertAlgo(item.setupMove, true) : '-',
   alg: buildFullBldAlg(item.setupMove, BLD_ALGOS.T_PERM),
-  setup: null, // Important : évite que createCaseCubies n'applique setupMove seul au départ
+  setup: null,
   yellowTop: false,
-  maskMode: 'full',
+  maskMode: 'bld_edge', 
   view: 'iso'
 }));
 
@@ -168,9 +168,9 @@ export const CORNER_SETUPS = RAW_CORNER_SETUPS.map(item => ({
   category: `BLD Coin • Face ${item.face}`,
   undo: item.role === 'normal' ? invertAlgo(item.setupMove, true) : '-',
   alg: buildFullBldAlg(item.setupMove, BLD_ALGOS.Y_PERM_MOD),
-  setup: null, // Important : évite que createCaseCubies n'applique setupMove seul au départ
+  setup: null,
   yellowTop: false,
-  maskMode: 'full',
+  maskMode: 'bld_corner', 
   view: 'iso'
 }));
 

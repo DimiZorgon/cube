@@ -67,7 +67,6 @@ export function invertAlgo(algString, includeOptional = true) {
 export function getMoveParams(move, size = 3) {
   if (!move) return null;
 
-  // On distingue un préfixe "2" (ex: "2R2" -> tranche interne R) du suffixe "2" (double tour)
   let working = move;
   let isInnerSlice = false;
   if (/^2[RLUDFB]/i.test(working)) {
@@ -79,7 +78,7 @@ export function getMoveParams(move, size = 3) {
   const isPrime = working.includes("'");
   const base = working.replace(/[2']/g, '');
 
-  const outer = (size - 1) / 2; // 0.5 (2x2), 1 (3x3), 1.5 (4x4)
+  const outer = (size - 1) / 2;
   const inner = size === 4 ? 0.5 : 0;
   const allLayers = Array.from({ length: size }, (_, i) => i - outer);
   const widePos = size === 2 ? [0.5] : [outer, inner];
@@ -221,6 +220,28 @@ export function createCaseCubies({
   const outer = (size - 1) / 2;
   const firstLayerY = yellowTop ? -outer : outer;
 
+  // Détection automatique des pièces échangées pour les modes Blindfolded (bld_edge, bld_corner, bld_swap)
+  const swappedCubieIds = new Set();
+  if (maskMode === 'bld_edge' || maskMode === 'bld_corner' || maskMode === 'bld_swap') {
+    const previewMoves = setup !== null ? setup : invertAlgo(alg, true);
+    const previewCubies = applyAlgoInstant(cubies, previewMoves, size, true);
+
+    cubies.forEach((c, idx) => {
+      const after = previewCubies[idx];
+      const moved =
+        Math.abs(c.position[0] - after.position[0]) > 0.1 ||
+        Math.abs(c.position[1] - after.position[1]) > 0.1 ||
+        Math.abs(c.position[2] - after.position[2]) > 0.1;
+      const q1 = new THREE.Quaternion().setFromEuler(new THREE.Euler(...c.rotation));
+      const q2 = new THREE.Quaternion().setFromEuler(new THREE.Euler(...after.rotation));
+      const rotated = Math.abs(q1.dot(q2)) < 0.99;
+
+      if (moved || rotated) {
+        swappedCubieIds.add(c.id);
+      }
+    });
+  }
+
   cubies = cubies.map(c => {
     const baseColors = getBaseCubieColors(c.initialPosition);
     const [px, py, pz] = c.position;
@@ -229,12 +250,34 @@ export function createCaseCubies({
     const outerCount = [px, py, pz].filter(v => Math.abs(Math.abs(v) - outer) < 0.1).length;
     const isCenterPiece = outerCount === 1;
     const isEdgePiece = outerCount === 2;
+    const isCornerPiece = outerCount === 3;
 
     const faceColors = baseColors.map((col, idx) => {
       if (col === STANDARD_COLORS.core) return col;
 
       const worldNormal = LOCAL_NORMALS[idx].clone().applyEuler(euler);
       const isUpSticker = worldNormal.y > 0.9;
+
+      if (maskMode === 'bld_edge') {
+        // Uniquement les 6 centres + les 2 arêtes échangées (Buffer B et Cible)
+        return (isCenterPiece || (isEdgePiece && swappedCubieIds.has(c.id)))
+          ? col
+          : STANDARD_COLORS.grey;
+      }
+
+      if (maskMode === 'bld_corner') {
+        // Uniquement les 6 centres + les 2 coins échangés (Buffer A et Cible)
+        return (isCenterPiece || (isCornerPiece && swappedCubieIds.has(c.id)))
+          ? col
+          : STANDARD_COLORS.grey;
+      }
+
+      if (maskMode === 'bld_swap') {
+        // Les 6 centres + toutes les pièces permutées par l'algorithme (T-Perm, Y-Perm, Ra-Perm)
+        return (isCenterPiece || swappedCubieIds.has(c.id))
+          ? col
+          : STANDARD_COLORS.grey;
+      }
 
       if (maskMode === 'oll') {
         if (Math.abs(py - outer) < 0.1) {
@@ -244,17 +287,14 @@ export function createCaseCubies({
       }
 
       if (maskMode === 'centers') {
-        // Pour l'étape des centres du 4x4 : seuls les centres (blocs 2x2) sont colorés
         return isCenterPiece ? col : STANDARD_COLORS.grey;
       }
 
       if (maskMode === 'edges_4x4') {
-        // Pour l'appariement des arêtes du 4x4 : centres et arêtes colorés, coins grisés
         return (isCenterPiece || isEdgePiece) ? col : STANDARD_COLORS.grey;
       }
 
       if (maskMode === 'yau_cross') {
-        // Centres + les 3 arêtes de la croix blanche en bas
         const isBottomEdge = Math.abs(py - firstLayerY) < 0.1 && isEdgePiece;
         return (isCenterPiece || isBottomEdge) ? col : STANDARD_COLORS.grey;
       }

@@ -12,7 +12,8 @@ import {
   Grid,
   Cpu,
   EyeOff,
-  ChevronRight
+  ChevronRight,
+  Timer
 } from 'lucide-react';
 import './App.css';
 import { Cube2x2 } from './components/Cube2x2';
@@ -27,6 +28,7 @@ import { MethodeCFOP3x3 } from './components/algos/MethodeCFOP3x3';
 import { MethodeBlind3x3 } from './components/algos/MethodeBlind3x3';
 import { MethodeSimple4x4 } from './components/algos/MethodeSimple4x4';
 import { MethodeYau4x4 } from './components/algos/MethodeYau4x4';
+import { SpeedTimer } from './components/SpeedTimer';
 import { ENGLISH_TRANSLATION_READY } from './i18n';
 
 export default function App() {
@@ -75,6 +77,10 @@ export default function App() {
 
   if (mode === '4x4') {
     return <Cube4x4 onBack={handleBackFromGame} trainingCase={trainingCase} />;
+  }
+
+  if (mode === 'timer') {
+    return <SpeedTimer onBack={() => setMode('play_menu')} />;
   }
 
   if (mode === 'simple2x2') {
@@ -195,6 +201,19 @@ export default function App() {
             </div>
           </button>
         </div>
+
+        <button
+            className="menu-btn cube-select-card"
+            onClick={() => setMode('timer')}
+          >
+            <div className="mini-cube-container timer-menu-preview">
+              <Timer size={76} strokeWidth={1.5} />
+            </div>
+            <div className="menu-card-Meta">
+              <span className="menu-card-title">{t('app.play.timer.title')}</span>
+              <span className="menu-card-sub">{t('app.play.timer.description')}</span>
+            </div>
+          </button>
 
         <button className="menu-back-btn" onClick={() => setMode('menu')}>
           <ArrowLeft size={18} />

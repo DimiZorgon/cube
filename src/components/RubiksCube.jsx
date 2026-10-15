@@ -1,5 +1,5 @@
 // src/components/RubiksCube.jsx
-import React, { useRef } from 'react';
+import React, { useRef, useLayoutEffect } from 'react';
 import { Cubie } from './Cubie';
 import { useCubeStore } from '../store/useCubeStore';
 import { useFrame } from '@react-three/fiber';
@@ -10,62 +10,63 @@ export function RubiksCube() {
     const commitRotation = useCubeStore(state => state.commitRotation);
     const dico_axis = { x: 0, y: 1, z: 2 };
 
-    const rotatingGroupRef = useRef();
+    const pivotRefs = useRef({});
     const currentAngle = useRef(0);
+    const committedRef = useRef(false);
 
-    useFrame((state, delta) => {
-        if (activeRotation !== null && rotatingGroupRef.current) {
-            const speed = 5;
-            const step = speed * delta;
-            currentAngle.current += step;
+    useLayoutEffect(() => {
+        currentAngle.current = 0;
+        committedRef.current = false;
+        Object.values(pivotRefs.current).forEach(grp => {
+            if (grp) grp.rotation.set(0, 0, 0);
+        });
+    }, [cubiesData, activeRotation]);
 
-            rotatingGroupRef.current.rotation[activeRotation.axis] = currentAngle.current * -activeRotation.direction;
+    useFrame((_, delta) => {
+        if (activeRotation !== null && !committedRef.current) {
+            const speed = 5.5;
+            currentAngle.current += speed * delta;
+            const targetAngle = Math.PI / 2;
+            const clampedAngle = Math.min(currentAngle.current, targetAngle);
+            const rotValue = clampedAngle * -activeRotation.direction;
 
-            if (currentAngle.current >= Math.PI / 2) {
+            for (const c of cubiesData) {
+                const grp = pivotRefs.current[c.id];
+                if (!grp) continue;
+                const isMoving = activeRotation.value.some(
+                    v => Math.abs(c.position[dico_axis[activeRotation.axis]] - v) < 0.1
+                );
+                if (isMoving) {
+                    grp.rotation[activeRotation.axis] = rotValue;
+                } else {
+                    grp.rotation.set(0, 0, 0);
+                }
+            }
+
+            if (currentAngle.current >= targetAngle) {
+                committedRef.current = true;
                 commitRotation(activeRotation.axis, activeRotation.value, activeRotation.direction);
-                currentAngle.current = 0;
-                rotatingGroupRef.current.rotation.x = 0;
-                rotatingGroupRef.current.rotation.y = 0;
-                rotatingGroupRef.current.rotation.z = 0;
             }
         }
     });
 
-    let movingCubies = [];
-    let staticCubies = [];
-
-    if (activeRotation !== null) {
-        movingCubies = cubiesData.filter(data => activeRotation.value.some(v => Math.abs(data.position[dico_axis[activeRotation.axis]] - v) < 0.1));
-        staticCubies = cubiesData.filter(data => !activeRotation.value.some(v => Math.abs(data.position[dico_axis[activeRotation.axis]] - v) < 0.1));
-    } else {
-        movingCubies = [];
-        staticCubies = cubiesData;
-    }
-
     return (
         <group>
-            <group>
-                {staticCubies.map(data => (
+            {cubiesData.map(data => (
+                <group
+                    key={data.id}
+                    ref={el => {
+                        pivotRefs.current[data.id] = el;
+                    }}
+                >
                     <Cubie
-                        key={data.id}
                         position={data.position}
                         initialPosition={data.initialPosition}
                         rotation={data.rotation}
                         faceColors={data.faceColors}
                     />
-                ))}
-            </group>
-            <group ref={rotatingGroupRef}>
-                {movingCubies.map(data => (
-                    <Cubie
-                        key={data.id}
-                        position={data.position}
-                        initialPosition={data.initialPosition}
-                        rotation={data.rotation}
-                        faceColors={data.faceColors}
-                    />
-                ))}
-            </group>
+                </group>
+            ))}
         </group>
     );
 }
