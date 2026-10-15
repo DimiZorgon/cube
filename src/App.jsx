@@ -10,6 +10,7 @@ import {
   Flame,
   Grid,
   Cpu,
+  EyeOff,
   ChevronRight
 } from 'lucide-react';
 import './App.css';
@@ -21,8 +22,10 @@ import { MethodeSimple2x2 } from './components/algos/MethodeSimple2x2';
 import { MethodeOrtega2x2 } from './components/algos/MethodeOrtega2x2';
 import { MethodeSimple3x3 } from './components/algos/MethodeSimple3x3';
 import { MethodeCFOP3x3 } from './components/algos/MethodeCFOP3x3';
+import { MethodeBlind3x3 } from './components/algos/MethodeBlind3x3';
 import { MethodeSimple4x4 } from './components/algos/MethodeSimple4x4';
 import { MethodeYau4x4 } from './components/algos/MethodeYau4x4';
+
 
 export default function App() {
   const [mode, setMode] = useState('menu');
@@ -91,6 +94,15 @@ export default function App() {
       <MethodeCFOP3x3
         onBack={() => setMode('algos')}
         onTestAlgo={c => handleTestAlgo(c, 'cfop3x3')}
+      />
+    );
+  }
+
+  if (mode === 'blind3x3') {
+    return (
+      <MethodeBlind3x3
+        onBack={() => setMode('algos')}
+        onTestAlgo={c => handleTestAlgo(c, 'blind3x3')}
       />
     );
   }
@@ -241,6 +253,20 @@ export default function App() {
               <h3 className="method-card-title">Méthode CFOP 3x3</h3>
               <p className="method-card-desc">
                 Répertoire complet F2L, 2-Look & Full OLL (57) et PLL (21).
+              </p>
+            </div>
+            <ChevronRight size={20} className="method-card-arrow" />
+          </button>
+
+          <button className="method-select-card" onClick={() => setMode('blind3x3')}>
+            <div className="method-card-icon purple">
+              <EyeOff size={26} />
+            </div>
+            <div className="method-card-body">
+              <div className="method-card-tag">3x3 • Blindfolded (À l&apos;aveugle)</div>
+              <h3 className="method-card-title">Méthode Old Pochmann (Speffz)</h3>
+              <p className="method-card-desc">
+                Patron Speffz A–X interactif, Buffers B/A, Setups Arêtes & Coins et Parité.
               </p>
             </div>
             <ChevronRight size={20} className="method-card-arrow" />
