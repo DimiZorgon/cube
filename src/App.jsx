@@ -90,7 +90,7 @@ export default function App() {
     return (
       <div className="main-menu-container">
         <div className="menu-header-block">
-          <span className="menu-eyebrow">Simulateur 3D</span>
+          <span className="menu-eyebrow">Rubik's Cube 3D </span>
           <h1 className="main-menu-title">Choisissez un cube</h1>
           <p className="main-menu-subtitle">
             Choisissez un format et lancez votre partie.
@@ -108,7 +108,7 @@ export default function App() {
             <MiniCube size={2} />
             <div className="menu-card-Meta">
               <span className="menu-card-title">Cube 2 × 2</span>
-              <span className="menu-card-sub">Petit format, parties rapides</span>
+              <span className="menu-card-sub">Petit format : pocket cube</span>
             </div>
           </button>
 
@@ -122,7 +122,7 @@ export default function App() {
             <MiniCube size={3} />
             <div className="menu-card-Meta">
               <span className="menu-card-title">Cube 3 × 3</span>
-              <span className="menu-card-sub">Le format classique</span>
+              <span className="menu-card-sub">Format classique</span>
             </div>
           </button>
         </div>
@@ -217,10 +217,10 @@ export default function App() {
   return (
     <div className="main-menu-container">
       <div className="menu-header-block">
-        <span className="menu-eyebrow">Simulateur de cube en 3D</span>
+        <span className="menu-eyebrow">Rubik's cube 3D</span>
         <h1 className="main-menu-title">Cube Studio</h1>
         <p className="main-menu-subtitle">
-          Jouez au 2 × 2 et au 3 × 3, ou découvrez de nouvelles méthodes.
+          2 × 2 ou 3 × 3 chronométré, ou méthode de résolution.
         </p>
       </div>
 
@@ -235,7 +235,7 @@ export default function App() {
             </div>
             <div className="menu-card-Meta">
               <span className="menu-card-title">Jouer</span>
-              <span className="menu-card-sub">Parties en 2 × 2 et 3 × 3</span>
+              <span className="menu-card-sub"> 2 × 2 et 3 × 3</span>
             </div>
           </div>
         </button>
