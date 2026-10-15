@@ -1,4 +1,6 @@
 /* src/index.css */
+@import "tailwindcss";
+
 :root {
   --bg-color: #1b2023;
   --surface-color: #252b2e;

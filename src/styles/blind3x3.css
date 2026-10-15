@@ -1,0 +1,234 @@
+/* =========================================================
+   STYLES 3X3 BLINDFOLDED
+   ========================================================= */
+.method-card-icon.purple {
+  background: #303a37;
+  color: #b9c9bf;
+  border: 1px solid #4b5a53;
+}
+
+.bld-net-card {
+  background: #252b2e;
+  border: 1px solid #394144;
+  border-radius: 6px;
+  padding: 1.25rem;
+}
+
+.bld-net-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.15rem;
+}
+
+.bld-net-toggle-group {
+  display: flex;
+  gap: 0.4rem;
+  background: #202629;
+  padding: 0.3rem;
+  border-radius: 6px;
+  border: 1px solid #394144;
+}
+
+.bld-net-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  background: #202629;
+  padding: 1.2rem;
+  border-radius: 6px;
+  border: 1px solid #343c3f;
+}
+
+.bld-net-legend {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  font-size: 0.86rem;
+  color: #cbd5e1;
+}
+
+.bld-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.bld-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.bld-dot.buffer {
+  background: #ef4444;
+}
+
+.bld-dot.target {
+  background: #22c55e;
+}
+
+/* Grille des 24 Setup Moves (A -> X) */
+.bld-setup-header-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #394144;
+}
+
+.bld-face-filters {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.bld-setup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.bld-setup-card {
+  background: #252b2e;
+  border: 1px solid #394144;
+  border-radius: 6px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+
+.bld-setup-card:hover:not(.is-buffer) {
+  background: #2b3336;
+  border-color: #9eb5aa;
+}
+
+.bld-setup-card.is-learned {
+  border-color: rgba(34, 197, 94, 0.65);
+}
+
+.bld-setup-card.is-buffer {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.bld-setup-card-top {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.bld-letter-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 6px;
+  background: #303a37;
+  border: 1px solid #4b5a53;
+  color: #b9c9bf;
+  font-size: 1.15rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bld-letter-badge.buffer {
+  background: rgba(239, 68, 68, 0.16);
+  border-color: #ef4444;
+  color: #f87171;
+}
+
+.bld-letter-badge.target {
+  background: rgba(34, 197, 94, 0.16);
+  border-color: #22c55e;
+  color: #4ade80;
+}
+
+.bld-setup-meta {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.bld-setup-face {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+
+.bld-setup-pos {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.bld-setup-moves-box {
+  background: #202629;
+  border: 1px solid #394144;
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.bld-setup-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.88rem;
+}
+
+.bld-setup-label {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.bld-setup-code {
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 700;
+  color: #facc15;
+}
+
+.bld-setup-code.undo {
+  color: #b9c9bf;
+}
+
+.bld-setup-note {
+  margin: 0;
+  font-size: 0.84rem;
+  color: #cbd5e1;
+  line-height: 1.45;
+}
+
+@media (max-width: 640px) {
+  .bld-net-card,
+  .bld-net-body {
+    padding: 0.85rem;
+  }
+
+  .bld-net-toggle-group {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .bld-setup-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+}
+

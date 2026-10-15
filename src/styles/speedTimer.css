@@ -1,0 +1,531 @@
+/* =========================================================
+   MODE CHRONOMÈTRE WCA (ALIGNÉ SUR LA DA #1b2023 / #9eb5aa)
+   ========================================================= */
+.timer-menu-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9eb5aa;
+  background: #1c2225;
+  border-radius: 6px;
+  border: 1px solid #343c3f;
+}
+
+.cstimer-layout {
+  display: flex;
+  height: 100vh;
+  height: 100dvh;
+  width: 100%;
+  background-color: #1b2023;
+  color: #f0f1ed;
+  overflow: hidden;
+}
+
+/* Barre latérale gauche */
+.cstimer-sidebar {
+  width: 320px;
+  min-width: 290px;
+  background-color: #202629;
+  border-right: 1px solid #394144;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  gap: 0.85rem;
+  z-index: 20;
+}
+
+.cstimer-brand-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #394144;
+}
+
+.cstimer-logo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.cstimer-logo-badge svg {
+  color: #9eb5aa;
+}
+
+.cstimer-session-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cstimer-session-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.cstimer-select {
+  background: #252b2e;
+  color: #f0f1ed;
+  border: 1px solid #41494c;
+  border-radius: 6px;
+  padding: 0.42rem 0.65rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  flex: 1;
+  cursor: pointer;
+  transition: border-color 0.12s, background-color 0.12s;
+}
+
+.cstimer-select:hover,
+.cstimer-select:focus {
+  background: #2b3336;
+  border-color: #9eb5aa;
+  outline: none;
+}
+
+.cstimer-mini-icon-btn {
+  background: #252b2e;
+  color: #cbd5e1;
+  border: 1px solid #41494c;
+  border-radius: 6px;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.12s, background-color 0.12s, color 0.12s;
+}
+
+.cstimer-mini-icon-btn:hover {
+  background: #2b3336;
+  border-color: #9eb5aa;
+  color: #ffffff;
+}
+
+.cstimer-mini-icon-btn.danger:hover {
+  border-color: #ef4444;
+  color: #f87171;
+}
+
+/* Carte Current / Best */
+.cstimer-summary-card {
+  background: #252b2e;
+  border: 1px solid #394144;
+  border-radius: 6px;
+  padding: 0.75rem;
+}
+
+.cstimer-summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.cstimer-summary-table th {
+  text-align: center;
+  color: #94a3b8;
+  font-weight: 700;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid #394144;
+}
+
+.cstimer-summary-table td {
+  padding: 0.35rem 0.25rem;
+  text-align: center;
+}
+
+.cstimer-summary-table .metric-name {
+  text-align: left;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+.cstimer-summary-table .metric-val {
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.cstimer-summary-table .metric-val.best {
+  color: #4ade80;
+}
+
+.cstimer-solve-mean-box {
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid #394144;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: #cbd5e1;
+}
+
+.cstimer-solve-mean-box strong {
+  color: #b9c9bf;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+/* Tableau d'historique des temps */
+.cstimer-history-wrapper {
+  flex: 1;
+  background: #252b2e;
+  border: 1px solid #394144;
+  border-radius: 6px;
+  overflow-y: auto;
+}
+
+.cstimer-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+.cstimer-history-table th {
+  position: sticky;
+  top: 0;
+  background: #1c2225;
+  color: #b9c9bf;
+  font-weight: 700;
+  padding: 0.5rem 0.35rem;
+  text-align: center;
+  border-bottom: 1px solid #394144;
+}
+
+.cstimer-history-table td {
+  padding: 0.42rem 0.3rem;
+  text-align: center;
+  border-bottom: 1px solid #343c3f;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.hist-num {
+  color: #64748b;
+  font-weight: 700;
+}
+
+.hist-time {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.hist-avg {
+  color: #94a3b8;
+}
+
+.hist-actions {
+  display: inline-flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.hist-pen-btn {
+  background: #1c2225;
+  color: #94a3b8;
+  border: 1px solid #41494c;
+  border-radius: 4px;
+  padding: 0.12rem 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.hist-pen-btn:hover {
+  border-color: #9eb5aa;
+  color: #f8fafc;
+}
+
+.hist-pen-btn.active {
+  background: #facc15;
+  color: #171c1a;
+  border-color: #facc15;
+}
+
+.hist-pen-btn.dnf.active {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #f87171;
+}
+
+.hist-del-btn {
+  background: transparent;
+  color: #64748b;
+  border: none;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  transition: color 0.12s;
+}
+
+.hist-del-btn:hover {
+  color: #ef4444;
+}
+
+.cstimer-empty-history {
+  padding: 2rem 0.5rem !important;
+  color: #64748b;
+  font-family: system-ui, sans-serif !important;
+}
+
+/* Zone principale droite */
+.cstimer-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+}
+
+.cstimer-scramble-bar {
+  background: #202629;
+  border-bottom: 1px solid #394144;
+  padding: 0.85rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  z-index: 10;
+}
+
+.cstimer-scramble-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.cstimer-wca-badge {
+  background: #303a37;
+  color: #b9c9bf;
+  border: 1px solid #4b5a53;
+  border-radius: 4px;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.cstimer-scramble-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #252b2e;
+  padding: 0.28rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid #41494c;
+}
+
+.cstimer-nav-link {
+  background: transparent;
+  border: none;
+  color: #cbd5e1;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  cursor: pointer;
+  transition: color 0.12s;
+}
+
+.cstimer-nav-link:hover:not(:disabled) {
+  color: #ffffff;
+}
+
+.cstimer-nav-link:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.cstimer-nav-link.accent {
+  color: #b9c9bf;
+}
+
+.cstimer-nav-link.accent:hover {
+  color: #ffffff;
+}
+
+.cstimer-nav-sep {
+  color: #41494c;
+}
+
+.cstimer-scramble-text {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: clamp(1.1rem, 2vw, 1.55rem);
+  font-weight: 800;
+  color: #f8fafc;
+  text-align: center;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+  max-width: 960px;
+}
+
+/* Arène centrale du chronomètre */
+.cstimer-arena {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+  background-color: #1b2023;
+  transition: background-color 0.12s;
+}
+
+.cstimer-arena.status-holding {
+  background-color: #212420;
+}
+
+.cstimer-arena.status-ready {
+  background-color: #1e2723;
+}
+
+.cstimer-center-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.cstimer-giant-digits {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: clamp(4.2rem, 12vw, 9rem);
+  font-weight: 900;
+  line-height: 1;
+  color: #f0f1ed;
+  letter-spacing: -0.03em;
+  transition: color 0.12s;
+}
+
+.cstimer-giant-digits.status-holding {
+  color: #facc15;
+}
+
+.cstimer-giant-digits.status-ready {
+  color: #4ade80;
+}
+
+.cstimer-hint-pill {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #94a3b8;
+  background: #252b2e;
+  border: 1px solid #394144;
+  padding: 0.35rem 0.85rem;
+  border-radius: 6px;
+}
+
+.cstimer-last-solve-toolbar {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.cstimer-penalty-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.42rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  background: #252b2e;
+  color: #cbd5e1;
+  border: 1px solid #41494c;
+  cursor: pointer;
+  transition: border-color 0.12s, background-color 0.12s, color 0.12s;
+}
+
+.cstimer-penalty-pill:hover {
+  background: #2b3336;
+  border-color: #9eb5aa;
+  color: #ffffff;
+}
+
+.cstimer-penalty-pill.active {
+  background: #facc15;
+  color: #171c1a;
+  border-color: #facc15;
+  font-weight: 700;
+}
+
+.cstimer-penalty-pill.dnf.active {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #f87171;
+  font-weight: 700;
+}
+
+.cstimer-center-averages {
+  margin-top: 0.65rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.cstimer-center-avg-line {
+  font-size: clamp(1.25rem, 2.2vw, 1.85rem);
+  font-weight: 700;
+  color: #94a3b8;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.cstimer-center-avg-line span {
+  color: #b9c9bf;
+}
+
+/* Aperçu 2D en bas à droite */
+.cstimer-net-preview-box {
+  position: absolute;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  background: #202629;
+  border: 1px solid #394144;
+  border-radius: 6px;
+  padding: 0.65rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.cstimer-net-preview-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+@media (max-width: 860px) {
+  .cstimer-layout {
+    flex-direction: column-reverse;
+    overflow-y: auto;
+  }
+
+  .cstimer-sidebar {
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    max-height: 44vh;
+    border-right: none;
+    border-top: 1px solid #394144;
+  }
+
+  .cstimer-scramble-bar {
+    padding: 0.65rem 0.85rem;
+  }
+
+  .cstimer-net-preview-box {
+    display: none;
+  }
+}

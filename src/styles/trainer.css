@@ -1,0 +1,484 @@
+/* =========================================================
+   PAGES ALGORITHMES & TRAINER
+   ========================================================= */
+.trainer-page {
+  height: 100vh;
+  height: 100dvh;
+  width: 100%;
+  overflow-y: auto;
+  background-color: #1b2023;
+  color: #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  touch-action: auto;
+}
+
+.trainer-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.5rem;
+  background-color: #1b2023;
+  border-bottom: 1px solid #394144;
+}
+
+.trainer-topbar-center {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.trainer-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.trainer-topbar-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+  color: #ffffff;
+}
+
+.trainer-progress-pill {
+  background: #303a37;
+  border: 1px solid #4b5a53;
+  color: #b9c9bf;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.trainer-icon-btn {
+  background: #252b2e;
+  color: #f8fafc;
+  border: 1px solid #41494c;
+  border-radius: 6px;
+  padding: 0.5rem 0.95rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.trainer-icon-btn:hover {
+  background: #2b3336;
+  border-color: #9eb5aa;
+}
+
+/* Barre d'onglets rapide + filtre */
+.trainer-tabs-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
+  background: #202629;
+  border-bottom: 1px solid #394144;
+  flex-wrap: wrap;
+}
+
+.trainer-tabs-scroll {
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.trainer-tabs-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.trainer-tab-btn {
+  background: transparent;
+  color: #94a3b8;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 0.45rem 0.95rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.trainer-tab-btn:hover {
+  background: rgba(51, 65, 85, 0.6);
+  color: #f8fafc;
+}
+
+.trainer-tab-btn.active {
+  background: #9eb5aa;
+  color: #171c1a;
+  font-weight: 700;
+}
+
+.trainer-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: #252b2e;
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 6px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.trainer-filter-chip.active {
+  background: #35413c;
+  border-color: #617368;
+  color: #c1d0c7;
+}
+
+/* Tiroir latéral (Drawer) */
+.trainer-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.75);
+  z-index: 100;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.trainer-drawer {
+  width: 300px;
+  max-width: 85vw;
+  background: #202629;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid #394144;
+}
+
+.trainer-drawer-banner {
+  padding: 1.25rem 1.4rem;
+  background: #252b2e;
+  border-bottom: 1px solid #394144;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.trainer-drawer-banner-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.trainer-drawer-banner-sub {
+  font-size: 0.82rem;
+  color: #94a3b8;
+  margin-top: 0.15rem;
+}
+
+.trainer-drawer-nav {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem;
+  gap: 0.25rem;
+}
+
+.trainer-drawer-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #cbd5e1;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.12s, color 0.12s;
+}
+
+.trainer-drawer-item:hover,
+.trainer-drawer-item.active {
+  background: #303a37;
+  color: #b9c9bf;
+}
+
+/* Grille de cartes d'algorithmes */
+.trainer-content {
+  max-width: 1240px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 1.5rem 1.5rem 4rem;
+}
+
+.trainer-group-section {
+  margin-bottom: 2.25rem;
+}
+
+.trainer-group-header {
+  margin: 0 0 0.85rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.trainer-group-desc {
+  margin: 0 0 1rem 0;
+  color: #94a3b8;
+  font-size: 0.95rem;
+}
+
+.trainer-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1.1rem;
+}
+
+.trainer-algo-card {
+  background: #252b2e;
+  border: 1px solid #394144;
+  border-radius: 6px;
+  padding: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.12s ease;
+}
+
+.trainer-algo-card:hover {
+  border-color: #9eb5aa;
+}
+
+.trainer-algo-card.is-learned {
+  border-color: rgba(34, 197, 94, 0.65);
+}
+
+.card-learned-badge {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  background: #202629;
+  border: 1px solid #41494c;
+  color: #64748b;
+  border-radius: 6px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.card-learned-badge:hover {
+  border-color: #94a3b8;
+  color: #cbd5e1;
+}
+
+.card-learned-badge.learned {
+  background: #16a34a;
+  border-color: #22c55e;
+  color: #ffffff;
+}
+
+.trainer-card-diagram {
+  background: #202629;
+  border-radius: 6px;
+  padding: 0.45rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.trainer-card-formula {
+  margin-top: 0.85rem;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #facc15;
+  background: #202629;
+  border: 1px solid #394144;
+  padding: 0.45rem 0.65rem;
+  border-radius: 8px;
+  width: 100%;
+  line-height: 1.35;
+}
+
+.trainer-card-name {
+  margin-top: 0.55rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.trainer-card-name span {
+  color: #4ade80;
+  font-weight: 700;
+}
+
+.trainer-card-subdesc {
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  line-height: 1.45;
+}
+
+.trainer-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 0.9rem;
+}
+
+.card-mini-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  background: #252b2e;
+  color: #e2e8f0;
+  border: 1px solid #41494c;
+  border-radius: 6px;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.card-mini-btn:hover {
+  background: #2b3336;
+  border-color: #9eb5aa;
+  color: #ffffff;
+}
+
+.card-mini-btn.test {
+  background: #303a37;
+  border-color: #4b5a53;
+  color: #b9c9bf;
+}
+
+.card-mini-btn.test:hover {
+  background: #415149;
+  color: #f0f1ed;
+}
+
+
+@media (max-width: 640px) {
+  .menu-back-btn {
+    margin-top: 1.25rem;
+  }
+
+  .trainer-topbar {
+    gap: 0.5rem;
+    padding: 0.55rem 0.7rem;
+  }
+
+  .trainer-topbar-title {
+    font-size: 0.95rem;
+  }
+
+  .trainer-icon-btn {
+    min-height: 40px;
+    padding: 0.45rem 0.65rem;
+  }
+
+  .trainer-topbar-actions {
+    gap: 0.35rem;
+  }
+
+  .trainer-tabs-bar {
+    gap: 0.5rem;
+    padding: 0.45rem 0.65rem;
+  }
+
+  .trainer-tab-btn {
+    min-height: 40px;
+    padding: 0.4rem 0.7rem;
+  }
+
+  .trainer-content {
+    padding: 1rem 0.75rem calc(2rem + env(safe-area-inset-bottom));
+  }
+
+  .trainer-cards-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+
+  .trainer-algo-card {
+    min-width: 0;
+    padding: 0.85rem;
+  }
+
+  .trainer-card-formula {
+    overflow-wrap: anywhere;
+  }
+
+  .step-accordion-header {
+    padding: 0.85rem;
+  }
+
+  .step-header-title {
+    font-size: 1rem;
+  }
+
+  .step-accordion-body {
+    padding: 0.85rem;
+  }
+
+  .algo-modal-backdrop {
+    align-items: flex-start;
+    padding: max(0.5rem, env(safe-area-inset-top)) 0.5rem max(0.5rem, env(safe-area-inset-bottom));
+    overflow-y: auto;
+  }
+
+  .algo-modal-card {
+    max-height: calc(100dvh - 1rem);
+    overflow-y: auto;
+    padding: 0.9rem;
+    gap: 0.75rem;
+  }
+
+  .algo-modal-canvas-wrapper {
+    height: clamp(170px, 28vh, 230px);
+  }
+
+  .algo-player-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .algo-modal-footer {
+    flex-direction: column;
+  }
+
+  .learned-toggle-btn,
+  .test-algo-btn {
+    min-height: 44px;
+  }
+}
+
+:where(button, [tabindex="0"]):focus-visible {
+  outline: 2px solid #c1d0c7;
+  outline-offset: 2px;
+}
+
