@@ -6,12 +6,11 @@ import {
   ChevronUp,
   ChevronDown,
   Play,
-  Gamepad2,
   Check,
-  EyeOff,
-  Layers,
+  Ghost,
+  Tasks,
   Grid
-} from 'lucide-react';
+} from '@getpapillon/papicons';
 import {
   BLD_TABS,
   SPEFFZ_FACES,
@@ -212,7 +211,7 @@ export function MethodeBlind3x3({ onBack, onTestAlgo }) {
           <span>{t('common.back')}</span>
         </button>
         <div className="trainer-topbar-center">
-          <EyeOff size={20} style={{ color: '#38bdf8' }} />
+          <Ghost size={20} style={{ color: '#38bdf8' }} />
           <h1 className="trainer-topbar-title">{t('bld.title')}</h1>
         </div>
         <div style={{ width: '90px' }} />
@@ -252,7 +251,7 @@ export function MethodeBlind3x3({ onBack, onTestAlgo }) {
                     className={`trainer-tab-btn ${netMode === 'edges' ? 'active' : ''}`}
                     onClick={() => setNetMode('edges')}
                   >
-                    <Layers size={15} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+                    <Tasks size={15} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
                     {t('bld.edges')}
                   </button>
                   <button
@@ -339,7 +338,7 @@ export function MethodeBlind3x3({ onBack, onTestAlgo }) {
                       onClick={e => toggleLearned(item.id, e)}
                       title={t('common.markLearned')}
                     >
-                      <Check size={16} strokeWidth={2.5} />
+                      <Check size={16} />
                     </button>
 
                     <div className="trainer-card-diagram">
@@ -368,7 +367,7 @@ export function MethodeBlind3x3({ onBack, onTestAlgo }) {
                         className="card-mini-btn test"
                         onClick={() => onTestAlgo && onTestAlgo({ ...item, size: 3 })}
                       >
-                        <Gamepad2 size={15} />
+                        <Play size={15} />
                         <span>{t('common.test')}</span>
                       </button>
                     </div>
@@ -435,7 +434,7 @@ export function MethodeBlind3x3({ onBack, onTestAlgo }) {
                           onClick={e => toggleLearned(item.id, e)}
                           title={t('bld.learnSetup')}
                         >
-                          <Check size={15} strokeWidth={2.5} />
+                          <Check size={15} />
                         </button>
                       )}
                     </div>
@@ -470,7 +469,7 @@ export function MethodeBlind3x3({ onBack, onTestAlgo }) {
                           className="card-mini-btn test"
                           onClick={() => onTestAlgo && onTestAlgo({ ...item, size: 3 })}
                         >
-                          <Gamepad2 size={15} />
+                          <Play size={15} />
                           <span>{t('common.test')}</span>
                         </button>
                       </div>

@@ -3,17 +3,16 @@ import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallba
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import {
-  X,
-  RotateCcw,
-  SkipBack,
+  Cross,
+  ArrowLeftBox,
+  ChevronLeft,
   Play,
   Pause,
-  SkipForward,
-  CheckCircle2,
-  Circle,
-  Gamepad2,
-  Move3d
-} from 'lucide-react';
+  ChevronRight,
+  Check,
+  Plus,
+  Globe
+} from '@getpapillon/papicons';
 import { Cubie } from '../Cubie';
 import {
   createCaseCubies,
@@ -214,7 +213,7 @@ export function AlgoDemoModal({
             <h2 className="algo-modal-title">{algoCase.name}</h2>
           </div>
           <button className="algo-modal-close" onClick={onClose} aria-label="Fermer">
-            <X size={20} />
+            <Cross size={20} />
           </button>
         </div>
 
@@ -225,7 +224,7 @@ export function AlgoDemoModal({
         <div className="algo-modal-canvas-wrapper">
           <div className="algo-modal-canvas-topbar">
             <span className="canvas-Interactive-pill">
-              <Move3d size={14} />
+              <Globe size={14} />
               <span>Glisser pour orienter</span>
             </span>
             <span className="canvas-step-pill">
@@ -276,7 +275,7 @@ export function AlgoDemoModal({
             onClick={handleReset}
             title="Retour au début"
           >
-            <RotateCcw size={16} />
+            <ArrowLeftBox size={16} />
             <span>Début</span>
           </button>
           <button
@@ -285,7 +284,7 @@ export function AlgoDemoModal({
             disabled={stepIndex <= 0 || !!activeAnim}
             title="Mouvement précédent"
           >
-            <SkipBack size={16} />
+            <ChevronLeft size={16} />
             <span>Préc.</span>
           </button>
           <button
@@ -299,7 +298,7 @@ export function AlgoDemoModal({
               </>
             ) : stepIndex >= tokens.length ? (
               <>
-                <RotateCcw size={16} />
+                <ArrowLeftBox size={16} />
                 <span>Rejouer</span>
               </>
             ) : (
@@ -319,7 +318,7 @@ export function AlgoDemoModal({
             title="Mouvement suivant"
           >
             <span>Suiv.</span>
-            <SkipForward size={16} />
+            <ChevronRight size={16} />
           </button>
         </div>
 
@@ -329,7 +328,7 @@ export function AlgoDemoModal({
               className={`learned-toggle-btn ${isLearned ? 'learned' : ''}`}
               onClick={() => onToggleLearned(algoCase.id)}
             >
-              {isLearned ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+              {isLearned ? <Check size={18} /> : <Plus size={18} />}
               <span>{isLearned ? 'Appris' : 'Marquer comme appris'}</span>
             </button>
           )}
@@ -338,7 +337,7 @@ export function AlgoDemoModal({
               className="test-algo-btn"
               onClick={() => onTestAlgo({ ...algoCase, size })}
             >
-              <Gamepad2 size={18} />
+              <Play size={18} />
               <span>Tester sur le Cube</span>
             </button>
           )}

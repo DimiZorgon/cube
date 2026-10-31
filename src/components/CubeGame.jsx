@@ -4,17 +4,17 @@ import { useTranslation } from 'react-i18next';
 import { Canvas } from '@react-three/fiber';
 import { TrackballControls } from '@react-three/drei';
 import {
-  RotateCcw,
-  Shuffle,
-  Eye,
-  EyeOff,
+  ArrowLeftBox,
+  Sparkles,
+  Info,
+  Cross,
   Lock,
   Unlock,
   ArrowLeft,
-  Target,
-  Trophy,
-  CheckCircle2
-} from 'lucide-react';
+  Star,
+  Crown,
+  Check
+} from '@getpapillon/papicons';
 import { RubiksCube } from './RubiksCube';
 import { useCubeStore } from '../store/useCubeStore';
 import { CameraMapper } from './CameraMapper';
@@ -214,12 +214,12 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
         <div className="header-left">
           {trainingCase ? (
             <div className="highscore">
-              <Target size={18} className="inline-icon accent" />
+              <Star size={18} className="inline-icon accent" />
               <span>{t('game.case', { name: trainingCase.name })}</span>
             </div>
           ) : (
             <div className="highscore">
-              <Trophy size={18} className="inline-icon amber" />
+              <Crown size={18} className="inline-icon amber" />
               <span>{t('game.record', { time: highScore ? formatTime(highScore) : '-' })}</span>
             </div>
           )}
@@ -228,12 +228,12 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
           <button className="shuffle-btn" onClick={handleShuffle}>
             {trainingCase ? (
               <>
-                <RotateCcw size={16} />
+                <ArrowLeftBox size={16} />
                 <span>{t('game.resetCase')}</span>
               </>
             ) : (
               <>
-                <Shuffle size={16} />
+                <Sparkles size={16} />
                 <span>{t('game.shuffle')}</span>
               </>
             )}
@@ -243,7 +243,7 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
               className={`shuffle-btn ${showAlgo ? 'active-toggle' : ''}`}
               onClick={() => setShowAlgo(prev => !prev)}
             >
-              {showAlgo ? <EyeOff size={16} /> : <Eye size={16} />}
+              {showAlgo ? <Cross size={16} /> : <Info size={16} />}
               <span>{showAlgo ? t('game.hideAlgorithm') : t('game.showAlgorithm')}</span>
             </button>
           )}
@@ -279,7 +279,7 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
         {isSolved && hasShuffled && !isRunning && (time > 0 || moveCount > 0) && (
           <div className="solved-banner-modal">
             <div className="solved-banner-icon">
-              <CheckCircle2 size={36} />
+              <Check size={36} />
             </div>
             <h2 style={{ margin: '0 0 0.4rem 0', fontSize: '1.75rem' }}>
               {trainingCase ? t('game.caseSolved') : t('game.cubeSolved')}
@@ -288,7 +288,7 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
               {t('game.result', { time: formatTime(time), count: moveCount })}
             </p>
             <button className="shuffle-btn primary-action" onClick={handleShuffle}>
-              <RotateCcw size={16} />
+              <ArrowLeftBox size={16} />
               <span>{trainingCase ? t('game.retryCase') : t('game.replay')}</span>
             </button>
           </div>

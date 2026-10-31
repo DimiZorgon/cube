@@ -1,7 +1,7 @@
 // src/components/algos/MethodeYau4x4.jsx
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Check, Play, Gamepad2 } from 'lucide-react';
+import { ArrowLeft, Check, Play } from '@getpapillon/papicons';
 import { YAU_SECTIONS, YAU_DATA } from '../../data/yau4x4Data';
 import { CubeDiagram2D } from './CubeDiagram2D';
 import { AlgoDemoModal } from './AlgoDemoModal';
@@ -88,7 +88,7 @@ export function MethodeYau4x4({ onBack, onTestAlgo }) {
                       onClick={e => toggleLearned(item.id, e)}
                       title={t('common.markLearned')}
                     >
-                      <Check size={16} strokeWidth={2.5} />
+                      <Check size={16} />
                     </button>
 
                     <div className="trainer-card-diagram">
@@ -129,7 +129,7 @@ export function MethodeYau4x4({ onBack, onTestAlgo }) {
                           })
                         }
                       >
-                        <Gamepad2 size={15} />
+                        <Play size={15} />
                         <span>{t('common.test')}</span>
                       </button>
                     </div>

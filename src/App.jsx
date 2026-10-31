@@ -1,19 +1,19 @@
 import React, { useState, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Gamepad2,
-  BookOpen,
+  Play,
+  Bookmark,
   ArrowLeft,
-  Compass,
-  Zap,
-  Layers,
-  Flame,
+  GraduationHat,
+  Sparkles,
+  Tasks,
+  Crown,
   Grid,
-  Cpu,
-  EyeOff,
+  Gears,
+  Ghost,
   ChevronRight,
-  Timer
-} from 'lucide-react';
+  Clock
+} from '@getpapillon/papicons';
 import './App.css';
 import { MiniCube } from './components/MiniCube';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
@@ -210,7 +210,7 @@ export default function App() {
             onClick={() => setMode('timer')}
           >
             <div className="mini-cube-container timer-menu-preview">
-              <Timer size={76} strokeWidth={1.5} />
+              <Clock size={76} />
             </div>
             <div className="menu-card-Meta">
               <span className="menu-card-title">{t('app.play.timer.title')}</span>
@@ -242,7 +242,7 @@ export default function App() {
         <div className="algo-methods-grid">
           <button className="method-select-card" onClick={() => setMode('simple2x2')}>
             <div className="method-card-icon cyan">
-              <Compass size={26} />
+              <GraduationHat size={26} />
             </div>
             <div className="method-card-body">
               <div className="method-card-tag">{t('app.algos.simple2x2.tag')}</div>
@@ -254,7 +254,7 @@ export default function App() {
 
           <button className="method-select-card" onClick={() => setMode('ortega2x2')}>
             <div className="method-card-icon amber">
-              <Zap size={26} />
+              <Sparkles size={26} />
             </div>
             <div className="method-card-body">
               <div className="method-card-tag">{t('app.algos.ortega2x2.tag')}</div>
@@ -266,7 +266,7 @@ export default function App() {
 
           <button className="method-select-card" onClick={() => setMode('simple3x3')}>
             <div className="method-card-icon emerald">
-              <Layers size={26} />
+              <Tasks size={26} />
             </div>
             <div className="method-card-body">
               <div className="method-card-tag">{t('app.algos.simple3x3.tag')}</div>
@@ -278,7 +278,7 @@ export default function App() {
 
           <button className="method-select-card" onClick={() => setMode('cfop3x3')}>
             <div className="method-card-icon rose">
-              <Flame size={26} />
+              <Crown size={26} />
             </div>
             <div className="method-card-body">
               <div className="method-card-tag">{t('app.algos.cfop3x3.tag')}</div>
@@ -290,7 +290,7 @@ export default function App() {
 
           <button className="method-select-card" onClick={() => setMode('blind3x3')}>
             <div className="method-card-icon purple">
-              <EyeOff size={26} />
+              <Ghost size={26} />
             </div>
             <div className="method-card-body">
               <div className="method-card-tag">{t('app.algos.blind3x3.tag')}</div>
@@ -314,7 +314,7 @@ export default function App() {
 
           <button className="method-select-card" onClick={() => setMode('yau4x4')}>
             <div className="method-card-icon amber">
-              <Cpu size={26} />
+              <Gears size={26} />
             </div>
             <div className="method-card-body">
               <div className="method-card-tag">{t('app.algos.yau4x4.tag')}</div>
@@ -351,7 +351,7 @@ export default function App() {
           </div>
           <div className="pole-card-footer">
             <div className="pole-icon-badge">
-              <Gamepad2 size={24} />
+              <Play size={24} />
             </div>
             <div className="menu-card-Meta">
               <span className="menu-card-title">{t('app.home.play.title')}</span>
@@ -362,11 +362,11 @@ export default function App() {
 
         <button className="menu-btn primary-pole-card" onClick={() => setMode('algos')}>
           <div className="pole-preview-wrapper algo-hub-graphic">
-            <BookOpen size={68} strokeWidth={1.4} />
+            <Bookmark size={68} />
           </div>
           <div className="pole-card-footer">
             <div className="pole-icon-badge accent">
-              <BookOpen size={24} />
+              <Bookmark size={24} />
             </div>
             <div className="menu-card-Meta">
               <span className="menu-card-title">{t('app.home.learn.title')}</span>

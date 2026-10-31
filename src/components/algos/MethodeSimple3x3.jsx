@@ -1,7 +1,7 @@
 // src/components/algos/MethodeSimple3x3.jsx
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, ChevronUp, ChevronDown, Play, Gamepad2 } from 'lucide-react';
+import { ArrowLeft, ChevronUp, ChevronDown, Play } from '@getpapillon/papicons';
 import { SIMPLE_3X3_STEPS } from '../../data/simple3x3Data';
 import { CubeDiagram2D } from './CubeDiagram2D';
 import { AlgoDemoModal } from './AlgoDemoModal';
@@ -103,7 +103,7 @@ export function MethodeSimple3x3({ onBack, onTestAlgo }) {
                               })
                             }
                           >
-                            <Gamepad2 size={15} />
+                            <Play size={15} />
                             <span>{t('common.test')}</span>
                           </button>
                         </div>

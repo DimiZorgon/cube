@@ -6,11 +6,10 @@ import {
   Menu,
   Check,
   Play,
-  Gamepad2,
-  BookOpen,
+  Bookmark,
   Filter,
-  X
-} from 'lucide-react';
+  Cross
+} from '@getpapillon/papicons';
 import { CFOP_SECTIONS, CFOP_DATA } from '../../data/cfopData';
 import { CubeDiagram2D } from './CubeDiagram2D';
 import { AlgoDemoModal } from './AlgoDemoModal';
@@ -108,7 +107,7 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo }) {
                 <div className="trainer-drawer-banner-sub">{t('algo.selectStage')}</div>
               </div>
               <button className="algo-modal-close" onClick={() => setDrawerOpen(false)}>
-                <X size={18} />
+                <Cross size={18} />
               </button>
             </div>
             <nav className="trainer-drawer-nav">
@@ -121,7 +120,7 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo }) {
                     setDrawerOpen(false);
                   }}
                 >
-                  <BookOpen size={18} />
+                  <Bookmark size={18} />
                   <span>{sec.label}</span>
                 </button>
               ))}
@@ -155,7 +154,7 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo }) {
                         onClick={e => toggleLearned(item.id, e)}
                         title={isLearned ? t('algo.markedLearned') : t('algo.notMarkedLearned')}
                       >
-                        <Check size={16} strokeWidth={2.5} />
+                        <Check size={16} />
                       </button>
 
                       <div className="trainer-card-diagram">
@@ -194,7 +193,7 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo }) {
                             })
                           }
                         >
-                          <Gamepad2 size={15} />
+                          <Play size={15} />
                           <span>{t('common.test')}</span>
                         </button>
                       </div>

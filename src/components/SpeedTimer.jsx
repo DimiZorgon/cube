@@ -3,16 +3,16 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
-  Trash2,
+  Trash,
   ChevronLeft,
   ChevronRight,
-  Copy,
+  Paper,
   Check,
-  Timer as TimerIcon,
-  Eye,
-  EyeOff,
-  Download
-} from 'lucide-react';
+  Clock,
+  Info,
+  Cross,
+  ArrowDownBox
+} from '@getpapillon/papicons';
 import { createCaseCubies, getStickerColor } from '../utils/algoParser';
 
 const STORAGE_KEY = 'rubiks_cstimer_sessions_v1';
@@ -524,7 +524,7 @@ export function SpeedTimer({ onBack }) {
       <aside className="cstimer-sidebar">
         <div className="cstimer-brand-bar">
           <div className="cstimer-logo-badge">
-            <TimerIcon size={20} />
+            <Clock size={20} />
             <span>CubeTimer</span>
           </div>
           <button className="trainer-icon-btn" onClick={onBack} title={t('timer.backToMenu')}>
@@ -553,14 +553,14 @@ export function SpeedTimer({ onBack }) {
             onClick={handleExportCsTimer}
             title={t('timer.exportCsTimer')}
           >
-            <Download size={15} />
+            <ArrowDownBox size={15} />
           </button>
           <button
             className="cstimer-mini-icon-btn danger"
             onClick={clearCurrentSession}
             title={t('timer.clearSession')}
           >
-            <Trash2 size={15} />
+            <Trash size={15} />
           </button>
         </div>
 
@@ -701,7 +701,7 @@ export function SpeedTimer({ onBack }) {
                           onClick={() => deleteSolve(item.id)}
                           title={t('timer.deleteTime')}
                         >
-                          ×
+                          <Cross size={13} />
                         </button>
                       </td>
                     </tr>
@@ -752,7 +752,7 @@ export function SpeedTimer({ onBack }) {
               onClick={handleCopyScramble}
               title={t('timer.copyScramble')}
             >
-              {copied ? <Check size={15} /> : <Copy size={15} />}
+              {copied ? <Check size={15} /> : <Paper size={15} />}
             </button>
 
             <button
@@ -760,7 +760,7 @@ export function SpeedTimer({ onBack }) {
               onClick={() => setShowPreview(v => !v)}
               title={showPreview ? t('timer.hidePreview') : t('timer.showPreview')}
             >
-              {showPreview ? <EyeOff size={15} /> : <Eye size={15} />}
+              {showPreview ? <Cross size={15} /> : <Info size={15} />}
             </button>
           </div>
 
