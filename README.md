@@ -1,219 +1,209 @@
-# 🧊 Cube Studio — Rubik's Cube 3D & Speedcubing Hub
+# 🧊 Cube Studio — 3D Rubik's Cube & Speedcubing Platform
 
-Simulateur 3D interactif multi-puzzles (2x2, 3x3, 4x4), bibliothèque complète de méthodes d'apprentissage avec lecteur 3D d'algorithmes pas à pas, et chronomètre officiel de speedcubing (style csTimer).
+Plateforme web moderne de simulation 3D de Rubik's Cube, hub d'apprentissage méthodique et chronomètre de speedcubing conforme aux standards WCA.
 
-![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)
-![Three.js](https://img.shields.io/badge/Three.js-0.186-black?logo=three.js)
-![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-38B2AC?logo=tailwind-css)
-![Zustand](https://img.shields.io/badge/Zustand-5-764ABC)
-![License](https://img.shields.io/badge/License-MIT-green)
-
----
-
-## ✨ Fonctionnalités
-
-### 🎲 Simulateur 3D Multi-Puzzles (2x2, 3x3, 4x4)
-- **Puzzles réalistes** : 2x2x2 Pocket Cube, 3x3x3 Rubik's Cube classique et 4x4x4 Rubik's Revenge.
-- **Rendu Three.js optimisé** : cubies avec biseaux réalistes, géométrie allégée (cœurs internes masqués pour la performance) et couleurs WCA officielles.
-- **Mouvements complets** :
-  - Faces simples : `R, L, U, D, F, B` et leurs inverses (`'`).
-  - Tranches centrales & wide moves : `M`, `Rw, Lw, Uw, Dw, Fw, Bw`.
-  - Double tours : notation `2`.
-- **Contrôles polyvalents** : boutons tactiles à l'écran (avec appui long 500ms pour les wide moves), raccourcis clavier complets, et glisser-déposer 3D.
-- **Caméra intelligente** :
-  - *Mapping dynamique* : les boutons de mouvements s'adaptent automatiquement selon l'angle de vue de la caméra.
-  - *Snap magnétique* : la caméra s'aligne automatiquement sur la face la plus proche au relâchement.
-  - *Verrouillage d'axe* : mode rotation horizontale seule pour une concentration optimale.
-- **Système de jeu** : chronomètre en jeu au centième, mélange intelligent sans annulations, comptage de mouvements, détection automatique de victoire et explosion de confettis 🎉.
-- **Records personnels** : meilleur score sauvegardé localement par taille de puzzle.
+[![React 19](https://img.shields.io/badge/React-19.2-61DAFB?logo=react&logoColor=black)](https://react.dev)
+[![Three.js](https://img.shields.io/badge/Three.js-0.186-black?logo=three.js)](https://threejs.org)
+[![Vite](https://img.shields.io/badge/Vite-8.3-646CFF?logo=vite&logoColor=white)](https://vite.dev)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.3-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
+[![Zustand](https://img.shields.io/badge/Zustand-5.0-764ABC)](https://zustand.docs.pmnd.rs)
+[![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg)](LICENSE)
+[![WCA Scrambles](https://img.shields.io/badge/WCA-Compliant-blue)](#-chronomètre-speedcubing-wca)
 
 ---
 
-### 📚 Guides d'Algorithmes & Entraîneur Interactif
-7 méthodes complètes de résolution avec progression enregistrée :
+## 📌 Sommaire
 
-| Puzzle | Méthode | Niveau | Description |
-|---|---|---|---|
-| **2x2** | **Méthode Débutant** | Débutant | Résolution face par face intuitive en 3 étapes simples. |
-| **2x2** | **Méthode Ortega** | Intermédiaire | Face blanche, OLL 2x2, puis PBL (Permutation of Both Layers). |
-| **3x3** | **Méthode Débutant** | Débutant | Méthode couche par couche (LBL) avec schémas explicatifs. |
-| **3x3** | **CFOP / Fridrich** | Avancé | Bibliothèque complète : Cross, 41 cas F2L, 57 cas OLL, 21 cas PLL. |
-| **3x3** | **Blindfolded (À l'aveugle)** | Expert | Méthode Old Pochmann (coins) & M2 (arêtes) avec patron Speffz interactif cliquable (A-X) et gestion des parités. |
-| **4x4** | **Méthode Débutant** | Intermédiaire | Centres, appariement d'arêtes (réduction 3x3) et gestion des parités OLL/PLL 4x4. |
-| **4x4** | **Méthode Yau** | Avancé | Centres blanc/jaune, 3 arêtes de croix, centres restants, arêtes restantes et parités 4x4. |
+- [Aperçu & Architecture](#-architecture-du-système)
+- [Fonctionnalités Principales](#-fonctionnalités-clés)
+- [Guides de Résolution](#-guides-de-résolution--algorithmes)
+- [Personnalisation](#-personnalisation--paramètres)
+- [Contrôles & Raccourcis](#-contrôles--raccourcis)
+- [Stack Technique](#-stack-technique)
+- [Installation & Démarrage](#-installation--démarrage)
+- [Licence](#-licence)
 
 ---
 
-### 🎬 Visualiseur 3D d'Algorithmes & Schémas 2D
-- **Lecteur 3D dynamique (`AlgoDemoModal`)** :
-  - Visualisation de l'algorithme animé pas à pas sur un cube 3D dédié.
-  - Contrôles de lecture : Play/Pause, étape suivante, étape précédente, réinitialisation.
-  - Réglage de la vitesse de rotation.
-  - **Bouton « Tester en jeu »** : charge instantanément le cas exact sur le cube de jeu interactif pour s'entraîner en conditions réelles !
-- **Schémas 2D d'orientation (`CubeDiagram2D`)** : vues de dessus et patrons dépliés pour identifier rapidement les cas d'OLL, PLL et PBL.
-- **Suivi d'apprentissage** : cases à cocher persistantes en `localStorage` pour suivre vos algorithmes maîtrisés.
+## 📐 Architecture du Système
 
----
+Vue d'ensemble des flux de données, composants 3D et magasins d'état de l'application :
 
-### ⏱️ Chronomètre Speedcubing WCA (`SpeedTimer`)
-Une alternative complète intégrée à csTimer :
-- **Mélanges officiels WCA** : générateurs de scrambles aléatoires sans mouvements redondants pour 2x2 (11 mvs), 3x3 (20 mvs) et 4x4 (40 mvs).
-- **Aperçu 2D du mélange** : diagramme déplié du cube mélangé pour vérifier son placement avant de lancer le solve.
-- **Inspection WCA 15 secondes** : décompte sonore/visuel avec pénalités officielles (+2 à 15s, DNF à 17s).
-- **Déclenchement tactile / barre d'espace** : maintien pour armer (rouge ➔ vert), relâchement pour lancer.
-- **Statistiques en direct** : temps courant, meilleur temps (PB), moyennes élaguées WCA **ao5**, **ao12**, et moyenne globale.
-- **Gestion des sessions** : pénalités (+2 / DNF), suppression de temps, historique détaillé.
-- **Export csTimer** : sauvegarde au format JSON compatible csTimer et export presse-papier en un clic.
+<p align="center">
+  <img src="cube_diagram.png" alt="Architecture Cube Studio" width="100%" style="border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.2);" />
+</p>
 
----
-
-### 🌐 Internationalisation & SEO
-- **Bilingue complet** : Français (`/`) et Anglais (`/en/`) géré avec `react-i18next`.
-- **Routage multi-pages Vite** : génération statique de `index.html` et `en/index.html` avec balises OpenGraph, Twitter Cards et balises canoniques / `hreflang` pour le référencement.
-
----
-
-## 🎮 Commandes et Raccourcis
-
-### Raccourcis Clavier
-
-| Touche | Mouvement | Touche + Maj (`Shift`) |
-|---|---|---|
-| <kbd>R</kbd> | Face Droite (horaire) | `R'` (anti-horaire) |
-| <kbd>L</kbd> | Face Gauche | `L'` |
-| <kbd>U</kbd> | Face Haute | `U'` |
-| <kbd>D</kbd> | Face Basse | `D'` |
-| <kbd>F</kbd> | Face Avant | `F'` |
-| <kbd>B</kbd> | Face Arrière | `B'` |
-| <kbd>M</kbd> (3x3) | Tranche Milieu | `M'` |
-| <kbd>X</kbd>, <kbd>Y</kbd>, <kbd>Z</kbd> | Rotation du cube entier | Rotation inverse |
-
-### Contrôles Souris / Tactile
-
-| Action | Contrôle |
-|---|---|
-| **Pivoter la vue** | Clic gauche / Toucher glisser sur l'arrière-plan |
-| **Tourner une tranche** | Clic sur les boutons de commande autour du cube |
-| **Wide Move (double tranche)** | Appui long (500ms) sur un bouton de face |
-| **Snap magnétique** | Relâcher la vue pour aligner la caméra sur la face la plus proche |
-| **Verrouillage horizontal** | Icône 🔒 / 🔓 en haut à droite |
-
----
-
-## 🏗️ Architecture du Projet
+### Structure Modulaire
 
 ```text
 cube/
-├── public/                     # Favicons, assets statiques et images OG
-├── en/
-│   └── index.html              # Point d'entrée bilingue anglais
-├── index.html                  # Point d'entrée principal français
-├── vite.config.js              # Configuration Vite multi-pages & chunk splitting
+├── en/                         # Point d'entrée statique anglais (SEO / hreflang)
+├── index.html                  # Point d'entrée statique français
+├── vite.config.js              # Build multi-pages & optimisation des bundles
 └── src/
-    ├── main.jsx                # Initialisation React & i18n
-    ├── App.jsx                 # Routeur d'états principal, chargement lazy des vues
-    ├── index.css               # Styles globaux & mise en page du canvas
-    ├── App.css                 # Styles de navigation & cartes de menus
-    ├── components/
-    │   ├── CubeGame.jsx        # Moteur générique de jeu 3D (timer, shuffle, record, HUD)
-    │   ├── Cube2x2.jsx         # Vue et contrôles spécifiques au 2x2
-    │   ├── Cube3x3.jsx         # Vue et contrôles spécifiques au 3x3
-    │   ├── Cube4x4.jsx         # Vue et contrôles spécifiques au 4x4
-    │   ├── RubiksCube.jsx      # Orchestrateur d'animations Three.js synchronisé avec Zustand
-    │   ├── Cubie.jsx           # Composant 3D d'une pièce individuelle (biseaux & facettes)
-    │   ├── MiniCube.jsx        # Cube 3D miniature autonome pour les boutons du menu
-    │   ├── SpeedTimer.jsx      # Chronomètre speedcubing, calcul de statistiques et export
-    │   ├── CameraMapper.jsx    # Calcul des vecteurs caméra pour adapter les boutons
-    │   ├── LockCamera.jsx      # Contrôleur Orbit/Trackball avec verrouillage d'axes
-    │   ├── MoveButton.jsx      # Bouton de mouvement tactile avec support d'appui long
-    │   ├── LanguageSwitcher.jsx# Sélecteur de langue (FR / EN)
-    │   └── algos/              # Vues détaillées des méthodes de résolution
-    │       ├── AlgoDemoModal.jsx   # Lecteur 3D d'animation d'algorithme pas à pas
-    │       ├── CubeDiagram2D.jsx   # Schéma vectoriel 2D des cas (OLL, PLL, PBL)
-    │       ├── MethodeSimple2x2.jsx
-    │       ├── MethodeOrtega2x2.jsx
-    │       ├── MethodeSimple3x3.jsx
-    │       ├── MethodeCFOP3x3.jsx
-    │       ├── MethodeBlind3x3.jsx
-    │       ├── MethodeSimple4x4.jsx
-    │       └── MethodeYau4x4.jsx
-    ├── data/                   # Données des algorithmes et cas d'entraînement
-    │   ├── simple2x2Data.js
-    │   ├── ortegaData.js
-    │   ├── simple3x3Data.js
-    │   ├── cfopData.js
-    │   ├── blind3x3Data.js
-    │   ├── simple4x4Data.js
-    │   └── yau4x4Data.js
-    ├── i18n/                   # Traductions FR/EN et localisation dynamique des algorithmes
-    │   ├── index.js
-    │   ├── fr.js
-    │   ├── en.js
-    │   └── localizeData.js
+    ├── main.jsx                # Bootstrap React & configuration i18next
+    ├── App.jsx                 # Routage d'états et chargement dynamique des vues
     ├── store/
-    │   └── useCubeStore.js     # État global Zustand (cubies, rotation active, file, validation)
-    ├── styles/                 # Feuilles de styles modulaires
-    │   ├── menu.css
-    │   ├── speedTimer.css
-    │   ├── algoModal.css
-    │   ├── blind3x3.css
-    │   ├── trainer.css
-    │   └── accordion.css
+    │   ├── useCubeStore.js     # État du cube 3D (cubies, rotation active, file, validation)
+    │   └── useSettingsStore.js # Configuration utilisateur persistante (thème, vitesse, échelle)
+    ├── components/
+    │   ├── RubiksCube.jsx      # Moteur de rendu 3D Three.js & contrôles gestuels tactiles
+    │   ├── Cubie.jsx           # Modèle 3D géométrique unitaire (faces, biseaux, matériaux)
+    │   ├── CubeGame.jsx        # Logique de jeu unifiée (mélange, timer, détection de victoire)
+    │   ├── SettingsPage.jsx    # Interface complète de réglages graphiques et gameplay
+    │   ├── SpeedTimer.jsx      # Chronomètre officiel, calcul des moyennes et export
+    │   ├── CameraMapper.jsx    # Calcul trigonométrique d'orientation vue/commandes
+    │   └── algos/              # Simulateurs 3D et fiches théoriques pas à pas
+    ├── data/                   # Définitions des cas (CFOP, Ortega, Yau, Blindfolded, etc.)
+    ├── i18n/                   # Dictionnaires FR/EN et adaptateurs de localisation
     └── utils/
-        ├── cubeMath.js         # Génération géométrique & algorithme de résolution universel
-        └── algoParser.js       # Analyseur d'algorithmes, inversion de mouvements et masquage
+        ├── cubeMath.js         # Algèbre géométrique 3D, quaternion et validateurs
+        └── algoParser.js       # Parseur de notation standard WCA et générateurs d'états
 ```
 
 ---
 
-## 🛠️ Stack Technique
+## ⚡ Fonctionnalités Clés
 
-| Domaine | Technologies |
-|---|---|
-| **Core** | [React 19](https://react.dev), [JavaScript ES Modules](https://developer.mozilla.org/fr/docs/Web/JavaScript/Guide/Modules) |
-| **3D & Canvas** | [Three.js 0.186](https://threejs.org), [@react-three/fiber](https://r3f.docs.pmnd.rs), [@react-three/drei](https://drei.docs.pmnd.rs) |
-| **Gestion d'état** | [Zustand 5](https://zustand.docs.pmnd.rs) |
-| **Styling & Design** | [Tailwind CSS 4](https://tailwindcss.com), CSS modulaire, [Lucide React](https://lucide.dev) |
-| **Effets** | [canvas-confetti](https://github.com/catdad/canvas-confetti) |
-| **Internationalisation** | [i18next](https://www.i18next.com), [react-i18next](https://react.i18next.com) |
-| **Tooling & Build** | [Vite 8](https://vite.dev), [Oxlint](https://oxc.rs/docs/guide/usage/linter.html) |
+### 🎲 Simulateur 3D Multi-Puzzles (2x2, 3x3, 4x4)
+- **Rendu Three.js optimisé** : Géométrie modulaire, cubies biseautés réalistes, masquage automatique des cœurs internes pour des performances optimales (60 FPS constants).
+- **Notation WCA complète** :
+  - Mouvements simples : `R, L, U, D, F, B` et inverses (`'`).
+  - Tranches internes : `M`.
+  - Mouvements larges (*wide moves*) : `Rw, Lw, Uw, Dw, Fw, Bw`.
+  - Doubles rotations : index `2`.
+- **Contrôles tactiles & gestuels avancés** :
+  - Détection intuitive de glisser-déposer sur les facettes 3D.
+  - Boutons de commande à l'écran avec gestion d'appui long (500 ms) pour les wide moves.
+  - Prise en charge multi-touch optimisée pour grands formats (4x4).
+- **Caméra intelligente** :
+  - *Dynamic View Mapping* : recalcul instantané de l'action des boutons selon l'angle de la caméra.
+  - *Magnetic Snap* : recentrage automatique sur la face la plus proche après rotation libre.
+  - *Verrouillage d'axe* : mode rotation horizontale dédiée pour un confort de jeu accru.
+- **Moteur de jeu** :
+  - Chronomètre de résolution intégré au centième de seconde.
+  - Générateur de mélange intelligent sans redondance.
+  - Détection automatique d'état résolu avec animation de confettis.
+  - Sauvegarde locale du record personnel (*PB*) pour chaque format de cube.
 
 ---
 
-## 🚀 Installation & Développement
+### 🎨 Personnalisation & Paramètres
+- **Gestionnaire de styles visuels** :
+  - **Préréglages de couleurs** : Palette WCA Officielle, Thème Pastel, Thème Néon contrasté.
+  - **Personnalisation fine** : Sélecteur hexadécimal couleur par couleur pour chaque face (`U, D, F, B, R, L`).
+- **Options de rendu** :
+  - Mode structure creuse (*Hollow Cube*) pour inspecter les pièces internes.
+  - Ajustement de l'échelle d'affichage du cube (`0.8x` à `1.3x`).
+  - Vitesse de rotation des tranches réglable de ultra-rapide à décomposition lente.
+- **Persistance intégrale** : Tous les réglages sont sauvegardés automatiquement dans `localStorage` via Zustand.
+
+---
+
+### ⏱️ Chronomètre Speedcubing WCA
+- **Générateur WCA certifié** : Scrambles pseudo-aléatoires sans mouvements inverses successifs (2x2 : 11 coups, 3x3 : 20 coups, 4x4 : 40 coups).
+- **Phase d'inspection WCA 15s** : Avertissements sonores et visuels avec pénalités réglementaires (+2s à 15s, DNF au-delà de 17s).
+- **Visualiseur 2D du mélange** : Patron déplié complet permettant la vérification physique du cube avant résolution.
+- **Statistiques de session** : Calcul en temps réel des métriques WCA : Single, Best, **ao5** (moyenne élaguée sur 5), **ao12** et moyenne globale.
+- **Export & Intégration** :
+  - Export compatible csTimer (format JSON).
+  - Copie instantanée du résumé de session dans le presse-papier.
+
+---
+
+## 📖 Guides de Résolution & Algorithmes
+
+7 méthodes complètes documentées avec visualisation 3D pas à pas et suivi de progression :
+
+| Puzzle | Méthode | Niveau | Contenu & Algorithmes |
+|:---:|:---|:---:|:---|
+| **2x2** | **Méthode Débutant** | Débutant | Résolution couche par couche intuitive en 3 étapes. |
+| **2x2** | **Méthode Ortega** | Intermédiaire | Première face, OLL 2x2, puis PBL (*Permutation of Both Layers*). |
+| **3x3** | **Méthode Débutant (LBL)** | Débutant | Croix blanche, coins première couche, arêtes deuxième couche, croix et orientation finale. |
+| **3x3** | **CFOP / Fridrich** | Avancé | Bibliothèque complète : Cross, 41 cas F2L, 57 cas OLL, 21 cas PLL. |
+| **3x3** | **Blindfolded (À l'aveugle)** | Expert | Old Pochmann (coins), M2 (arêtes), patron Speffz interactif cliquable et gestion des parités. |
+| **4x4** | **Méthode Débutant** | Intermédiaire | Résolution des 6 centres, regroupement des arêtes par paires et parités OLL/PLL. |
+| **4x4** | **Méthode Yau** | Avancé | Centres opposés, 3 arêtes de croix initiale, centres restants, réduction 3x3 et résolution rapide. |
+
+### Lecteur 3D d'Algorithmes (`AlgoDemoModal`)
+- **Animation pas à pas** : Lecture automatique avec pause, marche avant, marche arrière et réinitialisation.
+- **Bouton « Tester en jeu »** : Injecte instantanément la situation de l'algorithme directement dans le simulateur 3D interactif pour mise en pratique immédiate.
+- **Schémas vectoriels 2D** : Vues d'orientation et de permutation avec codes couleurs harmonisés.
+- **Suivi d'apprentissage** : Sauvegarde locale de l'état d'apprentissage pour chaque algorithme.
+
+---
+
+## 🎮 Contrôles & Raccourcis
+
+### Clavier
+
+| Touche | Action normale | Avec `Shift` (Inverse `'`) |
+|:---:|:---|:---|
+| <kbd>R</kbd> | Face Droite horaire | Face Droite anti-horaire |
+| <kbd>L</kbd> | Face Gauche horaire | Face Gauche anti-horaire |
+| <kbd>U</kbd> | Face Haute horaire | Face Haute anti-horaire |
+| <kbd>D</kbd> | Face Basse horaire | Face Basse anti-horaire |
+| <kbd>F</kbd> | Face Avant horaire | Face Avant anti-horaire |
+| <kbd>B</kbd> | Face Arrière horaire | Face Arrière anti-horaire |
+| <kbd>M</kbd> | Tranche centrale (3x3) | Tranche centrale inverse |
+| <kbd>X</kbd>, <kbd>Y</kbd>, <kbd>Z</kbd> | Rotation globale du cube | Rotation globale inverse |
+
+### Souris & Tactile
+
+| Action | Geste |
+|:---|:---|
+| **Tourner la caméra** | Clic gauche / Glisser sur le fond |
+| **Tourner une tranche** | Glisser sur une pièce 3D ou clic sur bouton HUD |
+| **Tranche large (*Wide Move*)** | Clic prolongé (>500 ms) sur un bouton HUD |
+| **Snap magnétique** | Relâcher la vue pour aligner la caméra sur la face la plus proche |
+| **Verrouillage horizontal** | Commutateur 🔒 / 🔓 dans la barre d'outils supérieure |
+
+---
+
+## 💻 Stack Technique
+
+- **Front-End** : [React 19](https://react.dev), [JSX](https://react.dev/learn/writing-markup-with-jsx), [ES Modules](https://developer.mozilla.org/fr/docs/Web/JavaScript/Guide/Modules)
+- **Moteur 3D** : [Three.js](https://threejs.org), [@react-three/fiber](https://r3f.docs.pmnd.rs), [@react-three/drei](https://drei.docs.pmnd.rs)
+- **Gestion d'état** : [Zustand 5](https://zustand.docs.pmnd.rs) (avec persistance `localStorage`)
+- **Styles & Design** : [Tailwind CSS 4](https://tailwindcss.com), CSS modulaire, [@getpapillon/papicons](https://github.com/thepapillonapp/papicons)
+- **Internationalisation** : [i18next](https://www.i18next.com) & [react-i18next](https://react.i18next.com) (FR / EN)
+- **Outillage de build** : [Vite 8](https://vite.dev), [Oxlint](https://oxc.rs)
+
+---
+
+## 🚀 Installation & Démarrage
 
 ### Prérequis
-- [Node.js](https://nodejs.org) (v18 ou supérieur recommandé)
+- [Node.js](https://nodejs.org) >= 18.0.0
 - `npm`
 
 ### Installation
 
 ```bash
-# Cloner le dépôt
+# 1. Cloner le projet
 git clone https://github.com/DimiZorgon/cube.git
 cd cube
 
-# Installer les dépendances
+# 2. Installer les dépendances
 npm install
 
-# Démarrer le serveur de développement
+# 3. Démarrer le serveur de développement
 npm run dev
 ```
 
-L'application est accessible sur [http://localhost:5173](http://localhost:5173).
+Rendez-vous sur [http://localhost:5173](http://localhost:5173).
 
-### Commandes disponibles
+### Scripts Disponibles
 
 ```bash
-npm run dev      # Démarre le serveur local de développement avec HMR
-npm run build    # Génère le bundle de production optimisé dans dist/
-npm run preview  # Prévisualise localement le build de production
-npm run lint     # Analyse le code avec Oxlint ultra-rapide
+npm run dev       # Serveur de développement avec Hot Module Replacement (HMR)
+npm run build     # Compilation de production optimisée dans le dossier dist/
+npm run preview   # Prévisualisation locale du build de production
+npm run lint      # Analyse statique du code avec Oxlint
 ```
 
 ---
 
-## 📜 Licence
+## 📄 Licence
 
-Ce projet est sous licence [MIT](LICENSE).
+Projet distribué sous licence [MIT](LICENSE).
