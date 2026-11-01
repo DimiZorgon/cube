@@ -1,6 +1,7 @@
 // src/utils/algoParser.js
 import * as THREE from 'three';
 import { generateInitialCubies } from './cubeMath.js';
+import { useSettingsStore } from '../store/useSettingsStore.js';
 
 export const STANDARD_COLORS = {
   right: '#B71234',  // Rouge (+X)
@@ -187,18 +188,19 @@ export function applyAlgoInstant(cubies, algString, size = 3, includeOptional = 
   return result;
 }
 
-export function getBaseCubieColors(initialPosition) {
+export function getBaseCubieColors(initialPosition, customColors = null) {
+  const palette = customColors || useSettingsStore.getState().colors || STANDARD_COLORS;
   const [ix, iy, iz] = initialPosition;
   const outer = Math.max(Math.abs(ix), Math.abs(iy), Math.abs(iz), 0.5);
   const threshold = outer - 0.1;
 
   return [
-    ix > threshold ? STANDARD_COLORS.right : STANDARD_COLORS.core,
-    ix < -threshold ? STANDARD_COLORS.left : STANDARD_COLORS.core,
-    iy > threshold ? STANDARD_COLORS.up : STANDARD_COLORS.core,
-    iy < -threshold ? STANDARD_COLORS.down : STANDARD_COLORS.core,
-    iz > threshold ? STANDARD_COLORS.front : STANDARD_COLORS.core,
-    iz < -threshold ? STANDARD_COLORS.back : STANDARD_COLORS.core
+    ix > threshold ? palette.right : STANDARD_COLORS.core,
+    ix < -threshold ? palette.left : STANDARD_COLORS.core,
+    iy > threshold ? palette.up : STANDARD_COLORS.core,
+    iy < -threshold ? palette.down : STANDARD_COLORS.core,
+    iz > threshold ? palette.front : STANDARD_COLORS.core,
+    iz < -threshold ? palette.back : STANDARD_COLORS.core
   ];
 }
 
@@ -259,21 +261,18 @@ export function createCaseCubies({
       const isUpSticker = worldNormal.y > 0.9;
 
       if (maskMode === 'bld_edge') {
-        // Uniquement les 6 centres + les 2 arêtes échangées (Buffer B et Cible)
         return (isCenterPiece || (isEdgePiece && swappedCubieIds.has(c.id)))
           ? col
           : STANDARD_COLORS.grey;
       }
 
       if (maskMode === 'bld_corner') {
-        // Uniquement les 6 centres + les 2 coins échangés (Buffer A et Cible)
         return (isCenterPiece || (isCornerPiece && swappedCubieIds.has(c.id)))
           ? col
           : STANDARD_COLORS.grey;
       }
 
       if (maskMode === 'bld_swap') {
-        // Les 6 centres + toutes les pièces permutées par l'algorithme (T-Perm, Y-Perm, Ra-Perm)
         return (isCenterPiece || swappedCubieIds.has(c.id))
           ? col
           : STANDARD_COLORS.grey;

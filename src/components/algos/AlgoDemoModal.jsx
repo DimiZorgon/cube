@@ -14,6 +14,7 @@ import {
   Globe
 } from '@getpapillon/papicons';
 import { Cubie } from '../Cubie';
+import { useSettingsStore } from '../../store/useSettingsStore';
 import {
   createCaseCubies,
   parseAlgoTokens,
@@ -22,11 +23,14 @@ import {
   invertSingleMove
 } from '../../utils/algoParser';
 
+const DICO_AXIS = { x: 0, y: 1, z: 2 };
+
 function AnimatedDemoCube({ cubies, activeAnim, onFinishAnim }) {
   const pivotRefs = useRef({});
   const currentAngle = useRef(0);
   const finishedRef = useRef(false);
-  const dicoAxis = { x: 0, y: 1, z: 2 };
+  const cubeScale = useSettingsStore(state => state.cubeScale);
+  const turnSpeed = useSettingsStore(state => state.turnSpeed);
 
   // Synchronise la remise à zéro des pivots exactement au moment où React applique les nouvelles positions
   useLayoutEffect(() => {
@@ -40,8 +44,7 @@ function AnimatedDemoCube({ cubies, activeAnim, onFinishAnim }) {
   useFrame((_, delta) => {
     if (!activeAnim || finishedRef.current) return;
 
-    const speed = 5.5;
-    currentAngle.current += speed * delta;
+    currentAngle.current += turnSpeed * delta;
     const targetAngle = (Math.PI / 2) * activeAnim.quarterTurns;
     const clampedAngle = Math.min(currentAngle.current, targetAngle);
     const rotValue = clampedAngle * -activeAnim.direction;
@@ -50,7 +53,7 @@ function AnimatedDemoCube({ cubies, activeAnim, onFinishAnim }) {
       const grp = pivotRefs.current[c.id];
       if (!grp) continue;
       const isMoving = activeAnim.value.some(
-        v => Math.abs(c.position[dicoAxis[activeAnim.axis]] - v) < 0.1
+        v => Math.abs(c.position[DICO_AXIS[activeAnim.axis]] - v) < 0.1
       );
       if (isMoving) {
         grp.rotation[activeAnim.axis] = rotValue;
@@ -66,7 +69,7 @@ function AnimatedDemoCube({ cubies, activeAnim, onFinishAnim }) {
   });
 
   return (
-    <group>
+    <group scale={cubeScale}>
       {cubies.map(data => (
         <group
           key={data.id}
@@ -94,6 +97,7 @@ export function AlgoDemoModal({
   onTestAlgo,
   onClose
 }) {
+  const customColors = useSettingsStore(state => state.colors);
   const allTokens = useMemo(() => parseAlgoTokens(algoCase.alg), [algoCase.alg]);
   const tokens = useMemo(
     () => allTokens.filter(t => !t.isOptional),
@@ -108,9 +112,10 @@ export function AlgoDemoModal({
         setup: algoCase.setup ?? null,
         yellowTop: algoCase.yellowTop ?? true,
         maskMode: algoCase.maskMode || 'full',
-        applySetup: true
+        applySetup: true,
+        colors: customColors
       }),
-    [algoCase, size]
+    [algoCase, size, customColors]
   );
 
   const [cubies, setCubies] = useState(initialCubies);

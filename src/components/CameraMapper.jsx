@@ -14,8 +14,13 @@ export function CameraMapper() {
     const isSnapping = useRef(false);
 
     useEffect(() => {
-        const handleDown = () => { isSnapping.current = false; };
-        const handleUp = () => { isSnapping.current = true; };
+        const handleDown = () => {
+            isSnapping.current = false;
+        };
+        const handleUp = () => {
+            if (gl.domElement.dataset.swipingCube === 'true') return;
+            isSnapping.current = true;
+        };
 
         gl.domElement.addEventListener('pointerdown', handleDown);
         window.addEventListener('pointerup', handleUp);
@@ -64,7 +69,7 @@ export function CameraMapper() {
             setCameraMapping(newMapping);
         }
 
-        if (isSnapping.current && cameraMapping) {
+        if (isSnapping.current && cameraMapping && gl.domElement.dataset.swipingCube !== 'true') {
             const frontAxis = cameraMapping.Front;
             const upAxis = cameraMapping.Up;
 

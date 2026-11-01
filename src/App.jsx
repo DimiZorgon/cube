@@ -22,6 +22,7 @@ const Cube2x2 = lazy(() => import('./components/Cube2x2').then(m => ({ default: 
 const Cube3x3 = lazy(() => import('./components/Cube3x3').then(m => ({ default: m.Cube3x3 })));
 const Cube4x4 = lazy(() => import('./components/Cube4x4').then(m => ({ default: m.Cube4x4 })));
 const SpeedTimer = lazy(() => import('./components/SpeedTimer').then(m => ({ default: m.SpeedTimer })));
+const SettingsPage = lazy(() => import('./components/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const MethodeSimple2x2 = lazy(() => import('./components/algos/MethodeSimple2x2').then(m => ({ default: m.MethodeSimple2x2 })));
 const MethodeOrtega2x2 = lazy(() => import('./components/algos/MethodeOrtega2x2').then(m => ({ default: m.MethodeOrtega2x2 })));
 const MethodeSimple3x3 = lazy(() => import('./components/algos/MethodeSimple3x3').then(m => ({ default: m.MethodeSimple3x3 })));
@@ -35,7 +36,6 @@ export default function App() {
   const [mode, setMode] = useState('menu');
   const [trainingCase, setTrainingCase] = useState(null);
   const [returnMode, setReturnMode] = useState('play_menu');
-
 
   const handleTestAlgo = (caseData, currentAlgoPage) => {
     setTrainingCase(caseData);
@@ -85,6 +85,10 @@ export default function App() {
 
   if (mode === 'timer') {
     return renderLazy(<SpeedTimer onBack={() => setMode('play_menu')} />);
+  }
+
+  if (mode === 'settings') {
+    return renderLazy(<SettingsPage onBack={() => setMode('menu')} />);
   }
 
   if (mode === 'simple2x2') {
@@ -371,6 +375,27 @@ export default function App() {
             <div className="menu-card-Meta">
               <span className="menu-card-title">{t('app.home.learn.title')}</span>
               <span className="menu-card-sub">{t('app.home.learn.description')}</span>
+            </div>
+          </div>
+        </button>
+
+        <button className="menu-btn primary-pole-card" onClick={() => setMode('settings')}>
+          <div className="pole-preview-wrapper algo-hub-graphic">
+            <Gears size={68} />
+          </div>
+          <div className="pole-card-footer">
+            <div className="pole-icon-badge accent">
+              <Gears size={24} />
+            </div>
+            <div className="menu-card-Meta">
+              <span className="menu-card-title">
+                {t('app.home.settings.title', { defaultValue: 'Paramètres' })}
+              </span>
+              <span className="menu-card-sub">
+                {t('app.home.settings.description', {
+                  defaultValue: 'Style creux, couleurs, taille & vitesse'
+                })}
+              </span>
             </div>
           </div>
         </button>
