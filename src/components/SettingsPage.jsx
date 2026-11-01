@@ -140,21 +140,25 @@ export function SettingsPage({ onBack }) {
 
   return (
     <div className="trainer-page settings-page">
-      <header className="trainer-header">
-        <button className="trainer-back-btn" onClick={onBack}>
+      <header className="trainer-topbar">
+        <button className="trainer-icon-btn" onClick={onBack}>
           <ArrowLeft size={18} />
           <span>{t('common.backHome')}</span>
         </button>
 
-        <div className="trainer-title-block">
-          <Gears size={22} className="accent-icon" />
-          <h1>{t('settings.title', { defaultValue: 'Paramètres du Cube' })}</h1>
+        <div className="trainer-topbar-center">
+          <Gears size={20} style={{ color: '#9eb5aa' }} />
+          <h1 className="trainer-topbar-title">
+            {t('settings.title', { defaultValue: 'Paramètres du Cube' })}
+          </h1>
         </div>
 
-        <button className="trainer-back-btn settings-reset-btn" onClick={resetSettings}>
-          <ArrowLeftBox size={16} />
-          <span>{t('settings.reset', { defaultValue: 'Par défaut' })}</span>
-        </button>
+        <div className="trainer-topbar-actions">
+          <button className="trainer-icon-btn settings-reset-btn" onClick={resetSettings}>
+            <ArrowLeftBox size={16} />
+            <span>{t('settings.reset', { defaultValue: 'Par défaut' })}</span>
+          </button>
+        </div>
       </header>
 
       <main className="settings-content">

@@ -15,7 +15,7 @@
 }
 
 .step-accordion.open {
-  border-color: rgba(56, 189, 248, 0.5);
+  border-color: #9eb5aa;
 }
 
 .step-accordion-header {
@@ -40,9 +40,9 @@
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  background: rgba(56, 189, 248, 0.15);
-  border: 1px solid rgba(56, 189, 248, 0.35);
-  color: #38bdf8;
+  background: #303a37;
+  border: 1px solid #4b5a53;
+  color: #b9c9bf;
   font-size: 1.05rem;
   font-weight: 800;
   display: flex;

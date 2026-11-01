@@ -215,34 +215,23 @@
   width: 52px;
   height: 52px;
   border-radius: 12px;
+  background: #303a37;
+  color: #b9c9bf;
+  border: 1px solid #4b5a53;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
-.method-card-icon.cyan {
-  background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.3);
-}
-
-.method-card-icon.amber {
-  background: rgba(250, 204, 21, 0.15);
-  color: #facc15;
-  border: 1px solid rgba(250, 204, 21, 0.3);
-}
-
-.method-card-icon.emerald {
-  background: rgba(52, 211, 153, 0.15);
-  color: #34d399;
-  border: 1px solid rgba(52, 211, 153, 0.3);
-}
-
-.method-card-icon.rose {
-  background: rgba(251, 113, 133, 0.15);
-  color: #fb7185;
-  border: 1px solid rgba(251, 113, 133, 0.3);
+.method-card-icon.cyan,
+.method-card-icon.amber,
+.method-card-icon.emerald,
+.method-card-icon.rose,
+.method-card-icon.purple {
+  background: #303a37;
+  color: #b9c9bf;
+  border: 1px solid #4b5a53;
 }
 
 .method-card-body {

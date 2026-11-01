@@ -121,18 +121,34 @@ body {
   font-family: inherit;
   background-color: var(--surface-color);
   color: var(--text-color);
-  border: 1px solid #4a5558;
+  border: 1px solid #41494c;
   border-radius: 6px;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
   transition: background 0.12s, border-color 0.12s;
 }
 
 .shuffle-btn:hover {
   background-color: var(--surface-hover);
+  border-color: #9eb5aa;
 }
 
 .shuffle-btn:active {
   background-color: #35413c;
+}
+
+.shuffle-btn.active-toggle,
+.shuffle-btn.primary-action {
+  background-color: #9eb5aa;
+  color: #171c1a;
+  border-color: #b9c9bf;
+}
+
+.shuffle-btn.primary-action:hover {
+  background-color: #b9c9bf;
 }
 
 /* === BOUTONS DE MOUVEMENT === */
@@ -244,20 +260,6 @@ body {
   z-index: 100;
 }
 
-/* À ajouter en bas de src/index.css */
-.shuffle-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-}
-
-.shuffle-btn.active-toggle {
-  background-color: #9eb5aa;
-  color: #171c1a;
-  border-color: #b9c9bf;
-}
-
 .highscore {
   display: inline-flex;
   align-items: center;
@@ -283,9 +285,9 @@ body {
   z-index: 10;
   margin: 0.5rem auto;
   padding: 0.65rem 1.4rem;
-  background-color: rgba(15, 23, 42, 0.92);
+  background-color: #202629;
   color: #facc15;
-  border: 1px solid #586b61;
+  border: 1px solid #41494c;
   border-radius: 6px;
   font-family: 'Courier New', Courier, monospace;
   font-size: 1.2rem;
@@ -298,9 +300,10 @@ body {
   top: 20%;
   left: 50%;
   transform: translateX(-50%);
-  background: #0f172a;
-  color: #ffffff;
-  border: 1px solid #586b61;
+  background: #202629;
+  color: #f0f1ed;
+  border: 1px solid #41494c;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
   padding: 1.6rem 2.4rem;
   border-radius: 8px;
   text-align: center;

@@ -4,7 +4,7 @@
 .algo-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(2, 6, 23, 0.8);
+  background: rgba(15, 19, 21, 0.82);
   z-index: 200;
   display: flex;
   align-items: center;
@@ -133,7 +133,7 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: rgba(30, 41, 59, 0.9);
+  background: #252b2e;
 }
 
 .algo-modal-progress-fill {

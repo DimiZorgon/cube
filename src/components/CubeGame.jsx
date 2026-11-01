@@ -40,9 +40,9 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
   const handleMoveAction = useCubeStore(state => state.startRotation);
   const customColors = useSettingsStore(state => state.colors);
 
-  const supportsTouchSwipe = size === 2 || size === 3;
+  const supportsTouchSwipe = size === 2 || size === 3 || size === 4;
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
-  const [touchOnly, setTouchOnly] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768 && (size === 2 || size === 3));
+  const [touchOnly, setTouchOnly] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768 && (size === 2 || size === 3 || size === 4));
   const [isLocked, setIsLocked] = useState(false);
 
   const highScoreKey = `rubiksHighScore_${size}x${size}`;

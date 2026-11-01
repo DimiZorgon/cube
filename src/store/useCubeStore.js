@@ -21,7 +21,6 @@ export const useCubeStore = create((set) => ({
     size: 3,
     cubies: generateInitialCubies(3),
     isSolved: true,
-    history: [],
     cameraMapping: getDefaultMapping(3),
 
     initCube: (size) => {
@@ -31,8 +30,7 @@ export const useCubeStore = create((set) => ({
             isSolved: true,
             rotationFile: [],
             activeRotation: null,
-            cameraMapping: getDefaultMapping(size),
-            history: []
+            cameraMapping: getDefaultMapping(size)
         });
     },
 
@@ -44,8 +42,7 @@ export const useCubeStore = create((set) => ({
             isSolved: false,
             rotationFile: [],
             activeRotation: null,
-            cameraMapping: getDefaultMapping(size),
-            history: []
+            cameraMapping: getDefaultMapping(size)
         });
     },
 
@@ -98,29 +95,12 @@ export const useCubeStore = create((set) => ({
             });
 
             const solved = checkIsSolved(axedCubies);
-            const newHistory = [...state.history, state.cubies];
 
             if (state.rotationFile.length > 0) {
                 const [activeRotation, ...rest] = state.rotationFile;
-                return { cubies: axedCubies, activeRotation, rotationFile: rest, isSolved: solved, history: newHistory };
+                return { cubies: axedCubies, activeRotation, rotationFile: rest, isSolved: solved };
             }
-            return { cubies: axedCubies, activeRotation: null, isSolved: solved, history: newHistory };
-        });
-    },
-
-    undo: () => {
-        set((state) => {
-            if (state.history.length === 0) return state;
-            const previousCubies = state.history[state.history.length - 1];
-            const newHistory = state.history.slice(0, state.history.length - 1);
-            const solved = checkIsSolved(previousCubies);
-            return {
-                cubies: previousCubies,
-                history: newHistory,
-                isSolved: solved,
-                activeRotation: null,
-                rotationFile: []
-            };
+            return { cubies: axedCubies, activeRotation: null, isSolved: solved };
         });
     }
 }));
