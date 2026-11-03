@@ -17,13 +17,15 @@ import { localizeCFOPGroups, localizeCases } from '../../i18n/localizeData';
 
 const LEARNED_STORAGE_KEY = 'rubiks_learned_algos';
 
-export function MethodeCFOP3x3({ onBack, onTestAlgo }) {
+export function MethodeCFOP3x3({ onBack, onTestAlgo, activeSection: controlledSection, onSectionChange }) {
   const { t } = useTranslation();
   const sections = CFOP_SECTIONS.map(section => ({
     ...section,
     label: t(`data.section.cfop.${section.id}`)
   }));
-  const [activeSection, setActiveSection] = useState('PLL');
+  const [localSection, setLocalSection] = useState('F2L');
+  const activeSection = controlledSection ?? localSection;
+  const setActiveSection = onSectionChange ?? setLocalSection;
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedCase, setSelectedCase] = useState(null);
   const [showOnlyUnlearned, setShowOnlyUnlearned] = useState(false);

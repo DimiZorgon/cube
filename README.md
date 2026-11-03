@@ -42,7 +42,10 @@ cube/
 ├── vite.config.js              # Build multi-pages & optimisation des bundles
 └── src/
     ├── main.jsx                # Bootstrap React & configuration i18next
-    ├── App.jsx                 # Routage d'états et chargement dynamique des vues
+    ├── App.jsx                 # Point d'entrée RouterProvider
+    ├── router.jsx              # Table des routes React Router v7 (FR et /en)
+    ├── routes/                 # Configuration d'URL, SEO par page et résolution des cas
+    ├── pages/                  # Pages et wrappers de routes chargés à la demande
     ├── store/
     │   ├── useCubeStore.js     # État du cube 3D (cubies, rotation active, file, validation)
     │   └── useSettingsStore.js # Configuration utilisateur persistante (thème, vitesse, échelle)
@@ -200,6 +203,18 @@ npm run dev       # Serveur de développement avec Hot Module Replacement (HMR)
 npm run build     # Compilation de production optimisée dans le dossier dist/
 npm run preview   # Prévisualisation locale du build de production
 npm run lint      # Analyse statique du code avec Oxlint
+```
+
+---
+
+### Déploiement Nginx
+
+Le script `npm run build` pré-génère un fichier `.html` par route indexable (FR et `/en`) ainsi que `dist/sitemap.xml`. Pour servir ces pages et assurer le repli SPA sur les routes dynamiques (`/algos/:size/:method/test/:caseId`), utilisez la configuration fournie dans [`deploy/nginx.conf.example`](deploy/nginx.conf.example) :
+
+```nginx
+location = /en { return 301 /en/; }
+location /en/  { try_files $uri $uri.html /en/index.html; }
+location /     { try_files $uri $uri.html /index.html; }
 ```
 
 ---

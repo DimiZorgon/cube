@@ -9,14 +9,16 @@ import { localizeCases, localizeGroups } from '../../i18n/localizeData';
 
 const LEARNED_STORAGE_KEY = 'rubiks_learned_algos';
 
-export function MethodeYau4x4({ onBack, onTestAlgo }) {
+export function MethodeYau4x4({ onBack, onTestAlgo, activeSection: controlledFilter, onSectionChange }) {
   const { t } = useTranslation();
   const sections = YAU_SECTIONS.map(section => ({
     ...section,
     label: t(`data.section.yau.${section.id}`)
   }));
   const groups = localizeGroups('yau', YAU_DATA, t);
-  const [activeFilter, setActiveFilter] = useState('ALL');
+  const [localFilter, setLocalFilter] = useState('ALL');
+  const activeFilter = controlledFilter ?? localFilter;
+  const setActiveFilter = onSectionChange ?? setLocalFilter;
   const [selectedCase, setSelectedCase] = useState(null);
   const [learnedIds, setLearnedIds] = useState(() => {
     try {

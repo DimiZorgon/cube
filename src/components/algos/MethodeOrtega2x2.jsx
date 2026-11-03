@@ -9,14 +9,16 @@ import { localizeCases, localizeGroups } from '../../i18n/localizeData';
 
 const LEARNED_STORAGE_KEY = 'rubiks_learned_algos';
 
-export function MethodeOrtega2x2({ onBack, onTestAlgo }) {
+export function MethodeOrtega2x2({ onBack, onTestAlgo, activeSection: controlledFilter, onSectionChange }) {
   const { t } = useTranslation();
   const sections = ORTEGA_SECTIONS.map(section => ({
     ...section,
     label: t(`data.section.ortega.${section.id}`)
   }));
   const groups = localizeGroups('ortega', ORTEGA_DATA, t);
-  const [activeFilter, setActiveFilter] = useState('ALL');
+  const [localFilter, setLocalFilter] = useState('ALL');
+  const activeFilter = controlledFilter ?? localFilter;
+  const setActiveFilter = onSectionChange ?? setLocalFilter;
   const [selectedCase, setSelectedCase] = useState(null);
   const [learnedIds, setLearnedIds] = useState(() => {
     try {

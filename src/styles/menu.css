@@ -33,6 +33,7 @@
   font-weight: 700;
   text-decoration: none;
   transition: border-color 0.12s, background 0.12s;
+  text-decoration: none;
 }
 
 .language-switcher:hover {
@@ -99,6 +100,7 @@
   border-radius: 8px;
   color: #f8fafc;
   transition: border-color 0.12s ease, background 0.12s ease;
+  text-decoration: none;
 }
 
 .menu-btn:hover {
@@ -204,6 +206,7 @@
   text-align: left;
   cursor: pointer;
   transition: border-color 0.12s ease, background 0.12s ease;
+  text-decoration: none;
 }
 
 .method-select-card:hover {
@@ -285,6 +288,7 @@
   font-weight: 600;
   cursor: pointer;
   transition: border-color 0.12s, background 0.12s;
+  text-decoration: none;
 }
 
 .menu-back-btn:hover {

@@ -1,0 +1,43 @@
+# deploy/nginx.conf.example
+# Configuration Nginx pour Cube Studio (derrière Cloudflared Tunnel ou reverse-proxy).
+#
+# Pourquoi cette configuration est nécessaire :
+# - Chaque route indexable est pré-générée au build sous forme de fichier .html plat
+#   (ex: dist/algos/3x3/cfop/pll.html et dist/en/algos/3x3/cfop/pll.html) afin que
+#   les robots (Google, Discord, WhatsApp, X) reçoivent les bonnes métadonnées SEO/OG
+#   sans redirection 301 vers un slash final.
+# - Les routes dynamiques (ex: /algos/3x3/cfop/test/pll_t) ou inconnues retombent
+#   sur /index.html (FR) ou /en/index.html (EN) pour que React Router prenne le relais.
+
+server {
+    listen 80;
+    server_name cube.noullez.com;
+
+    root /var/www/cube/dist;
+    index index.html;
+
+    # Assets statiques hashés par Vite : cache long
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    # Normalise /en sans slash final vers /en/
+    location = /en {
+        return 301 /en/;
+    }
+
+    # Routes anglaises (/en/...) : sert d'abord le fichier exact ou pré-rendu (.html),
+    # sinon fallback SPA sur /en/index.html
+    location /en/ {
+        try_files $uri $uri.html /en/index.html;
+    }
+
+    # Routes françaises (/...) : sert d'abord le fichier exact ou pré-rendu (.html),
+    # sinon fallback SPA sur /index.html
+    location / {
+        try_files $uri $uri.html /index.html;
+    }
+}
+

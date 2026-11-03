@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/prerender-meta.mjs",
     "lint": "oxlint",
     "preview": "vite preview",
     "update": "git pull && npm install --legacy-peer-deps && npm run build"
@@ -19,6 +19,7 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-i18next": "^17.0.16",
+    "react-router": "^7.18.5",
     "three": "^0.186.0",
     "zustand": "^5.0.15"
   },

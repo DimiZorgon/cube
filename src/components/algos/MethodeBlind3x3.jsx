@@ -156,7 +156,7 @@ function SpeffzNetSVG({ mode, onSelectLetter, t }) {
   );
 }
 
-export function MethodeBlind3x3({ onBack, onTestAlgo }) {
+export function MethodeBlind3x3({ onBack, onTestAlgo, activeSection: controlledTab, onSectionChange }) {
   const { t } = useTranslation();
   const tabs = BLD_TABS.map(tab => ({
     ...tab,
@@ -166,7 +166,9 @@ export function MethodeBlind3x3({ onBack, onTestAlgo }) {
   const coreCases = localizeCases(BLD_CORE_CASES, t);
   const edgeSetups = localizeCases(EDGE_SETUPS, t);
   const cornerSetups = localizeCases(CORNER_SETUPS, t);
-  const [activeTab, setActiveTab] = useState('GUIDE');
+  const [localTab, setLocalTab] = useState('GUIDE');
+  const activeTab = controlledTab ?? localTab;
+  const setActiveTab = onSectionChange ?? setLocalTab;
   const [netMode, setNetMode] = useState('edges'); // 'edges' | 'corners'
   const [openStepId, setOpenStepId] = useState(BLD_GUIDE_STEPS[0].id);
   const [faceFilter, setFaceFilter] = useState('ALL');
