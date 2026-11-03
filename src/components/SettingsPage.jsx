@@ -17,6 +17,7 @@ import { Cubie } from './Cubie';
 import { generateInitialCubies } from '../store/useCubeStore';
 import { useSettingsStore, COLOR_PRESETS } from '../store/useSettingsStore';
 import { applyQuarterTurn } from '../utils/algoParser';
+import { playCubeTurnSound } from '../utils/audioSystem';
 
 const DICO_AXIS = { x: 0, y: 1, z: 2 };
 const DEMO_MOVES = [
@@ -104,12 +105,18 @@ export function SettingsPage({ onBack }) {
   const colors = useSettingsStore(state => state.colors);
   const cubeScale = useSettingsStore(state => state.cubeScale);
   const turnSpeed = useSettingsStore(state => state.turnSpeed);
+  const cameraSpeed = useSettingsStore(state => state.cameraSpeed);
+  const soundEnabled = useSettingsStore(state => state.soundEnabled);
+  const soundVolume = useSettingsStore(state => state.soundVolume);
 
   const setHollowCube = useSettingsStore(state => state.setHollowCube);
   const setFaceColor = useSettingsStore(state => state.setFaceColor);
   const applyColorPreset = useSettingsStore(state => state.applyColorPreset);
   const setCubeScale = useSettingsStore(state => state.setCubeScale);
   const setTurnSpeed = useSettingsStore(state => state.setTurnSpeed);
+  const setCameraSpeed = useSettingsStore(state => state.setCameraSpeed);
+  const setSoundEnabled = useSettingsStore(state => state.setSoundEnabled);
+  const setSoundVolume = useSettingsStore(state => state.setSoundVolume);
   const resetSettings = useSettingsStore(state => state.resetSettings);
 
   const [previewCubies, setPreviewCubies] = useState(() => generateInitialCubies(3));
@@ -119,11 +126,13 @@ export function SettingsPage({ onBack }) {
 
   const handleTestRotation = () => {
     if (turnQueue.length > 0) return;
+    playCubeTurnSound();
     setTurnQueue([...DEMO_MOVES]);
   };
 
   const handleTurnComplete = () => {
     if (!activeTurn) return;
+    playCubeTurnSound();
     setPreviewCubies(prev =>
       applyQuarterTurn(prev, activeTurn.axis, activeTurn.value, activeTurn.direction)
     );
@@ -181,7 +190,7 @@ export function SettingsPage({ onBack }) {
           </div>
 
           <div className="settings-canvas-box">
-            <Canvas camera={{ position: [4.2, 3.6, 4.6], fov: 48 }}>
+            <Canvas camera={{ position: [5.8, 4.8, 6.2], fov: 48 }}>
               <ambientLight intensity={1.15} />
               <directionalLight position={[10, 14, 10]} intensity={1.1} />
               <directionalLight position={[-8, -8, -8]} intensity={0.35} />
@@ -239,7 +248,7 @@ export function SettingsPage({ onBack }) {
             </div>
           </div>
 
-          {/* 2. Taille & Vitesse */}
+          {/* 2. Taille, Vitesse & Caméra */}
           <div className="settings-group">
             <div className="settings-slider-row">
               <div className="settings-slider-label-row">
@@ -251,16 +260,16 @@ export function SettingsPage({ onBack }) {
               <input
                 type="range"
                 className="settings-range-input"
-                min="0.7"
-                max="1.3"
+                min="0.5"
+                max="2.0"
                 step="0.05"
                 value={cubeScale}
-                onChange={e => setCubeScale( parseFloat(e.target.value) )}
+                onChange={e => setCubeScale(parseFloat(e.target.value))}
               />
               <div className="settings-slider-ticks">
-                <span>70%</span>
+                <span>50%</span>
                 <span>100%</span>
-                <span>130%</span>
+                <span>200%</span>
               </div>
             </div>
 
@@ -278,7 +287,7 @@ export function SettingsPage({ onBack }) {
                 max="12"
                 step="0.5"
                 value={turnSpeed}
-                onChange={e => setTurnSpeed( parseFloat(e.target.value) )}
+                onChange={e => setTurnSpeed(parseFloat(e.target.value))}
               />
               <div className="settings-slider-ticks">
                 <span>{t('settings.speed.slow', { defaultValue: 'Lent' })}</span>
@@ -286,9 +295,99 @@ export function SettingsPage({ onBack }) {
                 <span>{t('settings.speed.fast', { defaultValue: 'Rapide' })}</span>
               </div>
             </div>
+
+            <div className="settings-slider-row">
+              <div className="settings-slider-label-row">
+                <span className="settings-slider-label">
+                  {t('settings.cameraSpeed.label', { defaultValue: 'Vitesse de la caméra' })}
+                </span>
+                <span className="settings-slider-value">{cameraSpeed.toFixed(1)}x</span>
+              </div>
+              <input
+                type="range"
+                className="settings-range-input"
+                min="0.5"
+                max="2.5"
+                step="0.1"
+                value={cameraSpeed}
+                onChange={e => setCameraSpeed(parseFloat(e.target.value))}
+              />
+              <div className="settings-slider-ticks">
+                <span>0.5x</span>
+                <span>1.0x (Standard)</span>
+                <span>2.5x</span>
+              </div>
+            </div>
           </div>
 
-          {/* 3. Couleurs du Cube */}
+          {/* 3. Audio & Effets Sonores */}
+          <div className="settings-group">
+            <div className="settings-group-header">
+              <Sparkles size={18} className="settings-group-icon" />
+              <div>
+                <h2 className="settings-group-title">
+                  {t('settings.audio.title', { defaultValue: 'Effets Sonores' })}
+                </h2>
+                <p className="settings-group-desc">
+                  {t('settings.audio.desc', {
+                    defaultValue: 'Rotations mécaniques du cube, bips de chronomètre et sons de victoire.'
+                  })}
+                </p>
+              </div>
+            </div>
+
+            <div className="settings-segmented-control" style={{ marginBottom: '1rem' }}>
+              <button
+                type="button"
+                className={`settings-segment-btn ${soundEnabled ? 'active' : ''}`}
+                onClick={() => {
+                  setSoundEnabled(true);
+                  playCubeTurnSound();
+                }}
+              >
+                <span>{t('settings.audio.enabled', { defaultValue: 'Activés' })}</span>
+              </button>
+              <button
+                type="button"
+                className={`settings-segment-btn ${!soundEnabled ? 'active' : ''}`}
+                onClick={() => setSoundEnabled(false)}
+              >
+                <span>{t('settings.audio.disabled', { defaultValue: 'Muet' })}</span>
+              </button>
+            </div>
+
+            {soundEnabled && (
+              <div className="settings-slider-row">
+                <div className="settings-slider-label-row">
+                  <span className="settings-slider-label">
+                    {t('settings.audio.volume', { defaultValue: 'Volume des sons' })}
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <span className="settings-slider-value">{Math.round(soundVolume * 100)}%</span>
+                    <button
+                      type="button"
+                      className="settings-test-turn-btn"
+                      style={{ padding: '0.2rem 0.5rem', fontSize: '0.78rem' }}
+                      onClick={playCubeTurnSound}
+                    >
+                      {t('settings.audio.test', { defaultValue: 'Tester' })}
+                    </button>
+                  </div>
+                </div>
+                <input
+                  type="range"
+                  className="settings-range-input"
+                  min="0.1"
+                  max="1"
+                  step="0.05"
+                  value={soundVolume}
+                  onChange={e => setSoundVolume(parseFloat(e.target.value))}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* 4. Couleurs du Cube */}
           <div className="settings-group">
             <div className="settings-group-header">
               <Palette size={18} className="settings-group-icon" />
@@ -352,4 +451,3 @@ export function SettingsPage({ onBack }) {
     </div>
   );
 }
-

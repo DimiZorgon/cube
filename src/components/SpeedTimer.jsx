@@ -11,16 +11,21 @@ import {
   Clock,
   Info,
   Cross,
-  ArrowDownBox
+  ArrowDownBox,
+  Sparkles
 } from '@getpapillon/papicons';
 import { createCaseCubies, getStickerColor } from '../utils/algoParser';
+import { playTimerBeep } from '../utils/audioSystem';
+import { PbCardModal } from './PbCardModal';
+import { formatTimerValue } from '../utils/timerUtils';
 
 const STORAGE_KEY = 'rubiks_cstimer_sessions_v1';
 
 const PUZZLE_TYPES = [
   { id: '2x2x2', label: '2x2x2', size: 2, length: 11 },
   { id: '3x3x3', label: '3x3x3', size: 3, length: 20 },
-  { id: '4x4x4', label: '4x4x4', size: 4, length: 40 }
+  { id: '4x4x4', label: '4x4x4', size: 4, length: 40 },
+  { id: '5x5x5', label: '5x5x5', size: 5, length: 60 }
 ];
 
 // Générateur de mélange WCA sans mouvements redondants
@@ -31,9 +36,16 @@ function generateWcaScramble(puzzleId = '3x3x3') {
   const faces2x2 = ['R', 'U', 'F'];
   const faces3x3 = ['R', 'L', 'U', 'D', 'F', 'B'];
   const faces4x4 = ['R', 'L', 'U', 'D', 'F', 'B', 'Rw', 'Uw', 'Fw'];
+  const faces5x5 = ['R', 'L', 'U', 'D', 'F', 'B', 'Rw', 'Lw', 'Uw', 'Dw', 'Fw', 'Bw'];
 
   const pool =
-    puzzle.size === 2 ? faces2x2 : puzzle.size === 4 ? faces4x4 : faces3x3;
+    puzzle.size === 2
+      ? faces2x2
+      : puzzle.size === 4
+      ? faces4x4
+      : puzzle.size === 5
+      ? faces5x5
+      : faces3x3;
 
   const getAxis = moveBase => {
     const first = moveBase[0];
@@ -67,27 +79,6 @@ function generateWcaScramble(puzzleId = '3x3x3') {
   }
 
   return moves.join(' ');
-}
-
-// Formatage du temps en secondes ou MM:SS.cc (style csTimer)
-function formatTimerValue(ms, penalty = null) {
-  if (penalty === 'DNF') return 'DNF';
-  if (ms === null || ms === undefined || Number.isNaN(ms)) return '-';
-
-  const effectiveMs = penalty === '+2' ? ms + 2000 : ms;
-  const totalSeconds = Math.floor(effectiveMs / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  const centis = Math.floor((effectiveMs % 1000) / 10)
-    .toString()
-    .padStart(2, '0');
-
-  const formatted =
-    minutes > 0
-      ? `${minutes}:${seconds.toString().padStart(2, '0')}.${centis}`
-      : `${seconds}.${centis}`;
-
-  return penalty === '+2' ? `${formatted}+` : formatted;
 }
 
 // Temps effectif d'un solve en ms (Infinity si DNF)
@@ -217,6 +208,7 @@ export function SpeedTimer({ onBack }) {
   const [sessionId, setSessionId] = useState('1');
   const [showPreview, setShowPreview] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [isPbModalOpen, setIsPbModalOpen] = useState(false);
 
   // Historique des mélanges pour supporter "last / next scramble" comme sur csTimer
   const [scrambleHistory, setScrambleHistory] = useState(() => [generateWcaScramble('3x3x3')]);
@@ -289,6 +281,7 @@ export function SpeedTimer({ onBack }) {
   }, [timerStatus]);
 
   const stopTimer = useCallback(() => {
+    playTimerBeep('stop');
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     const finalMs = Math.max(10, Math.round(performance.now() - startTimeRef.current));
     setDisplayTime(finalMs);
@@ -341,6 +334,7 @@ export function SpeedTimer({ onBack }) {
     }
 
     if (statusRef.current === 'ready') {
+      playTimerBeep('start');
       startTimeRef.current = performance.now();
       setTimerStatus('running');
     } else if (statusRef.current === 'holding') {
@@ -351,6 +345,7 @@ export function SpeedTimer({ onBack }) {
   // Gestion de la barre Espace (comme sur csTimer)
   useEffect(() => {
     const onKeyDown = e => {
+      if (isPbModalOpen) return;
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
 
       if (statusRef.current === 'running') {
@@ -381,7 +376,7 @@ export function SpeedTimer({ onBack }) {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, [beginHold, releaseHold, stopTimer]);
+  }, [beginHold, releaseHold, stopTimer, isPbModalOpen]);
 
   // Gestion des pénalités (+2, DNF, Supprimer)
   const togglePenalty = (solveId, penaltyType) => {
@@ -554,6 +549,13 @@ export function SpeedTimer({ onBack }) {
             title={t('timer.exportCsTimer')}
           >
             <ArrowDownBox size={15} />
+          </button>
+          <button
+            className="cstimer-mini-icon-btn"
+            onClick={() => setIsPbModalOpen(true)}
+            title={t('timer.pbCard.buttonTooltip', { defaultValue: 'Partager la carte de record' })}
+          >
+            <Sparkles size={15} />
           </button>
           <button
             className="cstimer-mini-icon-btn danger"
@@ -828,6 +830,14 @@ export function SpeedTimer({ onBack }) {
           )}
         </main>
       </div>
+
+      <PbCardModal
+        isOpen={isPbModalOpen}
+        onClose={() => setIsPbModalOpen(false)}
+        puzzle={currentPuzzleObj.label}
+        stats={stats}
+        latestSolve={latestSolve}
+      />
     </div>
   );
 }

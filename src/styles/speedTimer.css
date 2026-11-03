@@ -529,3 +529,195 @@
     display: none;
   }
 }
+
+
+/* =========================================================
+   MODAL CARTE DE RECORD (PB)
+   ========================================================= */
+.pb-card-modal-content {
+  background: #202629;
+  border: 1px solid #394144;
+  border-radius: 14px;
+  width: 90%;
+  max-width: 580px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  animation: pbModalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes pbModalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.pb-card-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pb-card-modal-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.pb-card-modal-title-row h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #f0f1ed;
+  margin: 0;
+}
+
+.pb-card-sparkle-icon {
+  color: #fbbf24;
+}
+
+.pb-card-preview-container {
+  display: flex;
+  justify-content: center;
+}
+
+.pb-card-visual {
+  width: 100%;
+  background: linear-gradient(135deg, #161b1e 0%, #22292d 100%);
+  border: 1px solid #394144;
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.pb-card-visual-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid #2d3539;
+}
+
+.pb-card-brand {
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #9eb5aa;
+}
+
+.pb-card-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: #2a3337;
+  color: #f0f1ed;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+}
+
+.pb-card-main-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.pb-card-stat-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+}
+
+.pb-card-stat-big {
+  font-size: 2.8rem;
+  font-weight: 800;
+  font-family: 'Courier New', Courier, monospace;
+  color: #f0f1ed;
+  line-height: 1;
+}
+
+.pb-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #2d3539;
+}
+
+.pb-card-grid-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.pb-card-sublabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.05em;
+}
+
+.pb-card-subval {
+  font-size: 1.15rem;
+  font-weight: 700;
+  font-family: 'Courier New', Courier, monospace;
+  color: #b9c9bf;
+}
+
+.pb-card-scramble-footer {
+  padding-top: 0.5rem;
+  border-top: 1px solid #2d3539;
+  font-size: 0.72rem;
+  color: #64748b;
+  font-family: monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pb-card-actions {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.pb-card-action-btn {
+  flex: 1;
+  min-width: 140px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1rem;
+  border-radius: 8px;
+  border: 1px solid #394144;
+  background: #272f33;
+  color: #f0f1ed;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pb-card-action-btn:hover {
+  background: #313a3f;
+  border-color: #9eb5aa;
+}
+
+.pb-card-action-btn.primary {
+  background: #385a49;
+  border-color: #55876e;
+  color: #f0f1ed;
+}
+
+.pb-card-action-btn.primary:hover {
+  background: #446e59;
+}

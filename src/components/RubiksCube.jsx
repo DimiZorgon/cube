@@ -52,7 +52,7 @@ export function RubiksCube({ enableSwipe = false, onSwipeMove, controlsRef, isLo
     });
 
     useEffect(() => {
-        if (!enableSwipe || (size !== 2 && size !== 3 && size !== 4)) return;
+        if (!enableSwipe || (size !== 2 && size !== 3 && size !== 4 && size !== 5)) return;
 
         const domElement = gl.domElement;
         const raycaster = new THREE.Raycaster();

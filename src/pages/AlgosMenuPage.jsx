@@ -24,7 +24,8 @@ const METHOD_CARDS = [
   { key: 'cfop3x3', Icon: Crown, color: 'rose' },
   { key: 'blind3x3', Icon: Ghost, color: 'purple' },
   { key: 'simple4x4', Icon: Grid, color: 'cyan' },
-  { key: 'yau4x4', Icon: Gears, color: 'amber' }
+  { key: 'yau4x4', Icon: Gears, color: 'amber' },
+  { key: 'professor5x5', Icon: Grid, color: 'rose' }
 ];
 
 export function AlgosMenuPage() {

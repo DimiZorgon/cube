@@ -1,0 +1,26 @@
+{
+  "name": "Cube Studio - Simulateur 3D et Algorithmes",
+  "short_name": "Cube Studio",
+  "description": "Simulateur de Rubik's cube 3D interactif, chronomètre WCA et guides d'apprentissage complets.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#1b2023",
+  "theme_color": "#1b2023",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/rubik.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/rubik.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
+

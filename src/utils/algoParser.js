@@ -70,7 +70,11 @@ export function getMoveParams(move, size = 3) {
 
   let working = move;
   let isInnerSlice = false;
-  if (/^2[RLUDFB]/i.test(working)) {
+  let is3Wide = false;
+  if (/^3[RLUDFB]w?/i.test(working)) {
+    is3Wide = true;
+    working = working.slice(1);
+  } else if (/^2[RLUDFB]/i.test(working)) {
     isInnerSlice = true;
     working = working.slice(1);
   }
@@ -80,10 +84,12 @@ export function getMoveParams(move, size = 3) {
   const base = working.replace(/[2']/g, '');
 
   const outer = (size - 1) / 2;
-  const inner = size === 4 ? 0.5 : 0;
+  const inner = size === 5 ? 1 : size === 4 ? 0.5 : 0;
   const allLayers = Array.from({ length: size }, (_, i) => i - outer);
-  const widePos = size === 2 ? [0.5] : [outer, inner];
-  const wideNeg = size === 2 ? [-0.5] : [-outer, -inner];
+  const widePos = size === 5 ? [2, 1] : size === 2 ? [0.5] : [outer, inner];
+  const wideNeg = size === 5 ? [-2, -1] : size === 2 ? [-0.5] : [-outer, -inner];
+  const wide3Pos = size === 5 ? [2, 1, 0] : widePos;
+  const wide3Neg = size === 5 ? [-2, -1, 0] : wideNeg;
 
   let axis = 'y';
   let value = [outer];
@@ -109,17 +115,17 @@ export function getMoveParams(move, size = 3) {
       case 'B': axis = 'z'; value = [-outer]; baseDir = -1; break;
 
       case 'r':
-      case 'Rw': axis = 'x'; value = widePos; baseDir = 1; break;
+      case 'Rw': axis = 'x'; value = is3Wide ? wide3Pos : widePos; baseDir = 1; break;
       case 'l':
-      case 'Lw': axis = 'x'; value = wideNeg; baseDir = -1; break;
+      case 'Lw': axis = 'x'; value = is3Wide ? wide3Neg : wideNeg; baseDir = -1; break;
       case 'u':
-      case 'Uw': axis = 'y'; value = widePos; baseDir = 1; break;
+      case 'Uw': axis = 'y'; value = is3Wide ? wide3Pos : widePos; baseDir = 1; break;
       case 'd':
-      case 'Dw': axis = 'y'; value = wideNeg; baseDir = -1; break;
+      case 'Dw': axis = 'y'; value = is3Wide ? wide3Neg : wideNeg; baseDir = -1; break;
       case 'f':
-      case 'Fw': axis = 'z'; value = widePos; baseDir = 1; break;
+      case 'Fw': axis = 'z'; value = is3Wide ? wide3Pos : widePos; baseDir = 1; break;
       case 'b':
-      case 'Bw': axis = 'z'; value = wideNeg; baseDir = -1; break;
+      case 'Bw': axis = 'z'; value = is3Wide ? wide3Neg : wideNeg; baseDir = -1; break;
 
       case 'M': axis = 'x'; value = size === 4 ? [-0.5, 0.5] : [0]; baseDir = -1; break;
       case 'E': axis = 'y'; value = size === 4 ? [-0.5, 0.5] : [0]; baseDir = -1; break;

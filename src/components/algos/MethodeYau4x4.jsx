@@ -1,11 +1,12 @@
 // src/components/algos/MethodeYau4x4.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Check, Play } from '@getpapillon/papicons';
 import { YAU_SECTIONS, YAU_DATA } from '../../data/yau4x4Data';
 import { CubeDiagram2D } from './CubeDiagram2D';
 import { AlgoDemoModal } from './AlgoDemoModal';
-import { localizeCases, localizeGroups } from '../../i18n/localizeData';
+import { AlgoTrainerQuizModal } from './AlgoTrainerQuizModal';
+import { localizeGroups } from '../../i18n/localizeData';
 
 const LEARNED_STORAGE_KEY = 'rubiks_learned_algos';
 
@@ -20,6 +21,7 @@ export function MethodeYau4x4({ onBack, onTestAlgo, activeSection: controlledFil
   const activeFilter = controlledFilter ?? localFilter;
   const setActiveFilter = onSectionChange ?? setLocalFilter;
   const [selectedCase, setSelectedCase] = useState(null);
+  const [isQuizOpen, setIsQuizOpen] = useState(false);
   const [learnedIds, setLearnedIds] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem(LEARNED_STORAGE_KEY) || '[]');
@@ -42,6 +44,10 @@ export function MethodeYau4x4({ onBack, onTestAlgo, activeSection: controlledFil
       ? groups
       : groups.filter(g => g.section === activeFilter);
 
+  const isQuizAvailable = activeFilter === 'OLL_PARITY' || activeFilter === 'PLL_PARITY';
+  const quizCases = useMemo(() => visibleGroups.flatMap(g => g.cases), [visibleGroups]);
+  const activeSectionLabel = sections.find(s => s.id === activeFilter)?.label || activeFilter;
+
   return (
     <div className="trainer-page">
       <header className="trainer-topbar">
@@ -52,7 +58,17 @@ export function MethodeYau4x4({ onBack, onTestAlgo, activeSection: controlledFil
         <div className="trainer-topbar-center">
           <h1 className="trainer-topbar-title">{t('method.yau4x4.title')}</h1>
         </div>
-        <div style={{ width: '90px' }} />
+        <div className="trainer-topbar-actions">
+          {isQuizAvailable && (
+            <button
+              className="trainer-quiz-trigger-btn"
+              onClick={() => setIsQuizOpen(true)}
+              title={t('quiz.startTraining', { defaultValue: 'Entraînement Quiz' })}
+            >
+              <span>⚡ {t('quiz.modeTitle', { defaultValue: 'Quiz' })}</span>
+            </button>
+          )}
+        </div>
       </header>
 
       <div className="trainer-tabs-bar">
@@ -77,7 +93,7 @@ export function MethodeYau4x4({ onBack, onTestAlgo, activeSection: controlledFil
               <p className="trainer-group-desc">{group.description}</p>
             )}
             <div className="trainer-cards-grid">
-              {localizeCases(group.cases, t).map(item => {
+              {group.cases.map(item => {
                 const isLearned = learnedIds.includes(item.id);
                 return (
                   <div
@@ -157,6 +173,17 @@ export function MethodeYau4x4({ onBack, onTestAlgo, activeSection: controlledFil
             })
           }
           onClose={() => setSelectedCase(null)}
+        />
+      )}
+
+      {isQuizAvailable && (
+        <AlgoTrainerQuizModal
+          isOpen={isQuizOpen}
+          onClose={() => setIsQuizOpen(false)}
+          cases={quizCases}
+          size={4}
+          categoryName={`Yau ${activeSectionLabel}`}
+          onTestAlgo={onTestAlgo}
         />
       )}
     </div>

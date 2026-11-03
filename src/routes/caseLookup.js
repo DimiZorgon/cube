@@ -7,6 +7,7 @@ import { CFOP_DATA } from '../data/cfopData.js';
 import { BLD_CORE_CASES, EDGE_SETUPS, CORNER_SETUPS } from '../data/blind3x3Data.js';
 import { SIMPLE_4X4_STEPS } from '../data/simple4x4Data.js';
 import { YAU_DATA } from '../data/yau4x4Data.js';
+import { PROFESSOR_DATA } from '../data/professor5x5Data.js';
 
 const fromSteps = steps =>
   steps.flatMap(step => (step.cases || []).map(item => ({ item, sectionId: null })));
@@ -34,7 +35,8 @@ const SOURCES = {
     ...CORNER_SETUPS.filter(item => item.role !== 'buffer').map(item => ({ item, sectionId: 'CORNERS_SETUP' }))
   ],
   simple4x4: () => fromSteps(SIMPLE_4X4_STEPS),
-  yau4x4: () => fromGroups(YAU_DATA)
+  yau4x4: () => fromGroups(YAU_DATA),
+  professor5x5: () => fromGroups(PROFESSOR_DATA)
 };
 
 /**

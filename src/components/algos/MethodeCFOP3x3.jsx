@@ -1,5 +1,5 @@
 // src/components/algos/MethodeCFOP3x3.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
@@ -13,7 +13,8 @@ import {
 import { CFOP_SECTIONS, CFOP_DATA } from '../../data/cfopData';
 import { CubeDiagram2D } from './CubeDiagram2D';
 import { AlgoDemoModal } from './AlgoDemoModal';
-import { localizeCFOPGroups, localizeCases } from '../../i18n/localizeData';
+import { AlgoTrainerQuizModal } from './AlgoTrainerQuizModal';
+import { localizeCFOPGroups } from '../../i18n/localizeData';
 
 const LEARNED_STORAGE_KEY = 'rubiks_learned_algos';
 
@@ -29,6 +30,7 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo, activeSection: controlledSe
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedCase, setSelectedCase] = useState(null);
   const [showOnlyUnlearned, setShowOnlyUnlearned] = useState(false);
+  const [isQuizOpen, setIsQuizOpen] = useState(false);
   const [learnedIds, setLearnedIds] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem(LEARNED_STORAGE_KEY) || '[]');
@@ -46,13 +48,19 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo, activeSection: controlledSe
     setLearnedIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
   };
 
-  const groups = localizeCFOPGroups(activeSection, CFOP_DATA[activeSection] || [], t);
+  const groups = useMemo(
+    () => localizeCFOPGroups(activeSection, CFOP_DATA[activeSection] || [], t),
+    [activeSection, t]
+  );
   const activeSectionLabel = sections.find(section => section.id === activeSection)?.label || activeSection;
   const totalCases = groups.reduce((acc, g) => acc + g.cases.length, 0);
   const learnedCount = groups.reduce(
     (acc, g) => acc + g.cases.filter(c => learnedIds.includes(c.id)).length,
     0
   );
+
+  const isQuizAvailable = ['OLL', '2-LOOK OLL', 'PLL', '2-LOOK PLL'].includes(activeSection);
+  const quizCases = useMemo(() => groups.flatMap(g => g.cases), [groups]);
 
   return (
     <div className="trainer-page">
@@ -68,6 +76,15 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo, activeSection: controlledSe
           </span>
         </div>
         <div className="trainer-topbar-actions">
+          {isQuizAvailable && (
+            <button
+              className="trainer-quiz-trigger-btn"
+              onClick={() => setIsQuizOpen(true)}
+              title={t('quiz.startTraining', { defaultValue: 'Entraînement Quiz' })}
+            >
+              <span>⚡ {t('quiz.modeTitle', { defaultValue: 'Quiz' })}</span>
+            </button>
+          )}
           <button
             className="trainer-icon-btn"
             onClick={() => setDrawerOpen(true)}
@@ -143,7 +160,7 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo, activeSection: controlledSe
             <section key={group.group} className="trainer-group-section">
               <h2 className="trainer-group-header">{group.group}</h2>
               <div className="trainer-cards-grid">
-                {localizeCases(filteredCases, t).map(item => {
+                {filteredCases.map(item => {
                   const isLearned = learnedIds.includes(item.id);
                   return (
                     <div
@@ -222,6 +239,17 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo, activeSection: controlledSe
             })
           }
           onClose={() => setSelectedCase(null)}
+        />
+      )}
+
+      {isQuizAvailable && (
+        <AlgoTrainerQuizModal
+          isOpen={isQuizOpen}
+          onClose={() => setIsQuizOpen(false)}
+          cases={quizCases}
+          size={3}
+          categoryName={`CFOP ${activeSectionLabel}`}
+          onTestAlgo={onTestAlgo}
         />
       )}
     </div>

@@ -34,7 +34,10 @@ export const DEFAULT_SETTINGS = {
   hollowCube: false,
   colors: { ...COLOR_PRESETS.wca },
   cubeScale: 1,
-  turnSpeed: 5.5
+  turnSpeed: 5.5,
+  cameraSpeed: 1,
+  soundEnabled: true,
+  soundVolume: 0.7
 };
 
 function loadInitialSettings() {
@@ -49,7 +52,10 @@ function loadInitialSettings() {
         ...(parsed.colors || {})
       },
       cubeScale: typeof parsed.cubeScale === 'number' ? parsed.cubeScale : 1,
-      turnSpeed: typeof parsed.turnSpeed === 'number' ? parsed.turnSpeed : 5.5
+      turnSpeed: typeof parsed.turnSpeed === 'number' ? parsed.turnSpeed : 5.5,
+      cameraSpeed: typeof parsed.cameraSpeed === 'number' ? parsed.cameraSpeed : 1,
+      soundEnabled: parsed.soundEnabled !== undefined ? Boolean(parsed.soundEnabled) : true,
+      soundVolume: typeof parsed.soundVolume === 'number' ? parsed.soundVolume : 0.7
     };
   } catch {
     return DEFAULT_SETTINGS;
@@ -64,7 +70,10 @@ function saveSettings(state) {
         hollowCube: state.hollowCube,
         colors: state.colors,
         cubeScale: state.cubeScale,
-        turnSpeed: state.turnSpeed
+        turnSpeed: state.turnSpeed,
+        cameraSpeed: state.cameraSpeed,
+        soundEnabled: state.soundEnabled,
+        soundVolume: state.soundVolume
       })
     );
   } catch {
@@ -113,16 +122,39 @@ export const useSettingsStore = create((set) => ({
       return { turnSpeed };
     }),
 
+  setCameraSpeed: (cameraSpeed) =>
+    set((state) => {
+      const next = { ...state, cameraSpeed };
+      saveSettings(next);
+      return { cameraSpeed };
+    }),
+
+  setSoundEnabled: (soundEnabled) =>
+    set((state) => {
+      const next = { ...state, soundEnabled };
+      saveSettings(next);
+      return { soundEnabled };
+    }),
+
+  setSoundVolume: (soundVolume) =>
+    set((state) => {
+      const next = { ...state, soundVolume };
+      saveSettings(next);
+      return { soundVolume };
+    }),
+
   resetSettings: () =>
     set(() => {
       const fresh = {
         hollowCube: DEFAULT_SETTINGS.hollowCube,
         colors: { ...COLOR_PRESETS.wca },
         cubeScale: DEFAULT_SETTINGS.cubeScale,
-        turnSpeed: DEFAULT_SETTINGS.turnSpeed
+        turnSpeed: DEFAULT_SETTINGS.turnSpeed,
+        cameraSpeed: DEFAULT_SETTINGS.cameraSpeed,
+        soundEnabled: DEFAULT_SETTINGS.soundEnabled,
+        soundVolume: DEFAULT_SETTINGS.soundVolume
       };
       saveSettings(fresh);
       return fresh;
     })
 }));
-

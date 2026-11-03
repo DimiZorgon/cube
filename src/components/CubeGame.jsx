@@ -24,6 +24,7 @@ import { CameraMapper } from './CameraMapper';
 import { CustomLockControls } from './LockCamera';
 import { createCaseCubies } from '../utils/algoParser';
 import confetti from 'canvas-confetti';
+import { playCubeTurnSound, playSolveVictorySound } from '../utils/audioSystem';
 
 export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves, onBack, trainingCase = null }) {
   const { t } = useTranslation();
@@ -39,10 +40,11 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
   const activeRotation = useCubeStore(state => state.activeRotation);
   const handleMoveAction = useCubeStore(state => state.startRotation);
   const customColors = useSettingsStore(state => state.colors);
+  const cameraSpeed = useSettingsStore(state => state.cameraSpeed);
 
-  const supportsTouchSwipe = size === 2 || size === 3 || size === 4;
+  const supportsTouchSwipe = size >= 2 && size <= 5;
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
-  const [touchOnly, setTouchOnly] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768 && (size === 2 || size === 3 || size === 4));
+  const [touchOnly, setTouchOnly] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768 && (size >= 2 && size <= 5));
   const [isLocked, setIsLocked] = useState(false);
 
   const highScoreKey = `rubiksHighScore_${size}x${size}`;
@@ -102,6 +104,7 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
       setIsRunning(false);
       setHasShuffled(false);
       confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
+      playSolveVictorySound();
       if (!trainingCase && (!highScore || time < highScore)) {
         localStorage.setItem(highScoreKey, time);
         setHighScore(time);
@@ -120,6 +123,7 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
       setIsRunning(true);
     }
     setMoveCount(prev => prev + 1);
+    playCubeTurnSound();
     handleMoveAction(axis, value, direction);
   }, [supportsTouchSwipe, hasShuffled, isSolved, isRunning, moveCount, activeRotation, time, handleMoveAction]);
 
@@ -138,10 +142,25 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
     const outer = (size - 1) / 2;
     const allLayers = Array.from({ length: size }, (_, i) => i - outer);
     // Sur 3x3 la 2e couche d'un mouvement large est 0, sur 4x4 c'est ±0.5 (soit Dir.value / 3)
-    const wideLayers = (dirObj) => size === 4 ? [dirObj.value, dirObj.value / 3] : [dirObj.value, 0];
-    const innerLayer = (dirObj) => size === 4 ? [dirObj.value / 3] : [0];
+    const wideLayers = (dirObj) => {
+      if (size === 5) return [dirObj.value, dirObj.value - Math.sign(dirObj.value)];
+      if (size === 4) return [dirObj.value, dirObj.value / 3];
+      return [dirObj.value, 0];
+    };
+    const wide3Layers = (dirObj) => {
+      if (size === 5) return [dirObj.value, dirObj.value - Math.sign(dirObj.value), 0];
+      return wideLayers(dirObj);
+    };
+    const innerLayer = (dirObj) => {
+      if (size === 5) return [dirObj.value - Math.sign(dirObj.value)];
+      if (size === 4) return [dirObj.value / 3];
+      return [0];
+    };
 
-    const runMove = (axis, val, dir) => handleMoveAction(axis, val, dir);
+    const runMove = (axis, val, dir) => {
+      playCubeTurnSound();
+      handleMoveAction(axis, val, dir);
+    };
 
     switch (move) {
       case "R": runMove(Right.axis, [Right.value], 1 * Right.dirMultiplier); break;
@@ -185,6 +204,19 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
       case "Fw'": runMove(Front.axis, wideLayers(Front), -1 * Front.dirMultiplier); break;
       case "b'":
       case "Bw'": runMove(Back.axis, wideLayers(Back), -1 * Back.dirMultiplier); break;
+
+      case "3Rw": runMove(Right.axis, wide3Layers(Right), 1 * Right.dirMultiplier); break;
+      case "3Rw'": runMove(Right.axis, wide3Layers(Right), -1 * Right.dirMultiplier); break;
+      case "3Lw": runMove(Left.axis, wide3Layers(Left), 1 * Left.dirMultiplier); break;
+      case "3Lw'": runMove(Left.axis, wide3Layers(Left), -1 * Left.dirMultiplier); break;
+      case "3Uw": runMove(Up.axis, wide3Layers(Up), 1 * Up.dirMultiplier); break;
+      case "3Uw'": runMove(Up.axis, wide3Layers(Up), -1 * Up.dirMultiplier); break;
+      case "3Dw": runMove(Down.axis, wide3Layers(Down), 1 * Down.dirMultiplier); break;
+      case "3Dw'": runMove(Down.axis, wide3Layers(Down), -1 * Down.dirMultiplier); break;
+      case "3Fw": runMove(Front.axis, wide3Layers(Front), 1 * Front.dirMultiplier); break;
+      case "3Fw'": runMove(Front.axis, wide3Layers(Front), -1 * Front.dirMultiplier); break;
+      case "3Bw": runMove(Back.axis, wide3Layers(Back), 1 * Back.dirMultiplier); break;
+      case "3Bw'": runMove(Back.axis, wide3Layers(Back), -1 * Back.dirMultiplier); break;
 
       case "2R": runMove(Right.axis, innerLayer(Right), 1 * Right.dirMultiplier); break;
       case "2R'": runMove(Right.axis, innerLayer(Right), -1 * Right.dirMultiplier); break;
@@ -337,7 +369,7 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
         )}
 
         <div className="cube-container">
-          <Canvas camera={{ position: [3.8, 4.2, 5.5], fov: isMobile ? 80 : 65 }}>
+          <Canvas camera={{ position: size === 5 ? [5.6, 6.0, 7.8] : size === 4 ? [4.6, 5.0, 6.5] : [3.8, 4.2, 5.5], fov: isMobile ? 82 : 66 }}>
             <ambientLight intensity={1.1} />
             <directionalLight position={[10, 10, 10]} intensity={1} />
             <RubiksCube
@@ -353,9 +385,9 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
               enabled={!isLocked}
               noPan={true}
               noZoom={true}
-              rotateSpeed={isMobile ? 2 : 7}
+              rotateSpeed={(isMobile ? 2 : 7) * cameraSpeed}
             />
-            <CustomLockControls isLocked={isLocked} cameraMapping={cameraMapping} />
+            <CustomLockControls isLocked={isLocked} cameraMapping={cameraMapping} cameraSpeed={cameraSpeed} />
           </Canvas>
         </div>
 

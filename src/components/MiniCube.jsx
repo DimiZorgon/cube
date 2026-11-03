@@ -8,7 +8,7 @@ import { Cubie } from './Cubie';
 export function MiniCube({ size }) {
   const cubies = generateInitialCubies(size);
   const cubeScale = useSettingsStore(state => state.cubeScale);
-  const camPos = size === 2 ? [3.5, 3.5, 3.5] : size === 4 ? [5.8, 5.8, 5.8] : [4.5, 4.5, 4.5];
+  const camPos = size === 2 ? [3.5, 3.5, 3.5] : size === 4 ? [5.8, 5.8, 5.8] : size === 5 ? [7.2, 7.2, 7.2] : [4.5, 4.5, 4.5];
   return (
     <div className="mini-cube-container">
       <Canvas camera={{ position: camPos, fov: 50 }}>

@@ -28,7 +28,7 @@ export function absoluteUrl(path, lang) {
   return `${SITE_URL}${localizedPath(path, lang)}`;
 }
 
-export const PUZZLES = ['2x2', '3x3', '4x4'];
+export const PUZZLES = ['2x2', '3x3', '4x4', '5x5'];
 
 /**
  * Méthodes d'apprentissage.
@@ -87,6 +87,19 @@ export const METHODS = [
       { slug: 'pairing-323', id: 'PAIRING_323' },
       { slug: 'oll-parity', id: 'OLL_PARITY' },
       { slug: 'pll-parity', id: 'PLL_PARITY' }
+    ]
+  },
+  {
+    key: 'professor5x5',
+    size: '5x5',
+    slug: 'professor',
+    allSectionId: 'ALL',
+    sections: [
+      { slug: 'centers', id: 'CENTERS' },
+      { slug: 'edges', id: 'EDGES' },
+      { slug: 'last-edges', id: 'LAST_EDGES' },
+      { slug: 'parity', id: 'PARITY' },
+      { slug: 'reduction-3x3', id: 'REDUCTION_3X3' }
     ]
   }
 ];

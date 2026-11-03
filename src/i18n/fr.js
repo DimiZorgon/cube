@@ -12,6 +12,7 @@ import { SIMPLE_2X2_STEPS } from '../data/simple2x2Data.js';
 import { SIMPLE_3X3_STEPS } from '../data/simple3x3Data.js';
 import { SIMPLE_4X4_STEPS } from '../data/simple4x4Data.js';
 import { YAU_DATA, YAU_SECTIONS } from '../data/yau4x4Data.js';
+import { PROFESSOR_DATA, PROFESSOR_SECTIONS } from '../data/professor5x5Data.js';
 
 const messages = {
   'english.title': 'Version anglaise en préparation',
@@ -39,6 +40,13 @@ const messages = {
   'settings.speed.slow': 'Lent',
   'settings.speed.normal': 'Standard (5.5)',
   'settings.speed.fast': 'Rapide',
+  'settings.cameraSpeed.label': 'Vitesse de la caméra',
+  'settings.audio.title': 'Effets Sonores',
+  'settings.audio.desc': 'Sons de rotation réalistes, signaux du chronomètre et son de victoire.',
+  'settings.audio.enabled': 'Activés',
+  'settings.audio.disabled': 'Muet',
+  'settings.audio.volume': 'Volume des sons',
+  'settings.audio.test': 'Tester le son',
   'settings.colors.title': 'Couleurs du Cube',
   'settings.colors.desc': 'Choisissez une palette rapide ou personnalisez chaque face.',
   'settings.preset.wca': 'WCA Standard',
@@ -59,6 +67,8 @@ const messages = {
   'app.play.3x3.description': 'Format classique WCA',
   'app.play.4x4.title': 'Master Cube 4x4',
   'app.play.4x4.description': 'Centres mobiles & Parités',
+  'app.play.5x5.title': 'Professor Cube 5x5',
+  'app.play.5x5.description': 'Professor’s Cube officiel WCA',
     'app.play.timer.title': 'Chronomètre WCA',
     'app.play.timer.description': 'Mode csTimer pour cube réel',
   'app.algos.eyebrow': 'Apprentissage & Entraînement',
@@ -85,12 +95,16 @@ const messages = {
   'app.algos.yau4x4.tag': '4x4 • Avancé (Speed / CFOP)',
   'app.algos.yau4x4.title': 'Méthode Yau 4x4',
   'app.algos.yau4x4.description': 'Croix directe, 4 derniers centres, appariement 3-2-3 et Parités Speed.',
+  'app.algos.professor5x5.tag': '5x5 • Avancé (Réduction)',
+  'app.algos.professor5x5.title': 'Méthode Professor 5x5',
+  'app.algos.professor5x5.description': 'Réduction complète des centres et arêtes selon Francocube Cyril.',
   'method.simple2x2.title': 'Méthode Simple 2x2 (Débutant)',
   'method.simple3x3.title': 'Méthode Simple 3x3 (Débutant)',
   'method.simple4x4.title': 'Méthode Simple 4x4 (Débutant)',
   'method.ortega2x2.title': 'Méthode Ortega 2x2',
   'method.cfop3x3.title': 'Algorithmes CFOP · {{section}}',
   'method.yau4x4.title': 'Méthode Yau 4x4 (Speedcubing / CFOP)',
+  'method.professor5x5.title': 'Méthode 5x5 Professor (Francocube Cyril)',
   'common.back': 'Retour',
   'common.loading': 'Chargement...',
   'notFound.eyebrow': 'Erreur 404',
@@ -134,6 +148,16 @@ const messages = {
     'timer.clearSession': 'Vider la session actuelle',
     'timer.exportCsTimer': 'Exporter la session au format csTimer',
     'timer.noSolvesToExport': 'Aucun temps à exporter dans cette session',
+    'timer.pbCard.title': 'Carte de Record (PB)',
+    'timer.pbCard.buttonTooltip': 'Partager la carte de record',
+    'timer.pbCard.singlePb': 'SINGLE PB',
+    'timer.pbCard.bestAo5': 'MEILLEUR AO5',
+    'timer.pbCard.bestAo12': 'MEILLEUR AO12',
+    'timer.pbCard.totalSolves': 'RÉSOLUTIONS',
+    'timer.pbCard.copyText': 'Copier le texte (Discord)',
+    'timer.pbCard.copyImage': "Copier l'image",
+    'timer.pbCard.downloadImage': 'Télécharger PNG',
+    'timer.pbCard.copied': 'Copié !',
     'timer.current': 'Actuel',
     'timer.best': 'Meilleur',
     'timer.metric.time': 'Temps',
@@ -183,6 +207,22 @@ const messages = {
   'algo.notMarkedLearned': 'Marquer comme appris',
   'algo.selectMethod': 'Tout Ortega',
   'algo.filter.allYau': 'Tout (Yau)',
+  'quiz.modeTitle': 'Mode Quiz',
+  'quiz.title': 'Reconnaissance de cas',
+  'quiz.startTraining': 'Lancer le quiz de reconnaissance',
+  'quiz.score': 'Score',
+  'quiz.streak': 'Série',
+  'quiz.time': 'Temps',
+  'quiz.progress': 'Cas {{current}} / {{total}}',
+  'quiz.nextCase': 'Cas suivant',
+  'quiz.seeResults': 'Voir le bilan',
+  'quiz.finishedTitle': 'Quiz terminé !',
+  'quiz.finishedSubtitle': 'Vous avez passé en revue tous les cas de cette série sans répétition.',
+  'quiz.restart': 'Recommencer le quiz',
+  'quiz.accuracy': 'Précision',
+  'quiz.bestStreak': 'Meilleure série',
+  'quiz.avgTime': 'Temps moyen',
+  'quiz.testOnCube': 'Tester en 3D',
   'bld.title': '3 × 3 à l’aveugle (Old Pochmann · Speffz)',
   'bld.interactivePattern': 'Patron Speffz interactif (A à X)',
   'bld.patternHelp': 'Sélectionnez une lettre pour voir son setup et la séquence en 3D.',
@@ -257,6 +297,7 @@ addSteps(SIMPLE_4X4_STEPS);
 addSteps(BLD_GUIDE_STEPS);
 addGroups('ortega', ORTEGA_DATA);
 addGroups('yau', YAU_DATA);
+addGroups('professor', PROFESSOR_DATA);
 addCases(BLD_CORE_CASES);
 addCases(EDGE_SETUPS);
 addCases(CORNER_SETUPS);
@@ -267,6 +308,10 @@ for (const section of ORTEGA_SECTIONS) {
 
 for (const section of YAU_SECTIONS) {
   messages[`data.section.yau.${section.id}`] = section.label;
+}
+
+for (const section of PROFESSOR_SECTIONS) {
+  messages[`data.section.professor.${section.id}`] = section.label;
 }
 
 for (const tab of BLD_TABS) {

@@ -7,7 +7,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LANGS, listIndexableRoutes } from '../src/routes/routeConfig.js';
+import { LANGS, METHODS, PUZZLES, listIndexableRoutes, paths } from '../src/routes/routeConfig.js';
 import { buildHead, hasSeoEntry } from '../src/routes/seo.js';
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -69,13 +69,16 @@ function injectHeadIntoHtml(template, head) {
   return html;
 }
 
-function outputFilePath(routePath, lang) {
+function outputFilePaths(routePath, lang) {
   const prefix = lang === 'en' ? join(distDir, 'en') : distDir;
   if (routePath === '/') {
-    return join(prefix, 'index.html');
+    return [join(prefix, 'index.html')];
   }
   const cleanRel = routePath.replace(/^\/+/, '');
-  return `${join(prefix, cleanRel)}.html`;
+  return [
+    `${join(prefix, cleanRel)}.html`,
+    join(prefix, cleanRel, 'index.html')
+  ];
 }
 
 function buildSitemapXml(routes) {
@@ -116,15 +119,30 @@ async function main() {
     en: await readFile(join(distDir, 'en', 'index.html'), 'utf8')
   };
 
+  // Routes supplémentaires de redirection (/algos/3x3/cfop, /algos/3x3/blind, /algos/:size)
+  // pour éviter tout 404 sur les serveurs statiques quand un dossier porte le même nom.
+  const redirectFallbackRoutes = [
+    ...METHODS.filter(m => m.defaultSection).map(m => ({
+      path: paths.method(m),
+      seoKey: `method.${m.key}.${m.defaultSection}`
+    })),
+    ...PUZZLES.map(size => ({
+      path: `/algos/${size}`,
+      seoKey: 'algos'
+    }))
+  ];
+
   let htmlCount = 0;
   for (const lang of LANGS) {
-    for (const route of routes) {
+    for (const route of [...routes, ...redirectFallbackRoutes]) {
       const head = buildHead({ key: route.seoKey, lang, path: route.path });
       const html = injectHeadIntoHtml(templates[lang], head);
-      const target = outputFilePath(route.path, lang);
-      await mkdir(dirname(target), { recursive: true });
-      await writeFile(target, html, 'utf8');
-      htmlCount += 1;
+      const targets = outputFilePaths(route.path, lang);
+      for (const target of targets) {
+        await mkdir(dirname(target), { recursive: true });
+        await writeFile(target, html, 'utf8');
+        htmlCount += 1;
+      }
     }
   }
 

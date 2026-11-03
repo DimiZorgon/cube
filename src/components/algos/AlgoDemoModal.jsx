@@ -29,7 +29,6 @@ function AnimatedDemoCube({ cubies, activeAnim, onFinishAnim }) {
   const pivotRefs = useRef({});
   const currentAngle = useRef(0);
   const finishedRef = useRef(false);
-  const cubeScale = useSettingsStore(state => state.cubeScale);
   const turnSpeed = useSettingsStore(state => state.turnSpeed);
 
   // Synchronise la remise à zéro des pivots exactement au moment où React applique les nouvelles positions
@@ -69,7 +68,7 @@ function AnimatedDemoCube({ cubies, activeAnim, onFinishAnim }) {
   });
 
   return (
-    <group scale={cubeScale}>
+    <group>
       {cubies.map(data => (
         <group
           key={data.id}
@@ -206,7 +205,14 @@ export function AlgoDemoModal({
     setIsPlaying(prev => !prev);
   };
 
-  const camPos = size === 2 ? [3.4, 3.0, 3.6] : size === 4 ? [5.5, 4.8, 5.8] : [4.3, 3.8, 4.6];
+  const camPos =
+    size === 2
+      ? [3.4, 3.0, 3.6]
+      : size === 4
+      ? [5.5, 4.8, 5.8]
+      : size === 5
+      ? [7.2, 6.2, 7.5]
+      : [4.3, 3.8, 4.6];
   const progressPercent = tokens.length > 0 ? Math.round((stepIndex / tokens.length) * 100) : 0;
 
   return (

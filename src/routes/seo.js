@@ -32,6 +32,10 @@ const TEXTS = {
       title: 'Simulateur Rubik’s Revenge 4x4 en ligne',
       description: 'Résolvez un Rubik’s Cube 4x4 en 3D dans votre navigateur : mouvements larges, mélange, chronomètre et record.'
     },
+    'game.5x5': {
+      title: 'Simulateur Rubik’s Cube 5x5 en ligne (Professor’s Cube)',
+      description: 'Résolvez un Rubik’s Cube 5x5 en 3D dans votre navigateur : mouvements larges, mélange WCA, chronomètre et record.'
+    },
     timer: {
       title: 'Chronomètre de speedcubing WCA',
       description: 'Chronomètre speedcubing avec mélanges WCA, inspection 15 s, ao5, ao12 et export csTimer pour 2x2, 3x3 et 4x4.'
@@ -147,6 +151,31 @@ const TEXTS = {
       title: 'Yau 4x4 – Parité PLL',
       description: 'Algorithmes de parité PLL du 4x4 (arêtes opposées, adjacentes, coins diagonaux) avec démonstrations 3D.'
     },
+    'method.professor5x5': {
+      name: 'Méthode Professor 5x5 (Francocube)',
+      title: 'Méthode Professor 5x5 – Réduction (Francocube Cyril)',
+      description: 'Apprenez à résoudre le Rubik’s Cube 5x5 par réduction : centres en barres 1x3, arêtes 3 par 3, parité d’arête et finalisation 3x3.'
+    },
+    'method.professor5x5.centers': {
+      title: '5x5 Professor – Les 6 centres (Barres 1x3)',
+      description: 'Construisez les 6 centres du 5x5 avec les barres 1x3 et commutateurs (méthode Francocube Cyril).'
+    },
+    'method.professor5x5.edges': {
+      title: '5x5 Professor – Appariement des arêtes',
+      description: 'Regroupez les 12 arêtes du 5x5 (arête centrale et 2 ailes) avec la technique Slice-Flip-Slice.'
+    },
+    'method.professor5x5.last-edges': {
+      title: '5x5 Professor – Les 2 dernières arêtes',
+      description: 'Résolvez les deux dernières arêtes du 5x5 sans détruire les centres déjà constitués.'
+    },
+    'method.professor5x5.parity': {
+      title: '5x5 Professor – Parité de l’arête centrale',
+      description: 'Algorithme officiel Francocube Cyril pour retourner l’arête centrale inversée sur le 5x5.'
+    },
+    'method.professor5x5.reduction-3x3': {
+      title: '5x5 Professor – Phase finale 3x3',
+      description: 'Résolvez le 5x5 réduit comme un 3x3 standard avec les méthodes CFOP ou débutant.'
+    },
     training: {
       title: 'Entraînement : {{caseName}} – {{methodName}}',
       description: 'Entraînez-vous sur le cas {{caseName}} ({{methodName}}) directement sur le Rubik’s Cube 3D.'
@@ -178,6 +207,10 @@ const TEXTS = {
     'game.4x4': {
       title: "Online 4x4 Rubik's Revenge Simulator",
       description: "Solve a 4x4 Rubik's Cube in 3D in your browser: wide moves, scrambles, timer and personal best."
+    },
+    'game.5x5': {
+      title: "Online 5x5 Rubik's Cube Simulator (Professor's Cube)",
+      description: "Solve a 5x5 Rubik's Cube in 3D in your browser: wide moves, WCA scrambles, timer and personal best."
     },
     timer: {
       title: 'WCA Speedcubing Timer',
@@ -293,6 +326,31 @@ const TEXTS = {
     'method.yau4x4.pll-parity': {
       title: 'Yau 4x4 – PLL Parity',
       description: '4x4 PLL parity algorithms (opposite edges, adjacent edges, diagonal corners) with 3D demos.'
+    },
+    'method.professor5x5': {
+      name: '5x5 Professor Method (Reduction)',
+      title: '5x5 Professor Method – Reduction (Francocube Cyril)',
+      description: 'Learn to solve the 5x5 Rubik’s Cube using reduction: 1x3 center bars, 3-piece edge pairing, parity and 3x3 stage.'
+    },
+    'method.professor5x5.centers': {
+      title: '5x5 Professor – 6 Centers (1x3 Bars)',
+      description: 'Build the 6 centers of the 5x5 using 1x3 bars and commutators with 3D demos.'
+    },
+    'method.professor5x5.edges': {
+      title: '5x5 Professor – Edge Pairing',
+      description: 'Pair the 12 edges of the 5x5 (center edge and 2 wings) using the Slice-Flip-Slice technique.'
+    },
+    'method.professor5x5.last-edges': {
+      title: '5x5 Professor – Last 2 Edges',
+      description: 'Solve the last two edges of the 5x5 without breaking completed centers.'
+    },
+    'method.professor5x5.parity': {
+      title: '5x5 Professor – Center Edge Parity',
+      description: 'Official algorithm to flip the reversed center edge on the 5x5 Professor Cube.'
+    },
+    'method.professor5x5.reduction-3x3': {
+      title: '5x5 Professor – Final 3x3 Stage',
+      description: 'Finish solving the reduced 5x5 just like a classic 3x3 Rubik’s Cube.'
     },
     training: {
       title: 'Practice: {{caseName}} – {{methodName}}',
