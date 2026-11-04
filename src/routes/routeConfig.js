@@ -125,6 +125,7 @@ export const paths = {
   home: () => '/',
   play: () => '/play',
   game: size => `/play/${size}`,
+  smartCube: () => '/play/smart-cube',
   timer: () => '/timer',
   settings: () => '/settings',
   algos: () => '/algos',
@@ -143,6 +144,7 @@ export function listIndexableRoutes() {
     { path: paths.home(), seoKey: 'home' },
     { path: paths.play(), seoKey: 'play' },
     ...PUZZLES.map(size => ({ path: paths.game(size), seoKey: `game.${size}` })),
+    { path: paths.smartCube(), seoKey: 'smartCube' },
     { path: paths.timer(), seoKey: 'timer' },
     { path: paths.settings(), seoKey: 'settings' },
     { path: paths.algos(), seoKey: 'algos' }

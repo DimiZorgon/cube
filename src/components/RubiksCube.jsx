@@ -8,11 +8,12 @@ import { useFrame, useThree } from '@react-three/fiber';
 
 const DICO_AXIS = { x: 0, y: 1, z: 2 };
 
-export function RubiksCube({ enableSwipe = false, onSwipeMove, controlsRef, isLocked = false }) {
+export function RubiksCube({ enableSwipe = false, onSwipeMove, controlsRef, isLocked = false, adaptiveSpeed = false }) {
     const size = useCubeStore(state => state.size);
     const cubiesData = useCubeStore(state => state.cubies);
     const activeRotation = useCubeStore(state => state.activeRotation);
     const commitRotation = useCubeStore(state => state.commitRotation);
+    const snapQueue = useCubeStore(state => state.snapQueue);
 
     const cubeScale = useSettingsStore(state => state.cubeScale);
     const turnSpeed = useSettingsStore(state => state.turnSpeed);
@@ -315,15 +316,32 @@ export function RubiksCube({ enableSwipe = false, onSwipeMove, controlsRef, isLo
 
     useFrame((_, delta) => {
         if (activeRotation !== null && !committedRef.current) {
-            currentAngle.current += turnSpeed * delta;
+            const queue = useCubeStore.getState().rotationFile;
+            const queueLength = queue ? queue.length : 0;
+
+            if (adaptiveSpeed && queueLength >= 4) {
+                snapQueue(0);
+                return;
+            }
+
+            let currentSpeed = turnSpeed;
+            if (adaptiveSpeed) {
+                if (queueLength >= 3) currentSpeed = 32;
+                else if (queueLength === 2) currentSpeed = 24;
+                else currentSpeed = 16;
+            }
+
+            currentAngle.current += currentSpeed * delta;
             const targetAngle = Math.PI / 2;
             const clampedAngle = Math.min(currentAngle.current, targetAngle);
             const rotValue = clampedAngle * -activeRotation.direction;
 
+            const sliceValues = Array.isArray(activeRotation.value) ? activeRotation.value : [activeRotation.value];
+
             for (const c of cubiesData) {
                 const grp = pivotRefs.current[c.id];
                 if (!grp) continue;
-                const isMoving = activeRotation.value.some(
+                const isMoving = sliceValues.some(
                     v => Math.abs(c.position[DICO_AXIS[activeRotation.axis]] - v) < 0.1
                 );
                 if (isMoving) {

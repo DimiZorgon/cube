@@ -1,0 +1,1311 @@
+// src/store/useSmartCubeStore.js
+import { create } from 'zustand';
+import { ganBleDriver as defaultGanBleDriver, GanBleDriver } from '../utils/smartCube/ganBleDriver.js';
+import {
+  loadCachedMac,
+  saveCachedMac,
+  clearCachedMac,
+  isValidMacAddress,
+  formatMacAddress
+} from '../utils/smartCube/macAddressUtils.js';
+import { useCubeStore } from './useCubeStore.js';
+import { playCubeTurnSound } from '../utils/audioSystem.js';
+import { CubeStateSimulator } from '../utils/cubeMath.js';
+import { safeTps } from '../utils/smartCube/wcaStats.js';
+import { detectSolvePhase } from '../utils/smartCube/solvePhaseDetector.js';
+
+export const CFOP_PHASE_ORDER = Object.freeze(['cross', 'f2l', 'oll', 'pll']);
+export const CFOP_PHASE_NAMES = Object.freeze({
+  cross: 'Cross',
+  f2l: 'F2L',
+  oll: 'OLL',
+  pll: 'PLL'
+});
+
+export function inverseMove(move) {
+  if (!move || typeof move !== 'string') return '';
+  const match = move.trim().match(/^([URFDLB])(.*)$/);
+  if (!match) return '';
+  const face = match[1];
+  const mod = match[2];
+  if (mod.includes("'")) return face;
+  if (mod.includes('2')) return face + '2';
+  return face + "'";
+}
+
+export function processScrambleTurn({
+  scrambleMoves,
+  scrambleIndex,
+  scrambleSubStep,
+  subStepDir,
+  errorStack,
+  moveNotation
+}) {
+  const moves = Array.isArray(scrambleMoves) ? [...scrambleMoves] : [];
+  let index = typeof scrambleIndex === 'number' ? scrambleIndex : 0;
+  let subStep = typeof scrambleSubStep === 'number' ? scrambleSubStep : 0;
+  let currentSubStepDir = subStepDir || null;
+  const errors = Array.isArray(errorStack) ? [...errorStack] : [];
+
+  if (index >= moves.length) {
+    return {
+      scrambleIndex: moves.length,
+      scrambleSubStep: 0,
+      subStepDir: null,
+      errorStack: [],
+      scrambleError: null,
+      isCompleted: true
+    };
+  }
+
+  // Error recovery mode
+  if (errors.length > 0) {
+    const expectedCorrection = errors[errors.length - 1];
+    if (moveNotation === expectedCorrection) {
+      errors.pop();
+    } else {
+      errors.push(inverseMove(moveNotation));
+    }
+    const currentError = errors.length > 0 ? errors[errors.length - 1] : null;
+    return {
+      scrambleIndex: index,
+      scrambleSubStep: subStep,
+      subStepDir: currentSubStepDir,
+      errorStack: errors,
+      scrambleError: currentError,
+      isCompleted: false
+    };
+  }
+
+  const expectedMove = moves[index];
+  const face = expectedMove[0];
+  const isDouble = expectedMove.includes('2');
+
+  if (!isDouble) {
+    if (moveNotation === expectedMove) {
+      index++;
+      subStep = 0;
+      currentSubStepDir = null;
+    } else {
+      errors.push(inverseMove(moveNotation));
+    }
+  } else {
+    // Double turn (e.g. 'R2')
+    if (moveNotation === expectedMove || moveNotation === face + '2') {
+      index++;
+      subStep = 0;
+      currentSubStepDir = null;
+    } else if (subStep === 0) {
+      if (moveNotation === face) {
+        subStep = 1;
+        currentSubStepDir = 1; // CW
+      } else if (moveNotation === face + "'") {
+        subStep = 1;
+        currentSubStepDir = -1; // CCW
+      } else {
+        errors.push(inverseMove(moveNotation));
+      }
+    } else {
+      // subStep === 1: expecting second quarter turn in same direction
+      const expectedSecond = currentSubStepDir === 1 ? face : face + "'";
+      const undoFirst = currentSubStepDir === 1 ? face + "'" : face;
+      if (moveNotation === expectedSecond) {
+        index++;
+        subStep = 0;
+        currentSubStepDir = null;
+      } else if (moveNotation === undoFirst) {
+        subStep = 0;
+        currentSubStepDir = null;
+      } else {
+        errors.push(inverseMove(moveNotation));
+      }
+    }
+  }
+
+  const currentError = errors.length > 0 ? errors[errors.length - 1] : null;
+  const isCompleted = index >= moves.length && errors.length === 0;
+
+  return {
+    scrambleIndex: index,
+    scrambleSubStep: subStep,
+    subStepDir: currentSubStepDir,
+    errorStack: errors,
+    scrambleError: currentError,
+    isCompleted
+  };
+}
+
+export function advanceSolvePhases({
+  currentPhase,
+  facelets,
+  elapsedMs,
+  currentMoveCount,
+  lastPhaseSplitMs,
+  lastPhaseMoves,
+  phaseSplits,
+  phaseSteps,
+  forceComplete = false
+}) {
+  const splits = { ...(phaseSplits || {}) };
+  const steps = Array.isArray(phaseSteps) ? [...phaseSteps] : [];
+  let phase = currentPhase || 'cross';
+  let splitMarker = lastPhaseSplitMs || 0;
+  let moveMarker = lastPhaseMoves || 0;
+
+  const ranks = { cross: 0, f2l: 1, oll: 2, pll: 3, complete: 4 };
+
+  let targetPhase = phase;
+  if (forceComplete) {
+    targetPhase = 'complete';
+  } else if (facelets) {
+    const detection = detectSolvePhase(facelets, phase, 'D');
+    targetPhase = detection.phase;
+  }
+
+  const currentRank = ranks[phase] ?? 0;
+  const targetRank = ranks[targetPhase] ?? currentRank;
+
+  if (targetRank > currentRank) {
+    for (let r = currentRank; r < targetRank; r++) {
+      const stepPhase = CFOP_PHASE_ORDER[r];
+      if (!stepPhase) continue;
+
+      if (!splits[stepPhase]) {
+        if (r === currentRank) {
+          const durationMs = Math.max(0, elapsedMs - splitMarker);
+          const moveCount = Math.max(0, currentMoveCount - moveMarker);
+          const tps = safeTps(moveCount, durationMs);
+          const record = {
+            phase: stepPhase,
+            name: CFOP_PHASE_NAMES[stepPhase],
+            durationMs,
+            splitMs: elapsedMs,
+            moveCount,
+            tps,
+            skipped: false
+          };
+          splits[stepPhase] = record;
+          steps.push(record);
+          splitMarker = elapsedMs;
+          moveMarker = currentMoveCount;
+        } else {
+          const record = {
+            phase: stepPhase,
+            name: CFOP_PHASE_NAMES[stepPhase],
+            durationMs: 0,
+            splitMs: elapsedMs,
+            moveCount: 0,
+            tps: 0,
+            skipped: true
+          };
+          splits[stepPhase] = record;
+          steps.push(record);
+        }
+      }
+    }
+    phase = targetPhase;
+  }
+
+  if (forceComplete || targetPhase === 'complete') {
+    for (let r = 0; r < 4; r++) {
+      const stepPhase = CFOP_PHASE_ORDER[r];
+      if (!splits[stepPhase]) {
+        // If this is the active phase at completion, award remaining time/moves
+        const isCurrentActive = ranks[stepPhase] === currentRank;
+        const durationMs = isCurrentActive ? Math.max(0, elapsedMs - splitMarker) : 0;
+        const moveCount = isCurrentActive ? Math.max(0, currentMoveCount - moveMarker) : 0;
+        const tps = safeTps(moveCount, durationMs);
+        const record = {
+          phase: stepPhase,
+          name: CFOP_PHASE_NAMES[stepPhase],
+          durationMs,
+          splitMs: elapsedMs,
+          moveCount,
+          tps,
+          skipped: !isCurrentActive && durationMs === 0 && moveCount === 0
+        };
+        splits[stepPhase] = record;
+        steps.push(record);
+        if (isCurrentActive) {
+          splitMarker = elapsedMs;
+          moveMarker = currentMoveCount;
+        }
+      }
+    }
+    phase = 'complete';
+  }
+
+  return {
+    currentPhase: phase,
+    phaseSplits: splits,
+    phaseSteps: steps,
+    lastPhaseSplitMs: splitMarker,
+    lastPhaseMoves: moveMarker
+  };
+}
+
+export const FIXED_SMART_CUBE_MAPPING = Object.freeze({
+  U: { axis: 'y', value: 1, direction: -1 },
+  D: { axis: 'y', value: -1, direction: 1 },
+  R: { axis: 'x', value: 1, direction: -1 },
+  L: { axis: 'x', value: -1, direction: 1 },
+  F: { axis: 'z', value: 1, direction: -1 },
+  B: { axis: 'z', value: -1, direction: 1 }
+});
+
+export const SESSIONS_STORAGE_KEY = 'rubiks_smartcube_sessions_v1';
+export const POST_CONNECT_GAP_MS = 120;
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+export function loadSessionSolves() {
+  if (typeof localStorage === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(SESSIONS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveSessionSolves(solves) {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(solves));
+  } catch {
+    // Ignore storage quota or security errors
+  }
+}
+
+export function generateRandomScramble(moveCount = 20) {
+  const faces = ['U', 'D', 'R', 'L', 'F', 'B'];
+  const modifiers = ['', "'", '2'];
+  const result = [];
+  let lastFace = '';
+  for (let i = 0; i < moveCount; i++) {
+    let face;
+    do {
+      face = faces[Math.floor(Math.random() * faces.length)];
+    } while (face === lastFace);
+    lastFace = face;
+    result.push(face + modifiers[Math.floor(Math.random() * modifiers.length)]);
+  }
+  return result.join(' ');
+}
+
+/**
+ * Maps standard notation move (R, R', U, U', etc.) to 3D cube rotation in useCubeStore
+ */
+export function applyMoveTo3D(moveNotation) {
+  if (!moveNotation) return;
+  try {
+    const face = moveNotation[0];
+    const mapping = FIXED_SMART_CUBE_MAPPING[face];
+    if (!mapping) return;
+
+    const isPrime = moveNotation.includes("'");
+    const isDouble = moveNotation.includes("2");
+    const moveDirection = (isPrime ? 1 : -1) * mapping.direction;
+
+    const cubeState = useCubeStore.getState();
+    const executeTurn = () => {
+      cubeState.startRotation(mapping.axis, [mapping.value], moveDirection);
+    };
+
+    executeTurn();
+    if (isDouble) {
+      executeTurn();
+    }
+
+    playCubeTurnSound();
+  } catch (err) {
+    console.warn('Error applying 3D rotation:', err);
+  }
+}
+
+/**
+ * Isolated SmartCubeStore class for headless test runners and multi-instance usage
+ */
+export class SmartCubeStore {
+  constructor(driver = null) {
+    this.driver = driver || new GanBleDriver();
+    const initialScramble = "D' R2 U' B2 U F2 R2 D' F2 U B2 R' D' B' R' B2 D' F' D R2";
+    const initialMoves = initialScramble.trim().split(/\s+/).filter(Boolean);
+
+    this.state = {
+      connectionStatus: 'disconnected',
+      deviceName: null,
+      macAddress: loadCachedMac(),
+      batteryLevel: null,
+      gyroQuaternion: null,
+      isGyroActive: true,
+      gyroZeroQuaternion: null,
+      errorMessage: null,
+      isMacModalOpen: false,
+      timerStatus: 'idle',
+      timerStartTime: 0,
+      wallStartTime: 0,
+      elapsedMs: 0,
+      moveCount: 0,
+      currentTps: 0,
+      finalTps: null,
+      moveHistory: [],
+      sessionSolves: loadSessionSolves(),
+      scramble: initialScramble,
+      scrambleMoves: initialMoves,
+      scrambleIndex: initialMoves.length,
+      scrambleSubStep: 0,
+      scrambleError: null,
+      scrambleTracking: {
+        moves: initialMoves,
+        index: initialMoves.length,
+        subStep: 0,
+        error: null
+      },
+      currentPhase: 'cross',
+      phaseSplits: {},
+      phaseSteps: []
+    };
+
+    this._subStepDir = null;
+    this._errorStack = [];
+    this._lastPhaseSplitMs = 0;
+    this._lastPhaseMoves = 0;
+
+    this.cubeSimulator = new CubeStateSimulator();
+    this._bindDriver();
+  }
+
+  getState() {
+    return this.state;
+  }
+
+  setState(partial) {
+    const next = typeof partial === 'function' ? partial(this.state) : partial;
+    Object.assign(this.state, next);
+  }
+
+  _bindDriver() {
+    this.driver.onStatusChange = (status, error) => {
+      this.state.connectionStatus = status;
+      this.state.errorMessage = error || null;
+      if (status === 'disconnected' || status === 'error') {
+        this.state.deviceName = null;
+        this.state.batteryLevel = null;
+      }
+    };
+
+    this.driver.onBattery = (level) => {
+      if (typeof level !== 'number' || isNaN(level)) return;
+      this.state.batteryLevel = Math.max(0, Math.min(100, Math.round(level)));
+    };
+
+    this.driver.onMove = (moveData) => {
+      this.handleIncomingMove(moveData);
+    };
+
+    this.driver.onGyro = (quaternion) => {
+      this.state.gyroQuaternion = quaternion;
+    };
+
+    this.driver.onFacelets = (facelets) => {
+      if (this.cubeSimulator) {
+        this.cubeSimulator = new CubeStateSimulator(facelets);
+      }
+      if (this.state.timerStatus === 'solving' && this.cubeSimulator?.isSolved()) {
+        this._stopTimer();
+      }
+    };
+  }
+
+  async connect(deviceInstance = null, explicitMac = null) {
+    const targetMac = explicitMac || this.state.macAddress || loadCachedMac();
+    this.state.connectionStatus = 'connecting';
+    this.state.errorMessage = null;
+
+    try {
+      if (targetMac) {
+        this.driver.setMacAddress(targetMac);
+      }
+      const info = await this.driver.connect(deviceInstance);
+      this.state.connectionStatus = 'connected';
+      this.state.deviceName = info?.deviceName || 'GAN 16 ui';
+      this.state.macAddress = targetMac || info?.macAddress || null;
+      await this.driver.requestHardware().catch(() => {});
+      await delay(POST_CONNECT_GAP_MS);
+      await this.driver.requestFacelets().catch(() => {});
+      await delay(POST_CONNECT_GAP_MS);
+      await this.driver.requestBattery().catch(() => {});
+      return info;
+    } catch (err) {
+      this.state.connectionStatus = 'error';
+      this.state.errorMessage = err.message || 'Erreur lors de la connexion Bluetooth';
+      throw err;
+    }
+  }
+
+  disconnect() {
+    this.driver.disconnect();
+    this.state.connectionStatus = 'disconnected';
+    this.state.deviceName = null;
+    this.state.batteryLevel = null;
+    this.state.errorMessage = null;
+  }
+
+  startInspection() {
+    if (this.state.timerStatus === 'scrambled') {
+      this.state.timerStatus = 'inspecting';
+    }
+  }
+
+  startScrambleTracking(scrambleString) {
+    const scramble = scrambleString || generateRandomScramble(20);
+    const moves = scramble.trim().split(/\s+/).filter(Boolean);
+    this.state.scramble = scramble;
+    this.state.scrambleMoves = moves;
+    this.state.scrambleIndex = 0;
+    this.state.scrambleSubStep = 0;
+    this.state.scrambleError = null;
+    this.state.scrambleTracking = {
+      moves,
+      index: 0,
+      subStep: 0,
+      error: null
+    };
+    this._subStepDir = null;
+    this._errorStack = [];
+    this.state.timerStatus = 'scrambling';
+    this.state.timerStartTime = 0;
+    this.state.wallStartTime = 0;
+    this.state.moveCount = 0;
+    this.state.elapsedMs = 0;
+    this.state.currentTps = 0;
+    this.state.finalTps = null;
+    this.state.moveHistory = [];
+    this.state.currentPhase = 'cross';
+    this.state.phaseSplits = {};
+    this.state.phaseSteps = [];
+    this._lastPhaseSplitMs = 0;
+    this._lastPhaseMoves = 0;
+    if (this.cubeSimulator) {
+      this.cubeSimulator = new CubeStateSimulator();
+    }
+    return scramble;
+  }
+
+  handleIncomingMove(moveData, explicitTimestamp = null) {
+    const moveNotation = typeof moveData === 'string' ? moveData : moveData?.move;
+    if (!moveNotation) return;
+    const now = explicitTimestamp ?? (typeof moveData === 'object' && typeof moveData?.timestamp === 'number' ? moveData.timestamp : Date.now());
+
+    // Post-solve guard: turns after solve update simulator & 3D, but do not change timer status or final stats
+    if (this.state.timerStatus === 'solved') {
+      if (this.cubeSimulator) {
+        this.cubeSimulator.applyMove(moveNotation);
+      }
+      applyMoveTo3D(moveNotation);
+      return;
+    }
+
+    // Scramble tracking mode
+    if (this.state.timerStatus === 'scrambling') {
+      if (this.cubeSimulator) {
+        this.cubeSimulator.applyMove(moveNotation);
+      }
+      applyMoveTo3D(moveNotation);
+
+      const result = processScrambleTurn({
+        scrambleMoves: this.state.scrambleMoves,
+        scrambleIndex: this.state.scrambleIndex,
+        scrambleSubStep: this.state.scrambleSubStep,
+        subStepDir: this._subStepDir,
+        errorStack: this._errorStack,
+        moveNotation
+      });
+
+      this.state.scrambleIndex = result.scrambleIndex;
+      this.state.scrambleSubStep = result.scrambleSubStep;
+      this.state.scrambleError = result.scrambleError;
+      this._subStepDir = result.subStepDir;
+      this._errorStack = result.errorStack;
+      this.state.scrambleTracking = {
+        moves: this.state.scrambleMoves,
+        index: result.scrambleIndex,
+        subStep: result.scrambleSubStep,
+        error: result.scrambleError
+      };
+
+      if (result.isCompleted) {
+        this.state.timerStatus = 'scrambled';
+      }
+      return;
+    }
+
+    if (this.cubeSimulator) {
+      this.cubeSimulator.applyMove(moveNotation);
+    }
+
+    let currentTimerStatus = this.state.timerStatus;
+    let startTime = this.state.timerStartTime;
+
+    // Auto-start timer on first physical move if scrambled or inspecting
+    if (currentTimerStatus === 'scrambled' || currentTimerStatus === 'inspecting') {
+      currentTimerStatus = 'solving';
+      startTime = now;
+      this.state.wallStartTime = Date.now();
+      this.state.currentPhase = 'cross';
+      this.state.phaseSplits = {};
+      this.state.phaseSteps = [];
+      this._lastPhaseSplitMs = 0;
+      this._lastPhaseMoves = 0;
+    }
+
+    const lastMoveTs = this.state.moveHistory.length > 0
+      ? this.state.moveHistory[this.state.moveHistory.length - 1].timestamp
+      : now;
+    const stepTime = Math.max(0, now - lastMoveTs);
+
+    const newMoveCount = this.state.moveCount + 1;
+    this.state.moveHistory.push({
+      move: moveNotation,
+      timestamp: now,
+      stepTime,
+      serial: (typeof moveData === 'object' && moveData?.serial) ?? newMoveCount
+    });
+
+    let elapsed = this.state.elapsedMs;
+    let tps = this.state.currentTps;
+
+    if (currentTimerStatus === 'solving') {
+      elapsed = Math.max(1, now - (startTime ?? now));
+      tps = safeTps(newMoveCount, elapsed);
+
+      const facelets = this.cubeSimulator ? this.cubeSimulator.getFaceletString() : null;
+      const isSolved = this.cubeSimulator ? this.cubeSimulator.isSolved() : false;
+
+      const phaseUpdate = advanceSolvePhases({
+        currentPhase: this.state.currentPhase,
+        facelets,
+        elapsedMs: elapsed,
+        currentMoveCount: newMoveCount,
+        lastPhaseSplitMs: this._lastPhaseSplitMs,
+        lastPhaseMoves: this._lastPhaseMoves,
+        phaseSplits: this.state.phaseSplits,
+        phaseSteps: this.state.phaseSteps,
+        forceComplete: isSolved
+      });
+
+      this.state.currentPhase = phaseUpdate.currentPhase;
+      this.state.phaseSplits = phaseUpdate.phaseSplits;
+      this.state.phaseSteps = phaseUpdate.phaseSteps;
+      this._lastPhaseSplitMs = phaseUpdate.lastPhaseSplitMs;
+      this._lastPhaseMoves = phaseUpdate.lastPhaseMoves;
+
+      if (isSolved) {
+        currentTimerStatus = 'solved';
+        this.state.finalTps = tps;
+        const solveRecord = {
+          id: `solve-${now}-${Math.random().toString(36).slice(2, 7)}`,
+          timestamp: now,
+          date: now,
+          elapsedMs: elapsed,
+          timeMs: elapsed,
+          moveCount: newMoveCount,
+          tps,
+          scramble: this.state.scramble || '',
+          moves: this.state.moveHistory.map(m => m.move).join(' '),
+          penalty: 'none',
+          isDnf: false,
+          splits: { ...this.state.phaseSplits },
+          steps: [...this.state.phaseSteps]
+        };
+        this.state.sessionSolves.push(solveRecord);
+        saveSessionSolves(this.state.sessionSolves);
+      }
+    }
+
+    this.state.timerStatus = currentTimerStatus;
+    this.state.timerStartTime = startTime;
+    this.state.moveCount = newMoveCount;
+    this.state.elapsedMs = elapsed;
+    this.state.currentTps = tps;
+
+    applyMoveTo3D(moveNotation);
+  }
+
+  _stopTimer(now = Date.now()) {
+    if (this.state.timerStatus !== 'solving') return;
+    this.state.timerStatus = 'solved';
+    const elapsed = Math.max(1, now - (this.state.timerStartTime ?? now));
+    const finalTps = safeTps(this.state.moveCount, elapsed);
+    this.state.elapsedMs = elapsed;
+    this.state.finalTps = finalTps;
+    this.state.currentTps = finalTps;
+
+    const facelets = this.cubeSimulator ? this.cubeSimulator.getFaceletString() : null;
+    const phaseUpdate = advanceSolvePhases({
+      currentPhase: this.state.currentPhase,
+      facelets,
+      elapsedMs: elapsed,
+      currentMoveCount: this.state.moveCount,
+      lastPhaseSplitMs: this._lastPhaseSplitMs,
+      lastPhaseMoves: this._lastPhaseMoves,
+      phaseSplits: this.state.phaseSplits,
+      phaseSteps: this.state.phaseSteps,
+      forceComplete: true
+    });
+    this.state.currentPhase = phaseUpdate.currentPhase;
+    this.state.phaseSplits = phaseUpdate.phaseSplits;
+    this.state.phaseSteps = phaseUpdate.phaseSteps;
+    this._lastPhaseSplitMs = phaseUpdate.lastPhaseSplitMs;
+    this._lastPhaseMoves = phaseUpdate.lastPhaseMoves;
+
+    const solveRecord = {
+      id: `solve-${now}-${Math.random().toString(36).slice(2, 7)}`,
+      timestamp: now,
+      date: now,
+      elapsedMs: elapsed,
+      timeMs: elapsed,
+      moveCount: this.state.moveCount,
+      tps: finalTps,
+      scramble: this.state.scramble || '',
+      moves: this.state.moveHistory.map(m => m.move).join(' '),
+      penalty: 'none',
+      isDnf: false,
+      splits: { ...this.state.phaseSplits },
+      steps: [...this.state.phaseSteps]
+    };
+    this.state.sessionSolves.push(solveRecord);
+    saveSessionSolves(this.state.sessionSolves);
+  }
+
+  newScramble(customScramble, options = {}) {
+    const scramble = customScramble || generateRandomScramble(20);
+    if (options?.trackScramble) {
+      return this.startScrambleTracking(scramble);
+    }
+    const moves = scramble.trim().split(/\s+/).filter(Boolean);
+    this.state.scramble = scramble;
+    this.state.scrambleMoves = moves;
+    this.state.scrambleIndex = moves.length;
+    this.state.scrambleSubStep = 0;
+    this.state.scrambleError = null;
+    this.state.scrambleTracking = {
+      moves,
+      index: moves.length,
+      subStep: 0,
+      error: null
+    };
+    this._subStepDir = null;
+    this._errorStack = [];
+    this.state.timerStatus = 'scrambled';
+    this.state.timerStartTime = 0;
+    this.state.wallStartTime = 0;
+    this.state.moveCount = 0;
+    this.state.elapsedMs = 0;
+    this.state.currentTps = 0;
+    this.state.finalTps = null;
+    this.state.moveHistory = [];
+    this.state.currentPhase = 'cross';
+    this.state.phaseSplits = {};
+    this.state.phaseSteps = [];
+    this._lastPhaseSplitMs = 0;
+    this._lastPhaseMoves = 0;
+    if (this.cubeSimulator) {
+      this.cubeSimulator = new CubeStateSimulator();
+      this.cubeSimulator.applyMoves(scramble);
+    }
+    return scramble;
+  }
+
+  recalibrateGyro() {
+    const current = this.state.gyroQuaternion;
+    this.state.gyroZeroQuaternion = current ? [...current] : [0, 0, 0, 1];
+    this.state.gyroQuaternion = [0, 0, 0, 1];
+  }
+
+  toggleGyroActive(active) {
+    this.state.isGyroActive = typeof active === 'boolean' ? active : !this.state.isGyroActive;
+  }
+
+  resetSolve() {
+    this.state.timerStatus = 'idle';
+    this.state.timerStartTime = 0;
+    this.state.wallStartTime = 0;
+    this.state.elapsedMs = 0;
+    this.state.moveCount = 0;
+    this.state.currentTps = 0;
+    this.state.finalTps = null;
+    this.state.moveHistory = [];
+    this.state.currentPhase = 'cross';
+    this.state.phaseSplits = {};
+    this.state.phaseSteps = [];
+    this._lastPhaseSplitMs = 0;
+    this._lastPhaseMoves = 0;
+    this.state.scrambleIndex = 0;
+    this.state.scrambleSubStep = 0;
+    this.state.scrambleError = null;
+    this._subStepDir = null;
+    this._errorStack = [];
+    this.state.scrambleTracking = {
+      moves: this.state.scrambleMoves || [],
+      index: 0,
+      subStep: 0,
+      error: null
+    };
+    if (this.cubeSimulator) {
+      this.cubeSimulator = new CubeStateSimulator();
+    }
+  }
+
+  recordSolve(record) {
+    this.state.sessionSolves.push(record);
+    saveSessionSolves(this.state.sessionSolves);
+  }
+
+  deleteSolve(id) {
+    this.state.sessionSolves = this.state.sessionSolves.filter(s => s.id !== id);
+    saveSessionSolves(this.state.sessionSolves);
+  }
+
+  clearSessionSolves() {
+    this.state.sessionSolves = [];
+    saveSessionSolves([]);
+  }
+
+  clearSession() {
+    this.clearSessionSolves();
+  }
+
+  updateSolvePenalty(id, penalty) {
+    this.state.sessionSolves = this.state.sessionSolves.map(s => {
+      if (s.id !== id) return s;
+      const isDnf = penalty === 'dnf';
+      return { ...s, penalty, isDnf };
+    });
+    saveSessionSolves(this.state.sessionSolves);
+  }
+}
+
+// Module-level simulator instance and tracking state for the Zustand singleton store
+let zustandCubeSimulator = new CubeStateSimulator();
+let zustandSubStepDir = null;
+let zustandErrorStack = [];
+let zustandLastPhaseSplitMs = 0;
+let zustandLastPhaseMoves = 0;
+
+const defaultScramble = "D' R2 U' B2 U F2 R2 D' F2 U B2 R' D' B' R' B2 D' F' D R2";
+const defaultMoves = defaultScramble.trim().split(/\s+/).filter(Boolean);
+
+// Global Zustand singleton store for React application components
+const rawZustandStore = create((set, get) => {
+  // Bind driver callbacks once on initialization
+  defaultGanBleDriver.onStatusChange = (status, error) => {
+    set({
+      connectionStatus: status,
+      errorMessage: error || null,
+      ...(status === 'disconnected' || status === 'error'
+        ? { deviceName: null, batteryLevel: null }
+        : {})
+    });
+  };
+
+  defaultGanBleDriver.onBattery = (level) => {
+    if (typeof level !== 'number' || isNaN(level)) return;
+    const clamped = Math.max(0, Math.min(100, Math.round(level)));
+    set({ batteryLevel: clamped });
+  };
+
+  defaultGanBleDriver.onMove = (moveData) => {
+    get().handleIncomingMove(moveData);
+  };
+
+  defaultGanBleDriver.onGyro = (quaternion) => {
+    set({ gyroQuaternion: quaternion });
+  };
+
+  defaultGanBleDriver.onFacelets = (facelets) => {
+    zustandCubeSimulator = new CubeStateSimulator(facelets);
+    if (get().timerStatus === 'solving' && zustandCubeSimulator.isSolved()) {
+      get()._stopTimer();
+    }
+  };
+
+  return {
+    connectionStatus: 'disconnected',
+    deviceName: null,
+    macAddress: loadCachedMac(),
+    batteryLevel: null,
+    gyroQuaternion: null,
+    errorMessage: null,
+
+    isMacModalOpen: false,
+
+    isGyroActive: true,
+    gyroZeroQuaternion: null,
+
+    timerStatus: 'idle',
+    timerStartTime: 0,
+    wallStartTime: 0,
+    elapsedMs: 0,
+    moveCount: 0,
+    currentTps: 0,
+    finalTps: null,
+    moveHistory: [],
+    sessionSolves: loadSessionSolves(),
+    scramble: defaultScramble,
+    scrambleMoves: defaultMoves,
+    scrambleIndex: defaultMoves.length,
+    scrambleSubStep: 0,
+    scrambleError: null,
+    scrambleTracking: {
+      moves: defaultMoves,
+      index: defaultMoves.length,
+      subStep: 0,
+      error: null
+    },
+    currentPhase: 'cross',
+    phaseSplits: {},
+    phaseSteps: [],
+
+    openMacModal: () => set({ isMacModalOpen: true }),
+    closeMacModal: () => set({ isMacModalOpen: false }),
+
+    setMacAddress: (rawMac, persist = true) => {
+      if (!isValidMacAddress(rawMac)) {
+        throw new Error('Format d’adresse MAC invalide');
+      }
+      const formatted = persist ? saveCachedMac(rawMac) : formatMacAddress(rawMac);
+      set({ macAddress: formatted, isMacModalOpen: false });
+      return formatted;
+    },
+
+    clearMac: () => {
+      clearCachedMac();
+      set({ macAddress: null });
+    },
+
+    connect: async (deviceInstance = null, explicitMac = null) => {
+      const state = get();
+      const targetMac = explicitMac || state.macAddress || loadCachedMac();
+
+      if (!targetMac && !deviceInstance) {
+        set({ isMacModalOpen: true });
+        return;
+      }
+
+      set({ connectionStatus: 'connecting', errorMessage: null });
+
+      try {
+        if (targetMac) {
+          defaultGanBleDriver.setMacAddress(targetMac);
+        }
+        const info = await defaultGanBleDriver.connect(deviceInstance);
+        set({
+          connectionStatus: 'connected',
+          deviceName: info.deviceName || 'GAN 16 ui',
+          macAddress: targetMac || info.macAddress || null
+        });
+
+        await defaultGanBleDriver.requestHardware().catch(() => {});
+        await delay(POST_CONNECT_GAP_MS);
+        await defaultGanBleDriver.requestFacelets().catch(() => {});
+        await delay(POST_CONNECT_GAP_MS);
+        await defaultGanBleDriver.requestBattery().catch(() => {});
+      } catch (err) {
+        set({
+          connectionStatus: 'error',
+          errorMessage: err.message || 'Erreur lors de la connexion Bluetooth'
+        });
+        throw err;
+      }
+    },
+
+    disconnect: () => {
+      defaultGanBleDriver.disconnect();
+      set({
+        connectionStatus: 'disconnected',
+        deviceName: null,
+        batteryLevel: null,
+        errorMessage: null
+      });
+    },
+
+    startScrambleTracking: (scrambleString) => {
+      const scramble = scrambleString || generateRandomScramble(20);
+      const moves = scramble.trim().split(/\s+/).filter(Boolean);
+      zustandCubeSimulator = new CubeStateSimulator();
+      zustandSubStepDir = null;
+      zustandErrorStack = [];
+      zustandLastPhaseSplitMs = 0;
+      zustandLastPhaseMoves = 0;
+      set({
+        scramble,
+        scrambleMoves: moves,
+        scrambleIndex: 0,
+        scrambleSubStep: 0,
+        scrambleError: null,
+        scrambleTracking: {
+          moves,
+          index: 0,
+          subStep: 0,
+          error: null
+        },
+        timerStatus: 'scrambling',
+        timerStartTime: 0,
+        wallStartTime: 0,
+        elapsedMs: 0,
+        moveCount: 0,
+        currentTps: 0,
+        finalTps: null,
+        moveHistory: [],
+        currentPhase: 'cross',
+        phaseSplits: {},
+        phaseSteps: []
+      });
+      return scramble;
+    },
+
+    startInspection: () => {
+      if (get().timerStatus === 'scrambled') {
+        set({ timerStatus: 'inspecting' });
+      }
+    },
+
+    handleIncomingMove: (moveData, explicitTimestamp = null) => {
+      const state = get();
+      const moveNotation = typeof moveData === 'string' ? moveData : moveData?.move;
+      if (!moveNotation) return;
+      const now = explicitTimestamp ?? (typeof moveData === 'object' && typeof moveData?.timestamp === 'number' ? moveData.timestamp : Date.now());
+
+      // Post-solve guard: ignore turns after solve without re-entering solving state
+      if (state.timerStatus === 'solved') {
+        zustandCubeSimulator.applyMove(moveNotation);
+        applyMoveTo3D(moveNotation);
+        return;
+      }
+
+      // Scramble tracking mode
+      if (state.timerStatus === 'scrambling') {
+        zustandCubeSimulator.applyMove(moveNotation);
+        applyMoveTo3D(moveNotation);
+
+        const result = processScrambleTurn({
+          scrambleMoves: state.scrambleMoves,
+          scrambleIndex: state.scrambleIndex,
+          scrambleSubStep: state.scrambleSubStep,
+          subStepDir: zustandSubStepDir,
+          errorStack: zustandErrorStack,
+          moveNotation
+        });
+
+        zustandSubStepDir = result.subStepDir;
+        zustandErrorStack = result.errorStack;
+
+        set({
+          scrambleIndex: result.scrambleIndex,
+          scrambleSubStep: result.scrambleSubStep,
+          scrambleError: result.scrambleError,
+          scrambleTracking: {
+            moves: state.scrambleMoves,
+            index: result.scrambleIndex,
+            subStep: result.scrambleSubStep,
+            error: result.scrambleError
+          },
+          ...(result.isCompleted ? { timerStatus: 'scrambled' } : {})
+        });
+        return;
+      }
+
+      zustandCubeSimulator.applyMove(moveNotation);
+
+      let currentTimerStatus = state.timerStatus;
+      let startTime = state.timerStartTime;
+      let wallStart = state.wallStartTime;
+      let currentPhase = state.currentPhase;
+      let phaseSplits = state.phaseSplits;
+      let phaseSteps = state.phaseSteps;
+
+      if (currentTimerStatus === 'scrambled' || currentTimerStatus === 'inspecting') {
+        currentTimerStatus = 'solving';
+        startTime = now;
+        wallStart = Date.now();
+        currentPhase = 'cross';
+        phaseSplits = {};
+        phaseSteps = [];
+        zustandLastPhaseSplitMs = 0;
+        zustandLastPhaseMoves = 0;
+      }
+
+      const lastMoveTs = state.moveHistory.length > 0
+        ? state.moveHistory[state.moveHistory.length - 1].timestamp
+        : now;
+      const stepTime = Math.max(0, now - lastMoveTs);
+
+      const newMoveCount = state.moveCount + 1;
+      const newHistory = [
+        ...state.moveHistory,
+        {
+          move: moveNotation,
+          timestamp: now,
+          stepTime,
+          serial: (typeof moveData === 'object' && moveData?.serial) ?? newMoveCount
+        }
+      ];
+
+      let elapsed = state.elapsedMs;
+      let tps = state.currentTps;
+      let finalTps = state.finalTps;
+      let nextSessionSolves = state.sessionSolves;
+
+      if (currentTimerStatus === 'solving') {
+        elapsed = Math.max(1, now - (startTime ?? now));
+        tps = safeTps(newMoveCount, elapsed);
+
+        const facelets = zustandCubeSimulator ? zustandCubeSimulator.getFaceletString() : null;
+        const isSolved = zustandCubeSimulator ? zustandCubeSimulator.isSolved() : false;
+
+        const phaseUpdate = advanceSolvePhases({
+          currentPhase,
+          facelets,
+          elapsedMs: elapsed,
+          currentMoveCount: newMoveCount,
+          lastPhaseSplitMs: zustandLastPhaseSplitMs,
+          lastPhaseMoves: zustandLastPhaseMoves,
+          phaseSplits,
+          phaseSteps,
+          forceComplete: isSolved
+        });
+
+        currentPhase = phaseUpdate.currentPhase;
+        phaseSplits = phaseUpdate.phaseSplits;
+        phaseSteps = phaseUpdate.phaseSteps;
+        zustandLastPhaseSplitMs = phaseUpdate.lastPhaseSplitMs;
+        zustandLastPhaseMoves = phaseUpdate.lastPhaseMoves;
+
+        if (isSolved) {
+          currentTimerStatus = 'solved';
+          finalTps = tps;
+          const solveRecord = {
+            id: `solve-${now}-${Math.random().toString(36).slice(2, 7)}`,
+            timestamp: now,
+            date: now,
+            elapsedMs: elapsed,
+            timeMs: elapsed,
+            moveCount: newMoveCount,
+            tps,
+            scramble: state.scramble || '',
+            moves: newHistory.map(m => m.move).join(' '),
+            penalty: 'none',
+            isDnf: false,
+            splits: { ...phaseSplits },
+            steps: [...phaseSteps]
+          };
+          nextSessionSolves = [...nextSessionSolves, solveRecord];
+          saveSessionSolves(nextSessionSolves);
+        }
+      }
+
+      set({
+        timerStatus: currentTimerStatus,
+        timerStartTime: startTime,
+        wallStartTime: wallStart,
+        moveCount: newMoveCount,
+        moveHistory: newHistory,
+        elapsedMs: elapsed,
+        currentTps: tps,
+        finalTps,
+        sessionSolves: nextSessionSolves,
+        currentPhase,
+        phaseSplits,
+        phaseSteps
+      });
+
+      applyMoveTo3D(moveNotation);
+    },
+
+    _stopTimer: (now = Date.now()) => {
+      const state = get();
+      if (state.timerStatus !== 'solving') return;
+      const elapsed = Math.max(1, now - (state.timerStartTime ?? now));
+      const finalTps = safeTps(state.moveCount, elapsed);
+
+      const facelets = zustandCubeSimulator ? zustandCubeSimulator.getFaceletString() : null;
+      const phaseUpdate = advanceSolvePhases({
+        currentPhase: state.currentPhase,
+        facelets,
+        elapsedMs: elapsed,
+        currentMoveCount: state.moveCount,
+        lastPhaseSplitMs: zustandLastPhaseSplitMs,
+        lastPhaseMoves: zustandLastPhaseMoves,
+        phaseSplits: state.phaseSplits,
+        phaseSteps: state.phaseSteps,
+        forceComplete: true
+      });
+      zustandLastPhaseSplitMs = phaseUpdate.lastPhaseSplitMs;
+      zustandLastPhaseMoves = phaseUpdate.lastPhaseMoves;
+
+      const solveRecord = {
+        id: `solve-${now}-${Math.random().toString(36).slice(2, 7)}`,
+        timestamp: now,
+        date: now,
+        elapsedMs: elapsed,
+        timeMs: elapsed,
+        moveCount: state.moveCount,
+        tps: finalTps,
+        scramble: state.scramble || '',
+        moves: state.moveHistory.map(m => m.move).join(' '),
+        penalty: 'none',
+        isDnf: false,
+        splits: { ...phaseUpdate.phaseSplits },
+        steps: [...phaseUpdate.phaseSteps]
+      };
+      const nextSessionSolves = [...state.sessionSolves, solveRecord];
+      saveSessionSolves(nextSessionSolves);
+      set({
+        timerStatus: 'solved',
+        elapsedMs: elapsed,
+        finalTps,
+        currentTps: finalTps,
+        sessionSolves: nextSessionSolves,
+        currentPhase: phaseUpdate.currentPhase,
+        phaseSplits: phaseUpdate.phaseSplits,
+        phaseSteps: phaseUpdate.phaseSteps
+      });
+    },
+
+    newScramble: (customScramble, options = {}) => {
+      const scramble = customScramble || generateRandomScramble(20);
+      if (options?.trackScramble) {
+        return get().startScrambleTracking(scramble);
+      }
+      const moves = scramble.trim().split(/\s+/).filter(Boolean);
+      zustandCubeSimulator = new CubeStateSimulator();
+      zustandCubeSimulator.applyMoves(scramble);
+      zustandSubStepDir = null;
+      zustandErrorStack = [];
+      zustandLastPhaseSplitMs = 0;
+      zustandLastPhaseMoves = 0;
+      set({
+        scramble,
+        scrambleMoves: moves,
+        scrambleIndex: moves.length,
+        scrambleSubStep: 0,
+        scrambleError: null,
+        scrambleTracking: {
+          moves,
+          index: moves.length,
+          subStep: 0,
+          error: null
+        },
+        timerStatus: 'scrambled',
+        timerStartTime: 0,
+        wallStartTime: 0,
+        elapsedMs: 0,
+        moveCount: 0,
+        moveHistory: [],
+        currentTps: 0,
+        finalTps: null,
+        currentPhase: 'cross',
+        phaseSplits: {},
+        phaseSteps: []
+      });
+      return scramble;
+    },
+
+    toggleGyroActive: (active) => {
+      set((s) => ({ isGyroActive: typeof active === 'boolean' ? active : !s.isGyroActive }));
+    },
+
+    recalibrateGyro: () => {
+      const current = get().gyroQuaternion;
+      set({
+        gyroZeroQuaternion: current ? [...current] : [0, 0, 0, 1],
+        gyroQuaternion: [0, 0, 0, 1]
+      });
+    },
+
+    resetSolve: () => {
+      zustandCubeSimulator = new CubeStateSimulator();
+      zustandSubStepDir = null;
+      zustandErrorStack = [];
+      zustandLastPhaseSplitMs = 0;
+      zustandLastPhaseMoves = 0;
+      set({
+        timerStatus: 'idle',
+        timerStartTime: 0,
+        wallStartTime: 0,
+        elapsedMs: 0,
+        moveCount: 0,
+        currentTps: 0,
+        finalTps: null,
+        moveHistory: [],
+        scrambleIndex: 0,
+        scrambleSubStep: 0,
+        scrambleError: null,
+        scrambleTracking: {
+          moves: get().scrambleMoves || [],
+          index: 0,
+          subStep: 0,
+          error: null
+        },
+        currentPhase: 'cross',
+        phaseSplits: {},
+        phaseSteps: []
+      });
+    },
+
+    recordSolve: (record) => {
+      const next = [...get().sessionSolves, record];
+      saveSessionSolves(next);
+      set({ sessionSolves: next });
+    },
+
+    deleteSolve: (id) => {
+      const next = get().sessionSolves.filter(s => s.id !== id);
+      saveSessionSolves(next);
+      set({ sessionSolves: next });
+    },
+
+    clearSessionSolves: () => {
+      saveSessionSolves([]);
+      set({ sessionSolves: [] });
+    },
+
+    clearSession: () => {
+      get().clearSessionSolves();
+    },
+
+    updateSolvePenalty: (id, penalty) => {
+      const next = get().sessionSolves.map(s => {
+        if (s.id !== id) return s;
+        const isDnf = penalty === 'dnf';
+        return { ...s, penalty, isDnf };
+      });
+      saveSessionSolves(next);
+      set({ sessionSolves: next });
+    }
+  };
+});
+
+/**
+ * Dual polymorphic export:
+ * - As a React hook: `useSmartCubeStore(selector)`
+ * - As a static store: `useSmartCubeStore.getState()`
+ * - As a constructor for E2E tests: `new useSmartCubeStore(driver)`
+ */
+export function useSmartCubeStore(...args) {
+  if (new.target) {
+    return new SmartCubeStore(...args);
+  }
+  return rawZustandStore(...args);
+}
+
+// Copy Zustand API methods onto useSmartCubeStore
+Object.assign(useSmartCubeStore, rawZustandStore);
+useSmartCubeStore.getState = rawZustandStore.getState;
+useSmartCubeStore.setState = rawZustandStore.setState;
+useSmartCubeStore.subscribe = rawZustandStore.subscribe;
+
+export default useSmartCubeStore;

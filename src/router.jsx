@@ -10,7 +10,7 @@ import { NotFoundPage } from './pages/NotFoundPage';
 import { GameRoute } from './pages/GameRoute';
 import { MethodRoute } from './pages/MethodRoute';
 import { TimerRoute, SettingsRoute } from './pages/ToolRoutes';
-import { TrainingRoute } from './pages/lazyViews';
+import { TrainingRoute, SmartCubePage } from './pages/lazyViews';
 import { basenameFor, detectLang, paths } from './routes/routeConfig';
 
 export const routes = [
@@ -20,6 +20,7 @@ export const routes = [
     children: [
       { index: true, element: <HomePage /> },
       { path: 'play', element: <PlayMenuPage /> },
+      { path: 'play/smart-cube', element: <SmartCubePage /> },
       { path: 'play/:size', element: <GameRoute /> },
       { path: 'timer', element: <TimerRoute /> },
       { path: 'settings', element: <SettingsRoute /> },

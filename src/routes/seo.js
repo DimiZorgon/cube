@@ -36,6 +36,10 @@ const TEXTS = {
       title: 'Simulateur Rubik’s Cube 5x5 en ligne (Professor’s Cube)',
       description: 'Résolvez un Rubik’s Cube 5x5 en 3D dans votre navigateur : mouvements larges, mélange WCA, chronomètre et record.'
     },
+    smartCube: {
+      title: 'Smart Cube GAN – Synchronisation 3D & Chronomètre',
+      description: 'Connectez votre Rubik’s Cube intelligent GAN en Bluetooth : synchronisation 3D temps réel, chronométrage automatique, TPS et statistiques.'
+    },
     timer: {
       title: 'Chronomètre de speedcubing WCA',
       description: 'Chronomètre speedcubing avec mélanges WCA, inspection 15 s, ao5, ao12 et export csTimer pour 2x2, 3x3 et 4x4.'
@@ -212,6 +216,10 @@ const TEXTS = {
       title: "Online 5x5 Rubik's Cube Simulator (Professor's Cube)",
       description: "Solve a 5x5 Rubik's Cube in 3D in your browser: wide moves, WCA scrambles, timer and personal best."
     },
+    smartCube: {
+      title: 'GAN Smart Cube – Real-Time 3D Sync & Timer',
+      description: 'Connect your GAN smart cube via Web Bluetooth: live 3D face synchronization, auto-timer, TPS metrics, and solve stats.'
+    },
     timer: {
       title: 'WCA Speedcubing Timer',
       description: 'Speedcubing timer with WCA scrambles, 15 s inspection, ao5, ao12 and csTimer export for 2x2, 3x3 and 4x4.'
@@ -362,6 +370,8 @@ const TEXTS = {
     }
   }
 };
+
+export const SEO_DATA = TEXTS;
 
 /** Clés non indexables (pages éphémères ou d'erreur). */
 const NOINDEX_KEYS = new Set(['training', 'notFound']);

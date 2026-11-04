@@ -1,7 +1,7 @@
 // src/utils/audioSystem.js
 // Système audio Web Audio API autonome pour Cube Studio.
 // Aucun fichier audio externe requis : sons synthétisés avec latence nulle et fonctionnement 100% hors-ligne.
-import { useSettingsStore } from '../store/useSettingsStore';
+import { useSettingsStore } from '../store/useSettingsStore.js';
 
 let audioCtx = null;
 

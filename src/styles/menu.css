@@ -185,6 +185,40 @@
   pointer-events: none;
 }
 
+/* Smart Cube Card Preview */
+.smart-cube-menu-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  color: #38bdf8;
+  background: #1c2225;
+  border-radius: 6px;
+  border: 1px solid #343c3f;
+  transition: border-color 0.12s ease, color 0.12s ease;
+}
+
+.cube-select-card:hover .smart-cube-menu-preview,
+.menu-btn:hover .smart-cube-menu-preview {
+  border-color: #38bdf8;
+  color: #7dd3fc;
+}
+
+.smart-cube-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #9eb5aa;
+  background: #252b2e;
+  border: 1px solid #41494c;
+  border-radius: 4px;
+}
+
 /* Grille des 4 méthodes dans le sous-menu Algorithmes */
 .algo-methods-grid {
   display: grid;
@@ -363,6 +397,20 @@
 
   .menu-card-sub {
     font-size: 0.82rem;
+  }
+
+  .smart-cube-menu-preview {
+    gap: 0.25rem;
+  }
+
+  .smart-cube-menu-preview svg {
+    width: 38px;
+    height: 38px;
+  }
+
+  .smart-cube-chip {
+    font-size: 0.6rem;
+    padding: 0.1rem 0.35rem;
   }
 
   .algo-methods-grid {

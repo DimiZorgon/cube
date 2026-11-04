@@ -8,6 +8,25 @@ import { MiniCube } from '../components/MiniCube';
 import { PUZZLES, paths } from '../routes/routeConfig';
 import { useSeo } from '../routes/useSeo';
 
+function BluetoothIcon({ size = 64, className = '' }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="m7 7 10 10-5 5V2l5 5L7 17" />
+    </svg>
+  );
+}
+
 export function PlayMenuPage() {
   const { t } = useTranslation();
   useSeo('play');
@@ -30,6 +49,17 @@ export function PlayMenuPage() {
             </div>
           </Link>
         ))}
+
+        <Link className="menu-btn cube-select-card" to={paths.smartCube()}>
+          <div className="mini-cube-container smart-cube-menu-preview">
+            <BluetoothIcon size={64} />
+            <span className="smart-cube-chip">{t('app.play.smartCube.chip', { defaultValue: 'GAN 16 ui' })}</span>
+          </div>
+          <div className="menu-card-Meta">
+            <span className="menu-card-title">{t('app.play.smartCube.title')}</span>
+            <span className="menu-card-sub">{t('app.play.smartCube.description')}</span>
+          </div>
+        </Link>
 
         <Link className="menu-btn cube-select-card" to={paths.timer()}>
           <div className="mini-cube-container timer-menu-preview">
