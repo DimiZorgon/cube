@@ -174,6 +174,8 @@ Object.assign(messages, {
   'timer.averageAo5': 'ao5 average:',
   'timer.averageAo12': 'ao12 average:',
   'timer.scramblePreview': 'Scramble preview ({{puzzle}})',
+  'timer.openHistory': 'History & statistics',
+  'timer.closeHistory': 'Close history',
   'algo.dragToRotate': 'Drag to rotate',
   'algo.step': 'Step {{current}} / {{total}}',
   'algo.start': 'Start',

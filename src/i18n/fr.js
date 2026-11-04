@@ -183,6 +183,8 @@ const messages = {
     'timer.averageAo5': 'Moyenne ao5 :',
     'timer.averageAo12': 'Moyenne ao12 :',
     'timer.scramblePreview': 'Aperçu du mélange ({{puzzle}})',
+    'timer.openHistory': 'Historique & statistiques',
+    'timer.closeHistory': "Fermer l'historique",
   'algo.dragToRotate': 'Glissez pour orienter',
   'algo.step': 'Étape {{current}} / {{total}}',
   'algo.start': 'Début',

@@ -209,6 +209,7 @@ export function SpeedTimer({ onBack }) {
   const [showPreview, setShowPreview] = useState(true);
   const [copied, setCopied] = useState(false);
   const [isPbModalOpen, setIsPbModalOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // Historique des mélanges pour supporter "last / next scramble" comme sur csTimer
   const [scrambleHistory, setScrambleHistory] = useState(() => [generateWcaScramble('3x3x3')]);
@@ -238,14 +239,16 @@ export function SpeedTimer({ onBack }) {
   const [displayTime, setDisplayTime] = useState(0);
 
   const statusRef = useRef('idle');
-  useEffect(() => {
-    statusRef.current = timerStatus;
-  }, [timerStatus]);
+  const updateTimerStatus = useCallback(nextStatus => {
+    statusRef.current = nextStatus;
+    setTimerStatus(nextStatus);
+  }, []);
 
   const holdTimeoutRef = useRef(null);
   const startTimeRef = useRef(0);
   const rafRef = useRef(null);
   const justStoppedRef = useRef(false);
+  const activePointerIdRef = useRef(null);
 
   const nextScramble = useCallback(
     (targetPuzzle = puzzleId) => {
@@ -254,7 +257,7 @@ export function SpeedTimer({ onBack }) {
       } else {
         const newScr = generateWcaScramble(targetPuzzle);
         setScrambleHistory(prev => [...prev, newScr]);
-        setScrambleIdx( scrambleHistory.length );
+        setScrambleIdx(scrambleHistory.length);
       }
     },
     [puzzleId, scrambleIdx, scrambleHistory.length]
@@ -283,9 +286,10 @@ export function SpeedTimer({ onBack }) {
   const stopTimer = useCallback(() => {
     playTimerBeep('stop');
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    clearTimeout(holdTimeoutRef.current);
     const finalMs = Math.max(10, Math.round(performance.now() - startTimeRef.current));
     setDisplayTime(finalMs);
-    setTimerStatus('idle');
+    updateTimerStatus('idle');
     justStoppedRef.current = true;
 
     const newSolve = {
@@ -305,46 +309,65 @@ export function SpeedTimer({ onBack }) {
     const newScr = generateWcaScramble(puzzleId);
     setScrambleHistory(prev => [...prev, newScr]);
     setScrambleIdx(prev => prev + 1);
-  }, [currentScramble, puzzleId, sessionKey]);
+  }, [currentScramble, puzzleId, sessionKey, updateTimerStatus]);
 
   const beginHold = useCallback(() => {
     if (statusRef.current === 'running') {
       stopTimer();
       return;
     }
-    if (statusRef.current !== 'idle') return;
 
-    setTimerStatus('holding');
+    // Réinitialise tout reliquat d'un arrêt précédent dont le pointerup aurait été annulé
+    justStoppedRef.current = false;
+    setIsDrawerOpen(false);
+
+    updateTimerStatus('holding');
     setDisplayTime(0);
 
     clearTimeout(holdTimeoutRef.current);
     holdTimeoutRef.current = setTimeout(() => {
       if (statusRef.current === 'holding') {
-        setTimerStatus('ready');
+        updateTimerStatus('ready');
       }
     }, 300);
-  }, [stopTimer]);
+  }, [stopTimer, updateTimerStatus]);
 
   const releaseHold = useCallback(() => {
     clearTimeout(holdTimeoutRef.current);
 
     if (justStoppedRef.current) {
       justStoppedRef.current = false;
+      if (statusRef.current === 'holding' || statusRef.current === 'ready') {
+        updateTimerStatus('idle');
+      }
       return;
     }
 
     if (statusRef.current === 'ready') {
       playTimerBeep('start');
       startTimeRef.current = performance.now();
-      setTimerStatus('running');
+      updateTimerStatus('running');
     } else if (statusRef.current === 'holding') {
-      setTimerStatus('idle');
+      updateTimerStatus('idle');
     }
-  }, []);
+  }, [updateTimerStatus]);
 
-  // Gestion de la barre Espace (comme sur csTimer)
+  const cancelHold = useCallback(() => {
+    clearTimeout(holdTimeoutRef.current);
+    justStoppedRef.current = false;
+    activePointerIdRef.current = null;
+    if (statusRef.current === 'holding' || statusRef.current === 'ready') {
+      updateTimerStatus('idle');
+    }
+  }, [updateTimerStatus]);
+
+  // Gestion de la barre Espace (comme sur csTimer) et touche Échap
   useEffect(() => {
     const onKeyDown = e => {
+      if (e.key === 'Escape' && isDrawerOpen) {
+        setIsDrawerOpen(false);
+        return;
+      }
       if (isPbModalOpen) return;
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
 
@@ -376,7 +399,7 @@ export function SpeedTimer({ onBack }) {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, [beginHold, releaseHold, stopTimer, isPbModalOpen]);
+  }, [beginHold, releaseHold, stopTimer, isPbModalOpen, isDrawerOpen]);
 
   // Gestion des pénalités (+2, DNF, Supprimer)
   const togglePenalty = (solveId, penaltyType) => {
@@ -514,18 +537,37 @@ export function SpeedTimer({ onBack }) {
   };
 
   return (
-    <div className="cstimer-layout">
-      {/* PANNEAU LATÉRAL GAUCHE (Sessions, Tableau Current/Best & Historique façon csTimer) */}
-      <aside className="cstimer-sidebar">
+    <div className={`cstimer-layout status-${timerStatus} ${isDrawerOpen ? 'drawer-open' : ''}`}>
+      {/* Backdrop mobile pour fermer le volet escamotable */}
+      {isDrawerOpen && (
+        <div
+          className="cstimer-drawer-backdrop"
+          onClick={() => setIsDrawerOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* PANNEAU LATÉRAL GAUCHE / VOLET MOBILE (Sessions, Tableau Current/Best & Historique façon csTimer) */}
+      <aside className={`cstimer-sidebar ${isDrawerOpen ? 'is-open' : ''}`}>
         <div className="cstimer-brand-bar">
           <div className="cstimer-logo-badge">
             <Clock size={20} />
             <span>CubeTimer</span>
           </div>
-          <button className="trainer-icon-btn" onClick={onBack} title={t('timer.backToMenu')}>
-            <ArrowLeft size={16} />
-            <span>{t('timer.menu')}</span>
-          </button>
+          <div className="cstimer-brand-actions">
+            <button className="trainer-icon-btn" onClick={onBack} title={t('timer.backToMenu')}>
+              <ArrowLeft size={16} />
+              <span>{t('timer.menu')}</span>
+            </button>
+            <button
+              className="cstimer-mini-icon-btn cstimer-drawer-close-btn"
+              onClick={() => setIsDrawerOpen(false)}
+              title={t('timer.closeHistory')}
+              aria-label={t('timer.closeHistory')}
+            >
+              <Cross size={16} />
+            </button>
+          </div>
         </div>
 
         {/* Sélecteur de Session */}
@@ -716,10 +758,27 @@ export function SpeedTimer({ onBack }) {
       </aside>
 
       {/* ZONE PRINCIPALE : BARRE DE MÉLANGE EN HAUT + CHRONOMÈTRE GÉANT AU CENTRE */}
-      <div className="cstimer-main">
+      <div
+        className="cstimer-main"
+        onPointerDown={e => {
+          if (statusRef.current === 'running' && !e.target.closest('.cstimer-arena')) {
+            e.preventDefault();
+            stopTimer();
+          }
+        }}
+      >
         {/* Barre supérieure du mélange WCA */}
         <header className="cstimer-scramble-bar">
           <div className="cstimer-scramble-controls">
+            <button
+              className="cstimer-mini-icon-btn cstimer-mobile-only-btn"
+              onClick={onBack}
+              title={t('timer.backToMenu')}
+              aria-label={t('timer.backToMenu')}
+            >
+              <ArrowLeft size={16} />
+            </button>
+
             <span className="cstimer-wca-badge">WCA</span>
             <select
               className="cstimer-select"
@@ -738,13 +797,18 @@ export function SpeedTimer({ onBack }) {
                 className="cstimer-nav-link"
                 disabled={scrambleIdx <= 0}
                 onClick={() => setScrambleIdx(i => Math.max(0, i - 1))}
+                title={t('timer.previousScramble')}
               >
                 <ChevronLeft size={15} />
-                <span>{t('timer.previousScramble')}</span>
+                <span className="cstimer-nav-label">{t('timer.previousScramble')}</span>
               </button>
               <span className="cstimer-nav-sep">/</span>
-              <button className="cstimer-nav-link accent" onClick={() => nextScramble()}>
-                <span>{t('timer.nextScramble')}</span>
+              <button
+                className="cstimer-nav-link accent"
+                onClick={() => nextScramble()}
+                title={t('timer.nextScramble')}
+              >
+                <span className="cstimer-nav-label">{t('timer.nextScramble')}</span>
                 <ChevronRight size={15} />
               </button>
             </div>
@@ -758,11 +822,21 @@ export function SpeedTimer({ onBack }) {
             </button>
 
             <button
-              className="cstimer-mini-icon-btn"
+              className="cstimer-mini-icon-btn cstimer-desktop-only-btn"
               onClick={() => setShowPreview(v => !v)}
               title={showPreview ? t('timer.hidePreview') : t('timer.showPreview')}
             >
               {showPreview ? <Cross size={15} /> : <Info size={15} />}
+            </button>
+
+            <button
+              className="cstimer-drawer-toggle-btn cstimer-mobile-only-btn"
+              onClick={() => setIsDrawerOpen(v => !v)}
+              title={t('timer.openHistory')}
+              aria-expanded={isDrawerOpen}
+            >
+              <Clock size={15} />
+              <span className="cstimer-solve-count-badge">{stats.totalCount}</span>
             </button>
           </div>
 
@@ -772,13 +846,38 @@ export function SpeedTimer({ onBack }) {
         {/* Zone interactive du chronomètre (Cliquer/Maintenir ou Barre Espace) */}
         <main
           className={`cstimer-arena status-${timerStatus}`}
+          onContextMenu={e => e.preventDefault()}
           onPointerDown={e => {
             if (e.target.closest('button')) return;
+            if (e.pointerType === 'mouse' && e.button !== 0) return;
+            if (
+              statusRef.current !== 'running' &&
+              activePointerIdRef.current !== null &&
+              (statusRef.current === 'holding' || statusRef.current === 'ready')
+            ) {
+              return;
+            }
+            activePointerIdRef.current = e.pointerId;
+            try {
+              e.currentTarget.setPointerCapture?.(e.pointerId);
+            } catch {
+              // ignore pointer capture errors on synthetic events
+            }
             beginHold();
           }}
           onPointerUp={e => {
             if (e.target.closest('button')) return;
+            if (
+              activePointerIdRef.current !== null &&
+              e.pointerId !== activePointerIdRef.current
+            ) {
+              return;
+            }
+            activePointerIdRef.current = null;
             releaseHold();
+          }}
+          onPointerCancel={() => {
+            cancelHold();
           }}
         >
           <div className="cstimer-center-stack">
@@ -792,7 +891,6 @@ export function SpeedTimer({ onBack }) {
                   )
                 : '0.00'}
             </div>
-
 
             {/* Affichage central ao5 / ao12 comme sur csTimer */}
             <div className="cstimer-center-averages">
@@ -819,7 +917,7 @@ export function SpeedTimer({ onBack }) {
             </div>
           </div>
 
-          {/* Aperçu 2D du mélange en bas à droite */}
+          {/* Aperçu 2D du mélange en bas à droite (Desktop uniquement) */}
           {showPreview && timerStatus !== 'running' && (
             <div className="cstimer-net-preview-box" onClick={e => e.stopPropagation()}>
               <div className="cstimer-net-preview-title">
