@@ -125,7 +125,7 @@ export class GanBleDriver {
 
   /**
    * Set MAC address and derive session AES key and IV
-   * @param {string} mac - MAC address format: 'DC:BE:4A:16:14:01' or 'dc-be-4a-16-14-01'
+   * @param {string} mac 
    */
   setMacAddress(mac) {
     if (!mac) return;
@@ -141,7 +141,7 @@ export class GanBleDriver {
 
   /**
    * Connect to GAN Smart Cube via Web Bluetooth
-   * @param {BluetoothDevice} [deviceInstance] - Optional injected device for testing
+   * @param {BluetoothDevice} [deviceInstance]
    * @returns {Promise<{ deviceName: string, macAddress: string }>}
    */
   async connect(deviceInstance = null) {

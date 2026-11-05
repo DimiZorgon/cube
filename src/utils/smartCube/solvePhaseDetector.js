@@ -1,9 +1,11 @@
 // src/utils/smartCube/solvePhaseDetector.js
-// Monotonic CFOP Solve Phase Detection Engine (Cross -> F2L -> OLL -> PLL -> complete).
+// Monotonic CFOP Solve Phase Detection Engine (Cross -> F2L -> OLL -> PLL -> complete)
+// Supports all 6 cross orientations (U, D, F, B, R, L) and automatic cross face detection.
 
 import { isFaceletsSolved } from '../cubeMath.js';
 
 export const CFOP_PHASES = Object.freeze(['cross', 'f2l', 'oll', 'pll', 'complete']);
+export const VALID_CROSS_FACES = Object.freeze(['U', 'D', 'F', 'B', 'R', 'L']);
 
 const PHASE_RANKS = Object.freeze({
   cross: 0,
@@ -13,170 +15,234 @@ const PHASE_RANKS = Object.freeze({
   complete: 4
 });
 
-/**
- * Checks whether the 4 cross edges match their adjacent centers.
- * Standard orientation: D face (White cross on bottom).
- * Edges: DF, DR, DB, DL.
- */
-export function isCrossSolved(facelets, crossFace = 'D') {
-  const f = typeof facelets === 'string' ? facelets : (Array.isArray(facelets) ? facelets.join('') : '');
-  if (f.length !== 54) return false;
+const OPPOSITE_FACE = Object.freeze({
+  U: 'D',
+  D: 'U',
+  F: 'B',
+  B: 'F',
+  R: 'L',
+  L: 'R'
+});
 
-  if (crossFace === 'D') {
-    // Centers: U=4, R=13, F=22, D=31, L=40, B=49
-    // DF: f[28] === f[31] && f[25] === f[22]
-    // DR: f[32] === f[31] && f[16] === f[13]
-    // DB: f[34] === f[31] && f[52] === f[49]
-    // DL: f[30] === f[31] && f[43] === f[40]
-    return (
-      f[28] === f[31] && f[25] === f[22] &&
-      f[32] === f[31] && f[16] === f[13] &&
-      f[34] === f[31] && f[52] === f[49] &&
-      f[30] === f[31] && f[43] === f[40]
-    );
+const FACE_OFFSETS = Object.freeze({
+  U: 0,
+  R: 9,
+  F: 18,
+  D: 27,
+  L: 36,
+  B: 45
+});
+
+// Les 12 arêtes du cube avec leurs indices de facettes et les indices de leurs centres respectifs
+const ALL_EDGES = Object.freeze([
+  // Arêtes U
+  { faces: ['U', 'F'], stickers: [7, 19], centers: [4, 22] },
+  { faces: ['U', 'R'], stickers: [5, 10], centers: [4, 13] },
+  { faces: ['U', 'B'], stickers: [1, 46], centers: [4, 49] },
+  { faces: ['U', 'L'], stickers: [3, 37], centers: [4, 40] },
+  // Arêtes D
+  { faces: ['D', 'F'], stickers: [28, 25], centers: [31, 22] },
+  { faces: ['D', 'R'], stickers: [32, 16], centers: [31, 13] },
+  { faces: ['D', 'B'], stickers: [34, 52], centers: [31, 49] },
+  { faces: ['D', 'L'], stickers: [30, 43], centers: [31, 40] },
+  // Arêtes équatoriales (E-slice)
+  { faces: ['F', 'L'], stickers: [21, 41], centers: [22, 40] },
+  { faces: ['F', 'R'], stickers: [23, 12], centers: [22, 13] },
+  { faces: ['B', 'R'], stickers: [48, 14], centers: [49, 13] },
+  { faces: ['B', 'L'], stickers: [50, 39], centers: [49, 40] }
+]);
+
+// Les 8 coins du cube avec leurs indices de facettes et les indices de leurs centres respectifs
+const ALL_CORNERS = Object.freeze([
+  // Coins U
+  { faces: ['U', 'F', 'L'], stickers: [6, 18, 38], centers: [4, 22, 40] },
+  { faces: ['U', 'F', 'R'], stickers: [8, 20, 9],  centers: [4, 22, 13] },
+  { faces: ['U', 'B', 'R'], stickers: [2, 45, 11], centers: [4, 49, 13] },
+  { faces: ['U', 'B', 'L'], stickers: [0, 47, 36], centers: [4, 49, 40] },
+  // Coins D
+  { faces: ['D', 'F', 'L'], stickers: [27, 24, 44], centers: [31, 22, 40] },
+  { faces: ['D', 'F', 'R'], stickers: [29, 26, 15], centers: [31, 22, 13] },
+  { faces: ['D', 'B', 'R'], stickers: [35, 51, 17], centers: [31, 49, 13] },
+  { faces: ['D', 'B', 'L'], stickers: [33, 53, 42], centers: [31, 49, 40] }
+]);
+
+function normalizeFacelets(facelets) {
+  if (typeof facelets === 'string') return facelets;
+  if (Array.isArray(facelets)) return facelets.join('');
+  return '';
+}
+
+function isFaceMonochrome(f, face) {
+  const offset = FACE_OFFSETS[face];
+  if (offset === undefined) return false;
+  const center = f[offset + 4];
+  for (let i = 0; i < 9; i++) {
+    if (f[offset + i] !== center) return false;
   }
-
-  // Fallback for unsupported crossFace
-  return false;
+  return true;
 }
 
 /**
- * Checks whether First Two Layers (F2L) are solved.
- * Cross solved + 4 first-layer corners (DFL, DFR, DBR, DBL) + 4 middle edges (FL, FR, BR, BL).
+ * Vérifie si les 4 arêtes de la croix sur `crossFace` sont alignées avec leurs centres.
+ */
+export function isCrossSolved(facelets, crossFace = 'D') {
+  const f = normalizeFacelets(facelets);
+  if (f.length !== 54) return false;
+
+  if (crossFace === 'auto') {
+    return VALID_CROSS_FACES.some(face => isCrossSolved(f, face));
+  }
+
+  if (!OPPOSITE_FACE[crossFace]) return false;
+
+  for (const edge of ALL_EDGES) {
+    if (edge.faces.includes(crossFace)) {
+      const [s0, s1] = edge.stickers;
+      const [c0, c1] = edge.centers;
+      if (f[s0] !== f[c0] || f[s1] !== f[c1]) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+/**
+ * Vérifie si les deux premières couronnes (F2L) sont résolues par rapport à `crossFace`.
  */
 export function isF2LSolved(facelets, crossFace = 'D') {
-  const f = typeof facelets === 'string' ? facelets : (Array.isArray(facelets) ? facelets.join('') : '');
+  const f = normalizeFacelets(facelets);
   if (f.length !== 54) return false;
+
+  if (crossFace === 'auto') {
+    return VALID_CROSS_FACES.some(face => isF2LSolved(f, face));
+  }
+
+  const opposite = OPPOSITE_FACE[crossFace];
+  if (!opposite) return false;
 
   if (!isCrossSolved(f, crossFace)) return false;
 
-  if (crossFace === 'D') {
-    // 4 first-layer corners:
-    // DFL: D=27, F=24, L=44
-    // DFR: D=29, F=26, R=15
-    // DBR: D=35, B=51, R=17
-    // DBL: D=33, B=53, L=42
-    const cornersSolved = (
-      f[27] === f[31] && f[24] === f[22] && f[44] === f[40] &&
-      f[29] === f[31] && f[26] === f[22] && f[15] === f[13] &&
-      f[35] === f[31] && f[51] === f[49] && f[17] === f[13] &&
-      f[33] === f[31] && f[53] === f[49] && f[42] === f[40]
-    );
-    if (!cornersSolved) return false;
-
-    // 4 middle-layer edges:
-    // FL: F=21, L=41
-    // FR: F=23, R=12
-    // BR: B=48, R=14
-    // BL: B=50, L=39
-    const middleEdgesSolved = (
-      f[21] === f[22] && f[41] === f[40] &&
-      f[23] === f[22] && f[12] === f[13] &&
-      f[48] === f[49] && f[14] === f[13] &&
-      f[50] === f[49] && f[39] === f[40]
-    );
-    return middleEdgesSolved;
+  // 4 coins de la première couronne
+  for (const corner of ALL_CORNERS) {
+    if (corner.faces.includes(crossFace)) {
+      const [s0, s1, s2] = corner.stickers;
+      const [c0, c1, c2] = corner.centers;
+      if (f[s0] !== f[c0] || f[s1] !== f[c1] || f[s2] !== f[c2]) {
+        return false;
+      }
+    }
   }
 
-  return false;
+  // 4 arêtes de la couronne intermédiaire (ni crossFace, ni opposite)
+  for (const edge of ALL_EDGES) {
+    if (!edge.faces.includes(crossFace) && !edge.faces.includes(opposite)) {
+      const [s0, s1] = edge.stickers;
+      const [c0, c1] = edge.centers;
+      if (f[s0] !== f[c0] || f[s1] !== f[c1]) {
+        return false;
+      }
+    }
+  }
+
+  return true;
 }
 
 /**
- * Checks whether Orientation of Last Layer (OLL) is solved.
- * F2L solved + all 9 stickers of U face match U center.
+ * Vérifie si l'orientation de la dernière couronne (OLL) est résolue par rapport à `crossFace`.
  */
 export function isOLLSolved(facelets, crossFace = 'D') {
-  const f = typeof facelets === 'string' ? facelets : (Array.isArray(facelets) ? facelets.join('') : '');
+  const f = normalizeFacelets(facelets);
   if (f.length !== 54) return false;
+
+  if (crossFace === 'auto') {
+    return VALID_CROSS_FACES.some(face => isOLLSolved(f, face));
+  }
+
+  const opposite = OPPOSITE_FACE[crossFace];
+  if (!opposite) return false;
 
   if (!isF2LSolved(f, crossFace)) return false;
 
-  if (crossFace === 'D') {
-    const centerU = f[4];
-    for (let i = 0; i < 9; i++) {
-      if (f[i] !== centerU) return false;
-    }
-    return true;
-  }
-
-  return false;
+  return isFaceMonochrome(f, opposite);
 }
 
 /**
- * Checks whether Permutation of Last Layer (PLL) is solved.
- * OLL solved + all 54 facelets match their centers (isFaceletsSolved).
+ * Vérifie si la permutation de la dernière couronne (PLL) est résolue.
  */
 export function isPLLSolved(facelets, crossFace = 'D') {
-  const f = typeof facelets === 'string' ? facelets : (Array.isArray(facelets) ? facelets.join('') : '');
+  const f = normalizeFacelets(facelets);
   if (f.length !== 54) return false;
 
   return isOLLSolved(f, crossFace) && isFaceletsSolved(f);
 }
 
+function evaluateSingleFacePhase(f, currentRank, face) {
+  if (isOLLSolved(f, face)) {
+    return Math.max(currentRank, PHASE_RANKS.pll);
+  }
+  if (isF2LSolved(f, face)) {
+    return Math.max(currentRank, PHASE_RANKS.oll);
+  }
+  if (isCrossSolved(f, face)) {
+    return Math.max(currentRank, PHASE_RANKS.f2l);
+  }
+  return currentRank;
+}
+
 /**
- * Detects CFOP solve phase with monotonic forward progression.
- * Never regresses to an earlier phase once passed.
- * Automatically handles step skips (OLL skip -> PLL, PLL skip -> complete).
- *
- * @param {string|string[]} facelets 54-facelet representation
- * @param {'cross'|'f2l'|'oll'|'pll'|'complete'} [currentPhase='cross'] Current solve phase
- * @param {'D'} [crossFace='D'] Face used for cross
- * @returns {{ phase: 'cross'|'f2l'|'oll'|'pll'|'complete', isAdvance: boolean }}
+ * Détecte la phase CFOP de manière strictement monotone.
+ * Si `crossFace === 'auto'`, teste prioritairement U (Blanc) et D (Jaune), puis F, B, R, L,
+ * et renvoie également `detectedCrossFace` pour verrouiller l'axe de résolution.
  */
 export function detectSolvePhase(facelets, currentPhase = 'cross', crossFace = 'D') {
-  const f = typeof facelets === 'string' ? facelets : (Array.isArray(facelets) ? facelets.join('') : '');
+  const f = normalizeFacelets(facelets);
   const normalizedCurrent = PHASE_RANKS[currentPhase] !== undefined ? currentPhase : 'cross';
   const currentRank = PHASE_RANKS[normalizedCurrent];
 
   if (currentRank >= PHASE_RANKS.complete) {
-    return { phase: 'complete', isAdvance: false };
+    return { phase: 'complete', isAdvance: false, detectedCrossFace: crossFace === 'auto' ? 'U' : crossFace };
   }
 
   if (f.length !== 54) {
-    return { phase: normalizedCurrent, isAdvance: false };
+    return { phase: normalizedCurrent, isAdvance: false, detectedCrossFace: null };
   }
 
-  // 1. Complete check: if all facelets match centers, solve is finished.
   if (isFaceletsSolved(f)) {
     return {
       phase: 'complete',
-      isAdvance: currentRank < PHASE_RANKS.complete
+      isAdvance: currentRank < PHASE_RANKS.complete,
+      detectedCrossFace: crossFace === 'auto' ? 'U' : crossFace
     };
   }
 
-  // 2. Check if OLL condition is satisfied (F2L solved + U face oriented)
-  // This means OLL milestone is passed -> solver is in 'pll' phase (or OLL skipped).
-  if (isOLLSolved(f, crossFace)) {
-    const targetRank = PHASE_RANKS.pll;
-    const nextPhase = targetRank > currentRank ? 'pll' : normalizedCurrent;
+  if (crossFace === 'auto') {
+    let bestRank = currentRank;
+    let bestFace = null;
+
+    // Priorité aux faces U (Blanc) et D (Jaune), puis aux 4 autres faces
+    for (const candidateFace of VALID_CROSS_FACES) {
+      const rank = evaluateSingleFacePhase(f, currentRank, candidateFace);
+      if (rank > bestRank) {
+        bestRank = rank;
+        bestFace = candidateFace;
+      }
+    }
+
+    const nextPhase = CFOP_PHASES[bestRank] || normalizedCurrent;
     return {
       phase: nextPhase,
-      isAdvance: nextPhase !== normalizedCurrent
+      isAdvance: bestRank > currentRank,
+      detectedCrossFace: bestFace
     };
   }
 
-  // 3. Check if F2L condition is satisfied (Cross solved + 4 corners + 4 mid edges)
-  // This means F2L milestone is passed -> solver is in 'oll' phase.
-  if (isF2LSolved(f, crossFace)) {
-    const targetRank = PHASE_RANKS.oll;
-    const nextPhase = targetRank > currentRank ? 'oll' : normalizedCurrent;
-    return {
-      phase: nextPhase,
-      isAdvance: nextPhase !== normalizedCurrent
-    };
-  }
+  const targetRank = evaluateSingleFacePhase(f, currentRank, crossFace);
+  const nextPhase = CFOP_PHASES[targetRank] || normalizedCurrent;
 
-  // 4. Check if Cross condition is satisfied (4 cross edges match centers)
-  // This means Cross milestone is passed -> solver is in 'f2l' phase.
-  if (isCrossSolved(f, crossFace)) {
-    const targetRank = PHASE_RANKS.f2l;
-    const nextPhase = targetRank > currentRank ? 'f2l' : normalizedCurrent;
-    return {
-      phase: nextPhase,
-      isAdvance: nextPhase !== normalizedCurrent
-    };
-  }
-
-  // No condition satisfied: retain current monotonic phase
-  return { phase: normalizedCurrent, isAdvance: false };
+  return {
+    phase: nextPhase,
+    isAdvance: targetRank > currentRank,
+    detectedCrossFace: targetRank > currentRank ? crossFace : null
+  };
 }

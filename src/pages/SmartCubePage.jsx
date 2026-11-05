@@ -10,12 +10,38 @@ import { ArrowLeft, AlertTriangle, Sparkles, Clock } from '@getpapillon/papicons
 import { RubiksCube } from '../components/RubiksCube';
 import { MacAddressModal } from '../components/SmartCube/MacAddressModal';
 import { useCubeStore } from '../store/useCubeStore';
-import { useSmartCubeStore } from '../store/useSmartCubeStore';
+import {
+  useSmartCubeStore,
+  CFOP_PHASE_ORDER,
+  CFOP_PHASE_NAMES,
+  analyzeSolvePauses
+} from '../store/useSmartCubeStore';
 import { loadCachedMac } from '../utils/smartCube/macAddressUtils';
 import { playSolveVictorySound } from '../utils/audioSystem';
 import { calculateSessionStats } from '../utils/smartCube/wcaStats';
 import { paths } from '../routes/routeConfig';
 import { useSeo } from '../routes/useSeo';
+
+const PHASE_SHORT_LABELS = {
+  cross: 'C',
+  f2l: 'F',
+  oll: 'O',
+  pll: 'P'
+};
+
+const PHASE_BAR_COLORS = {
+  cross: 'bg-sky-500',
+  f2l: 'bg-emerald-500',
+  oll: 'bg-amber-500',
+  pll: 'bg-purple-500'
+};
+
+const PHASE_BADGE_STYLES = {
+  cross: 'border-sky-500/50 bg-sky-950/50 text-sky-300',
+  f2l: 'border-emerald-500/50 bg-emerald-950/50 text-emerald-300',
+  oll: 'border-amber-500/50 bg-amber-950/50 text-amber-300',
+  pll: 'border-purple-500/50 bg-purple-950/50 text-purple-300'
+};
 
 function safeNormalizeQuaternion([x, y, z, w]) {
   if (![x, y, z, w].every(v => typeof v === 'number' && !isNaN(v))) {
@@ -31,7 +57,6 @@ function safeNormalizeQuaternion([x, y, z, w]) {
 
 function mapGanToThreeQuaternion(raw) {
   if (!raw || raw.length < 4) return [0, 0, 0, 1];
-  // GAN raw: [qx, qy, qz, qw] -> Three.js: (qx, qz, -qy, qw)
   return safeNormalizeQuaternion([raw[0], raw[2], -raw[1], raw[3]]);
 }
 
@@ -62,6 +87,11 @@ function formatSolveTime(ms, penalty = 'none') {
   return penalty === '+2' ? `${formatted}+` : formatted;
 }
 
+function formatSplitSeconds(ms) {
+  if (typeof ms !== 'number' || isNaN(ms) || ms < 0) return '--';
+  return `${(ms / 1000).toFixed(2)}s`;
+}
+
 function formatLiveTimer(ms) {
   if (typeof ms !== 'number' || isNaN(ms) || ms <= 0) return '0.00';
   const totalSeconds = ms / 1000;
@@ -71,6 +101,58 @@ function formatLiveTimer(ms) {
   const minutes = Math.floor(totalSeconds / 60);
   const remainingSecs = (totalSeconds % 60).toFixed(2).padStart(5, '0');
   return `${minutes}:${remainingSecs}`;
+}
+
+function computeFluencyScore(totalMs, pauses) {
+  if (!totalMs || totalMs <= 0) return 100;
+  const pauseMs = pauses?.totalPauseMs || 0;
+  const pauseCount = pauses?.count || 0;
+  const ratio = pauseMs / totalMs;
+  return Math.max(15, Math.min(100, Math.round(100 - ratio * 70 - pauseCount * 2)));
+}
+
+function buildSolveAnalysis(solve, fallbackMoveHistory = []) {
+  if (!solve) return null;
+  const totalMs = Math.max(1, solve.elapsedMs ?? solve.timeMs ?? 1);
+  const splitsObj = solve.splits || {};
+  const breakdown = CFOP_PHASE_ORDER.map(phase => {
+    const s = splitsObj[phase] || {
+      phase,
+      name: CFOP_PHASE_NAMES[phase],
+      durationMs: 0,
+      moveCount: 0,
+      moves: 0,
+      tps: 0,
+      skipped: true
+    };
+    const durationMs = Number(s.durationMs) || 0;
+    const moves = Number(s.moves ?? s.moveCount) || 0;
+    const pct = Math.min(100, Math.max(0, Math.round((durationMs / totalMs) * 100)));
+    return {
+      phase,
+      shortLabel: PHASE_SHORT_LABELS[phase],
+      name: CFOP_PHASE_NAMES[phase],
+      durationMs,
+      moves,
+      tps: Number(s.tps) || 0,
+      skipped: Boolean(s.skipped),
+      pct
+    };
+  });
+
+  const pauses = solve.pauses || analyzeSolvePauses(
+    solve.moveTimings || fallbackMoveHistory,
+    splitsObj
+  );
+  const fluency = computeFluencyScore(totalMs, pauses);
+
+  return {
+    solve,
+    totalMs,
+    breakdown,
+    pauses,
+    fluency
+  };
 }
 
 function SmartCube3DScene({ controlsRef }) {
@@ -122,12 +204,11 @@ function SmartCube3DScene({ controlsRef }) {
   );
 }
 
-// Inline SVG Icon: Bluetooth
-function BluetoothIcon({ className = "w-4 h-4", ...props }) {
+function BluetoothIcon({ className = "w-3.5 h-3.5", ...props }) {
   return (
     <svg
-      width="16"
-      height="16"
+      width="15"
+      height="15"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -143,7 +224,6 @@ function BluetoothIcon({ className = "w-4 h-4", ...props }) {
   );
 }
 
-// Inline SVG Icon: Battery Telemetry
 function BatteryIcon({ level, isConnected }) {
   const validLevel = typeof level === 'number' && !isNaN(level) ? level : null;
   const strokeColor = !isConnected || validLevel === null ? '#64748b' : validLevel <= 20 ? '#f43f5e' : '#10b981';
@@ -151,8 +231,8 @@ function BatteryIcon({ level, isConnected }) {
 
   return (
     <svg
-      width="20"
-      height="12"
+      width="18"
+      height="11"
       viewBox="0 0 24 14"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
@@ -168,7 +248,6 @@ function BatteryIcon({ level, isConnected }) {
   );
 }
 
-// Inline SVG Icon: Eye (Inspect)
 function EyeIcon({ className = "w-3.5 h-3.5", ...props }) {
   return (
     <svg
@@ -188,7 +267,6 @@ function EyeIcon({ className = "w-3.5 h-3.5", ...props }) {
   );
 }
 
-// Inline SVG Icon: Trash
 function TrashIcon({ className = "w-3.5 h-3.5", ...props }) {
   return (
     <svg
@@ -209,8 +287,7 @@ function TrashIcon({ className = "w-3.5 h-3.5", ...props }) {
   );
 }
 
-// Inline SVG Icon: Chevron
-function ChevronIcon({ isOpen, className = "w-3.5 h-3.5", ...props }) {
+function ListIcon({ className = "w-4 h-4", ...props }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -219,16 +296,20 @@ function ChevronIcon({ isOpen, className = "w-3.5 h-3.5", ...props }) {
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={`${className} transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+      className={className}
       aria-hidden="true"
       {...props}
     >
-      <path d="m6 9 6 6 6-6" />
+      <line x1="8" y1="6" x2="21" y2="6" />
+      <line x1="8" y1="12" x2="21" y2="12" />
+      <line x1="8" y1="18" x2="21" y2="18" />
+      <line x1="3" y1="6" x2="3.01" y2="6" />
+      <line x1="3" y1="12" x2="3.01" y2="12" />
+      <line x1="3" y1="18" x2="3.01" y2="18" />
     </svg>
   );
 }
 
-// Connection Status Pill
 function ConnectionStatusPill({ status }) {
   const { t } = useTranslation();
 
@@ -264,11 +345,11 @@ function ConnectionStatusPill({ status }) {
 
   return (
     <div
-      className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors ${config.container}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold border transition-colors ${config.container}`}
       role="status"
     >
-      <span className={`w-2 h-2 rounded-full shrink-0 ${config.dot}`} />
-      <span>{config.label}</span>
+      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${config.dot}`} />
+      <span className="truncate max-w-[90px] sm:max-w-none">{config.label}</span>
     </div>
   );
 }
@@ -280,27 +361,36 @@ export function SmartCubePage() {
 
   const controlsRef = useRef(null);
 
-  // Web Bluetooth API feature detection
   const isBluetoothSupported = useMemo(() => {
     return typeof navigator !== 'undefined' && Boolean(navigator.bluetooth);
   }, []);
 
-  // Smart Cube Zustand store bindings
   const connectionStatus = useSmartCubeStore(state => state.connectionStatus);
   const batteryLevel = useSmartCubeStore(state => state.batteryLevel);
   const timerStatus = useSmartCubeStore(state => state.timerStatus);
   const timerStartTime = useSmartCubeStore(state => state.timerStartTime);
+  const wallStartTime = useSmartCubeStore(state => state.wallStartTime);
+  const inspectionStartTime = useSmartCubeStore(state => state.inspectionStartTime);
   const elapsedMs = useSmartCubeStore(state => state.elapsedMs);
   const moveCount = useSmartCubeStore(state => state.moveCount);
   const currentTps = useSmartCubeStore(state => state.currentTps);
   const finalTps = useSmartCubeStore(state => state.finalTps);
   const moveHistory = useSmartCubeStore(state => state.moveHistory);
   const scramble = useSmartCubeStore(state => state.scramble);
+  const scrambleMoves = useSmartCubeStore(state => state.scrambleMoves);
+  const scrambleIndex = useSmartCubeStore(state => state.scrambleIndex);
+  const scrambleSubStep = useSmartCubeStore(state => state.scrambleSubStep);
+  const scrambleError = useSmartCubeStore(state => state.scrambleError);
+  const scrambleTracking = useSmartCubeStore(state => state.scrambleTracking);
+  const currentPhase = useSmartCubeStore(state => state.currentPhase);
+  const phaseSplits = useSmartCubeStore(state => state.phaseSplits);
   const sessionSolves = useSmartCubeStore(state => state.sessionSolves);
 
   const connect = useSmartCubeStore(state => state.connect);
   const disconnect = useSmartCubeStore(state => state.disconnect);
+  const refreshBattery = useSmartCubeStore(state => state.refreshBattery);
   const newScramble = useSmartCubeStore(state => state.newScramble);
+  const startScrambleTracking = useSmartCubeStore(state => state.startScrambleTracking);
   const startInspection = useSmartCubeStore(state => state.startInspection);
   const recalibrateGyro = useSmartCubeStore(state => state.recalibrateGyro);
   const resetSolve = useSmartCubeStore(state => state.resetSolve);
@@ -317,64 +407,67 @@ export function SmartCubePage() {
   const setMacAddress = useSmartCubeStore(state => state.setMacAddress);
   const errorMessage = useSmartCubeStore(state => state.errorMessage);
 
-  const tapeEndRef = useRef(null);
   const [isCopied, setIsCopied] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [historyTab, setHistoryTab] = useState('list'); // 'list' | 'stats' | 'trends'
+  const [selectedSolveId, setSelectedSolveId] = useState(null);
 
-  // Smooth 60fps RAF ticker during active solve
-  const [liveDisplayMs, setLiveDisplayMs] = useState(0);
+  const [liveTickMs, setLiveTickMs] = useState(0);
+  const [inspectionElapsedMs, setInspectionElapsedMs] = useState(0);
 
+  // Synchronisation 60fps du chrono sur wallStartTime
   useEffect(() => {
-    if (timerStatus === 'solving') {
-      let animId;
-      const updateTick = () => {
-        const start = timerStartTime || Date.now();
-        setLiveDisplayMs(Math.max(1, Date.now() - start));
-        animId = requestAnimationFrame(updateTick);
-      };
+    if (timerStatus !== 'solving') return undefined;
+    let animId;
+    const updateTick = () => {
+      const start = wallStartTime || timerStartTime || Date.now();
+      setLiveTickMs(Math.max(1, Date.now() - start));
       animId = requestAnimationFrame(updateTick);
-      return () => cancelAnimationFrame(animId);
-    } else {
-      setLiveDisplayMs(elapsedMs);
-    }
-  }, [timerStatus, timerStartTime, elapsedMs]);
+    };
+    animId = requestAnimationFrame(updateTick);
+    return () => cancelAnimationFrame(animId);
+  }, [timerStatus, wallStartTime, timerStartTime]);
 
-  // Victory celebration trigger (audio chime + confetti)
+  // Synchronisation 60fps de l'inspection WCA 15s
+  useEffect(() => {
+    if (timerStatus !== 'inspecting') return undefined;
+    let animId;
+    const start = inspectionStartTime || Date.now();
+    const updateInspection = () => {
+      setInspectionElapsedMs(Math.max(0, Date.now() - start));
+      animId = requestAnimationFrame(updateInspection);
+    };
+    animId = requestAnimationFrame(updateInspection);
+    return () => cancelAnimationFrame(animId);
+  }, [timerStatus, inspectionStartTime]);
+
+  const liveDisplayMs = timerStatus === 'solving' ? liveTickMs : elapsedMs;
+
+  // Confettis + son de victoire dès que le cube est résolu
   const prevTimerStatus = useRef(timerStatus);
   useEffect(() => {
     if (prevTimerStatus.current === 'solving' && timerStatus === 'solved') {
       try {
-        confetti({ particleCount: 75, spread: 60, origin: { y: 0.7 } });
+        confetti({ particleCount: 70, spread: 60, origin: { y: 0.75 } });
       } catch {
-        // Safe fallback
+        // Fallback sécurisé
       }
       try {
         playSolveVictorySound();
       } catch {
-        // Safe fallback
+        // Fallback sécurisé
       }
     }
     prevTimerStatus.current = timerStatus;
   }, [timerStatus]);
 
-  // Scroll move tape to end on new turns
-  useEffect(() => {
-    tapeEndRef.current?.scrollIntoView({ behavior: 'smooth', inline: 'end', block: 'nearest' });
-  }, [moveHistory.length]);
-
-  const handleCopySequence = () => {
-    if (typeof navigator !== 'undefined' && navigator.clipboard && moveHistory.length > 0) {
-      const seq = moveHistory.map(m => m.move).join(' ');
-      navigator.clipboard.writeText(seq).then(() => {
-        setIsCopied(true);
-        setTimeout(() => setIsCopied(false), 2000);
-      }).catch(() => {});
-    }
-  };
-
-  // Initialize 3x3 Rubik's cube model on mount
+  // Initialisation du cube 3x3 et lancement auto du guide de mélange
   useEffect(() => {
     useCubeStore.getState().initCube(3);
+    const st = useSmartCubeStore.getState();
+    if (st.timerStatus === 'idle') {
+      st.startScrambleTracking(st.scramble, { autoInspect: true });
+    }
   }, []);
 
   const handleConnectClick = () => {
@@ -395,108 +488,132 @@ export function SmartCubePage() {
     connect(null, mac);
   };
 
+  const handleStartNextGuidedScramble = () => {
+    startScrambleTracking(null, { autoInspect: true });
+  };
+
+  const handleCopySequence = (movesString) => {
+    const seq = typeof movesString === 'string'
+      ? movesString
+      : moveHistory.map(m => m.move).join(' ');
+    if (typeof navigator !== 'undefined' && navigator.clipboard && seq) {
+      navigator.clipboard.writeText(seq).then(() => {
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+      }).catch(() => {});
+    }
+  };
+
   const handleClearSession = () => {
     if (sessionSolves.length === 0) return;
     if (typeof window !== 'undefined' && window.confirm(t('smartCube.history.confirmClear', 'Effacer tous les temps de la session ?'))) {
       clearSessionSolves();
+      setSelectedSolveId(null);
     }
   };
 
-  // Session analytics summary
   const sessionStats = useMemo(() => {
     return calculateSessionStats(sessionSolves);
   }, [sessionSolves]);
 
-  // Timer visual styling based on FSM state
-  const timerStyle = useMemo(() => {
-    switch (timerStatus) {
-      case 'scrambled':
-        return {
-          cardBorder: 'border-amber-500/70 shadow-[0_0_20px_rgba(245,158,11,0.25)]',
-          badge: 'bg-amber-950/60 border-amber-500/80 text-amber-300',
-          dot: 'bg-amber-400',
-          text: 'text-amber-100',
-          label: t('smartCube.timer.scrambled', 'Mélangé — Tournez pour lancer')
-        };
-      case 'inspecting':
-        return {
-          cardBorder: 'border-orange-500/80 shadow-[0_0_20px_rgba(249,115,22,0.3)] animate-pulse',
-          badge: 'bg-orange-950/70 border-orange-500 text-orange-200',
-          dot: 'bg-orange-400 animate-ping',
-          text: 'text-orange-100',
-          label: t('smartCube.timer.inspecting', 'Inspection WCA')
-        };
-      case 'solving':
-        return {
-          cardBorder: 'border-emerald-500/80 shadow-[0_0_25px_rgba(16,185,129,0.35)]',
-          badge: 'bg-emerald-950/70 border-emerald-500 text-emerald-300 animate-pulse',
-          dot: 'bg-emerald-400 animate-pulse',
-          text: 'text-emerald-100',
-          label: t('smartCube.timer.solving', 'Chrono en cours')
-        };
-      case 'solved':
-        return {
-          cardBorder: 'border-yellow-400/90 shadow-[0_0_30px_rgba(234,179,8,0.35)]',
-          badge: 'bg-yellow-950/70 border-yellow-400 text-yellow-300',
-          dot: 'bg-yellow-400',
-          text: 'text-yellow-200',
-          label: t('smartCube.timer.solved', 'Résolu !')
-        };
-      case 'idle':
-      default:
-        return {
-          cardBorder: 'border-[#394144]',
-          badge: 'bg-[#252b2e] border-[#41494c] text-[#9eb5aa]',
-          dot: 'bg-[#9eb5aa]',
-          text: 'text-white',
-          label: t('smartCube.timer.ready', 'Prêt')
-        };
+  const activeScrambleMoves = useMemo(() => {
+    if (Array.isArray(scrambleMoves) && scrambleMoves.length > 0) return scrambleMoves;
+    if (Array.isArray(scrambleTracking?.expectedMoves) && scrambleTracking.expectedMoves.length > 0) {
+      return scrambleTracking.expectedMoves;
     }
-  }, [timerStatus, t]);
+    return (scramble || "D' R2 U' B2 U F2 R2 D' F2 U B2 R' D' B' R' B2 D' F' D R2")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+  }, [scrambleMoves, scrambleTracking, scramble]);
+
+  const activeScrambleIndex = typeof scrambleIndex === 'number'
+    ? scrambleIndex
+    : (scrambleTracking?.currentMoveIndex ?? 0);
+
+  // Le bandeau de mélange s'affiche pendant le mélange, disparaît pendant l'inspection/résolution, et réapparaît une fois résolu
+  const showScrambleBanner =
+    timerStatus === 'scrambling' ||
+    timerStatus === 'idle' ||
+    timerStatus === 'solved';
+
+  const inspectionInfo = useMemo(() => {
+    const elapsedSec = inspectionElapsedMs / 1000;
+    const remainingSec = Math.max(0, 15 - elapsedSec);
+    const pct = Math.min(100, Math.max(0, (remainingSec / 15) * 100));
+    if (elapsedSec >= 17) {
+      return { text: 'DNF', color: 'text-rose-400', bar: 'bg-rose-500', pct: 0 };
+    }
+    if (elapsedSec >= 15) {
+      return { text: '+2', color: 'text-rose-300', bar: 'bg-rose-500', pct: 0 };
+    }
+    if (elapsedSec >= 12) {
+      return { text: `${remainingSec.toFixed(1)}s`, color: 'text-rose-300', bar: 'bg-rose-500', pct };
+    }
+    if (elapsedSec >= 8) {
+      return { text: `${remainingSec.toFixed(1)}s`, color: 'text-amber-300', bar: 'bg-amber-400', pct };
+    }
+    return { text: `${remainingSec.toFixed(1)}s`, color: 'text-orange-300', bar: 'bg-orange-400', pct };
+  }, [inspectionElapsedMs]);
+
+  // Dernière résolution pour l'affichage en bas de l'écran une fois terminé
+  const latestSolve = sessionSolves.length > 0 ? sessionSolves[sessionSolves.length - 1] : null;
+  const postSolveAnalysis = useMemo(() => {
+    return buildSolveAnalysis(latestSolve, moveHistory);
+  }, [latestSolve, moveHistory]);
+
+  // Résolution inspectée dans la sous-vue "Toutes les infos" de la modale d'historique
+  const modalInspectedSolve = useMemo(() => {
+    if (!selectedSolveId) return null;
+    return sessionSolves.find(s => s.id === selectedSolveId) || null;
+  }, [selectedSolveId, sessionSolves]);
+
+  const modalSolveAnalysis = useMemo(() => {
+    return buildSolveAnalysis(modalInspectedSolve, moveHistory);
+  }, [modalInspectedSolve, moveHistory]);
 
   return (
-    <div className="flex flex-col h-[100dvh] w-full bg-[#1b2023] text-[#f0f1ed] overflow-hidden">
-      {/* Header */}
-      <header className="flex flex-wrap items-center justify-between gap-3 px-3 sm:px-5 py-2.5 bg-[#202629] border-b border-[#394144] shrink-0 z-20">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate(paths.play())}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold rounded bg-[#252b2e] border border-[#41494c] text-[#f0f1ed] hover:border-[#9eb5aa] hover:bg-[#2b3336] transition-colors cursor-pointer"
-            aria-label={t('common.back')}
-          >
-            <ArrowLeft size={16} />
-            <span className="hidden sm:inline">{t('app.play.smartCube.back', 'Jeux')}</span>
-          </button>
-          <div className="flex flex-col">
-            <h1 className="text-sm sm:text-base font-bold leading-tight text-white flex items-center gap-2">
-              {t('app.play.smartCube.title', 'Smart Cube GAN 16 ui')}
-            </h1>
-            <span className="text-[11px] text-[#94a3b8] hidden md:inline">
-              {t('app.play.smartCube.subtitle', 'Synchronisation Bluetooth & Chronométrage')}
-            </span>
-          </div>
-        </div>
+    <div className="flex flex-col h-[100dvh] w-full bg-[#1b2023] text-[#f0f1ed] overflow-hidden select-none">
+      {/* 1. EN-TÊTE MINIMALISTE SUR UNE SEULE LIGNE : Retour + Connecté + Batterie + Déconnecter */}
+      <header className="flex items-center justify-between gap-2 px-3 sm:px-5 h-12 bg-[#202629] border-b border-[#394144] shrink-0 z-20">
+        <button
+          onClick={() => navigate(paths.play())}
+          className="inline-flex items-center justify-center w-8 h-8 sm:w-auto sm:px-2.5 rounded-lg bg-[#252b2e] border border-[#41494c] text-[#f0f1ed] hover:border-[#9eb5aa] transition-colors cursor-pointer shrink-0"
+          aria-label={t('common.back', 'Retour')}
+          title={t('app.play.smartCube.back', 'Jeux')}
+        >
+          <ArrowLeft size={16} />
+          <span className="hidden sm:inline ml-1.5 text-xs font-semibold">
+            {t('app.play.smartCube.back', 'Jeux')}
+          </span>
+        </button>
 
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
           <ConnectionStatusPill status={connectionStatus} />
 
-          {/* Battery Pill */}
-          <div
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-800/80 border border-slate-700 text-slate-300"
+          {/* Pilule Batterie (cliquable pour rafraîchir) */}
+          <button
+            type="button"
+            onClick={() => refreshBattery && refreshBattery()}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold bg-slate-800/80 border border-slate-700 text-slate-200 hover:border-slate-500 cursor-pointer shrink-0"
             title={t('smartCube.telemetry.battery', 'Batterie')}
           >
             <BatteryIcon level={batteryLevel} isConnected={connectionStatus === 'connected'} />
-            <span>{connectionStatus === 'connected' && typeof batteryLevel === 'number' && !isNaN(batteryLevel) ? `${batteryLevel}%` : '--%'}</span>
-          </div>
+            <span>
+              {connectionStatus === 'connected' && typeof batteryLevel === 'number' && !isNaN(batteryLevel)
+                ? `${batteryLevel}%`
+                : '--%'}
+            </span>
+          </button>
 
-          {/* Bluetooth Action Button */}
+          {/* Bouton Connecter / Déconnecter */}
           <button
             onClick={handleConnectClick}
             disabled={!isBluetoothSupported || connectionStatus === 'connecting'}
-            className={`shuffle-btn text-xs sm:text-sm py-1.5 px-3 ${
+            className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold border transition-colors cursor-pointer shrink-0 ${
               connectionStatus === 'connected'
-                ? 'border-[#56615e] hover:border-rose-400 hover:text-rose-300'
-                : 'primary-action'
+                ? 'bg-[#252b2e] border-[#56615e] text-slate-200 hover:border-rose-400 hover:text-rose-300'
+                : 'bg-[#9eb5aa] border-[#9eb5aa] text-[#1b2023] font-bold hover:bg-[#b0c6bc]'
             } ${!isBluetoothSupported ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <BluetoothIcon className="w-3.5 h-3.5" />
@@ -505,234 +622,624 @@ export function SmartCubePage() {
                 ? t('smartCube.action.disconnect', 'Déconnecter')
                 : connectionStatus === 'connecting'
                 ? t('smartCube.action.connecting', 'Connexion...')
-                : t('smartCube.action.connect', 'Connecter GAN 16 ui')}
+                : t('smartCube.action.connect', 'Connecter')}
             </span>
           </button>
         </div>
       </header>
 
-      {/* Main Workspace */}
-      <main className="flex-1 min-h-0 flex flex-col p-2.5 sm:p-4 overflow-hidden">
-        {/* Unsupported Browser Banner */}
-        {!isBluetoothSupported && (
-          <div className="mb-3 shrink-0 flex items-start gap-3 p-3 sm:p-4 rounded-lg bg-amber-950/60 border border-amber-600/70 text-amber-200 text-xs sm:text-sm shadow-md">
-            <AlertTriangle size={20} className="shrink-0 text-amber-400 mt-0.5" />
-            <div className="flex-1 min-w-0">
-              <div className="font-semibold text-amber-100 mb-0.5">
-                {t('smartCube.bluetoothUnavailableTitle', 'Navigateur non compatible Web Bluetooth')}
-              </div>
-              <div className="text-amber-200/90 leading-relaxed text-[11px] sm:text-xs">
-                {t(
-                  'smartCube.bluetoothUnavailableDesc',
-                  "L'API Web Bluetooth n'est pas prise en charge par ce navigateur. Pour connecter votre smart cube GAN 16 ui, veuillez utiliser un navigateur basé sur Chromium (Google Chrome, Microsoft Edge, Brave, Opera) ou Bluefy sur iOS."
-                )}
-              </div>
+      {/* Alertes compactes si navigateur non supporté ou erreur BLE */}
+      {!isBluetoothSupported && (
+        <div className="mx-3 mt-2 shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-lg bg-amber-950/70 border border-amber-600/70 text-amber-200 text-xs">
+          <AlertTriangle size={16} className="shrink-0 text-amber-400" />
+          <div className="truncate">
+            <span className="font-semibold text-amber-100 mr-1">
+              {t('smartCube.bluetoothUnavailableTitle', 'Navigateur non compatible Web Bluetooth')} :
+            </span>
+            <span>
+              {t('smartCube.bluetoothUnavailableDesc', 'Utilisez Chrome, Edge, Brave ou Bluefy sur iOS.')}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {connectionStatus === 'error' && (
+        <div className="mx-3 mt-2 shrink-0 flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-rose-950/70 border border-rose-600/70 text-rose-200 text-xs">
+          <div className="flex items-center gap-2 min-w-0">
+            <AlertTriangle size={15} className="text-rose-400 shrink-0" />
+            <span className="truncate">{errorMessage || t('smartCube.status.error', 'Erreur Bluetooth')}</span>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={openMacModal}
+              className="px-2 py-0.5 text-[11px] font-semibold rounded bg-rose-900/70 border border-rose-500 text-rose-100 cursor-pointer"
+            >
+              {t('smartCube.action.changeMac', 'MAC')}
+            </button>
+            <button
+              onClick={() => connect()}
+              className="px-2 py-0.5 text-[11px] font-semibold rounded bg-[#252b2e] border border-[#41494c] text-white cursor-pointer"
+            >
+              {t('common.retry', 'Réessayer')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 2. BANDEAU DE MÉLANGE (Visible pendant le mélange et une fois la résolution terminée ; disparaît pendant l'inspection et le solve) */}
+      {showScrambleBanner && (
+        <section className="mx-2.5 sm:mx-auto sm:w-full sm:max-w-2xl mt-2 px-3 py-2.5 rounded-xl bg-[#202629]/95 border border-[#394144] shadow-md shrink-0 z-10">
+          <div className="flex items-center justify-between gap-2 mb-1.5 text-[11px]">
+            <div className="flex items-center gap-2">
+              <span className="font-bold uppercase tracking-wider text-[#9eb5aa]">
+                {t('smartCube.telemetry.scramble', 'Mélange WCA')}
+              </span>
+              {timerStatus === 'scrambling' && (
+                <span className="px-1.5 py-0.5 rounded font-mono text-[10px] font-bold bg-[#252b2e] border border-[#41494c] text-slate-300">
+                  {activeScrambleIndex}/{activeScrambleMoves.length}
+                </span>
+              )}
+              {timerStatus === 'solved' && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950/80 border border-emerald-500/70 text-emerald-300">
+                  {t('smartCube.scramble.readyBadge', 'Terminé')}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              {timerStatus === 'scrambling' && (
+                <button
+                  onClick={() => newScramble(scramble, { autoInspect: true })}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#252b2e] border border-[#41494c] text-[11px] font-semibold text-orange-300 hover:border-orange-400 cursor-pointer"
+                >
+                  <EyeIcon className="w-3 h-3" />
+                  <span>{t('smartCube.action.inspect', 'Passer')}</span>
+                </button>
+              )}
+              <button
+                onClick={handleStartNextGuidedScramble}
+                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-[11px] font-semibold text-[#f0f1ed] cursor-pointer"
+              >
+                <Sparkles size={11} />
+                <span>
+                  {timerStatus === 'solved'
+                    ? t('smartCube.action.nextScramble', 'Mélanger le suivant')
+                    : t('smartCube.action.scramble', 'Changer')}
+                </span>
+              </button>
             </div>
           </div>
-        )}
 
-        {/* Connection Error Alert Banner */}
-        {connectionStatus === 'error' && (
-          <div className="mb-3 shrink-0 flex flex-wrap items-start justify-between gap-3 p-3 rounded-lg bg-rose-950/60 border border-rose-600/70 text-rose-200 text-xs sm:text-sm shadow-md">
-            <div className="flex items-start gap-2 min-w-0 flex-1">
-              <AlertTriangle size={18} className="text-rose-400 shrink-0 mt-0.5" />
-              <span className="break-words leading-relaxed">{errorMessage || t('smartCube.status.error', 'Erreur de connexion Bluetooth')}</span>
+          {/* Alerte d'erreur si une mauvaise face est tournée */}
+          {timerStatus === 'scrambling' && scrambleError && (
+            <div className="mb-1.5 flex items-center justify-between gap-2 px-2.5 py-1 rounded-lg bg-rose-950/90 border border-rose-500 text-rose-100 text-xs font-semibold animate-pulse">
+              <span>{t('smartCube.scramble.wrongMove', 'Mauvaise face ! Annulez avec :')}</span>
+              <span className="px-2 py-0.5 rounded font-mono font-extrabold bg-rose-500 text-white">
+                {scrambleError}
+              </span>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={openMacModal}
-                className="px-2.5 py-1 text-xs font-semibold rounded bg-rose-900/60 hover:bg-rose-900 border border-rose-500 text-rose-100 cursor-pointer"
-              >
-                {t('smartCube.action.changeMac', 'Changer MAC')}
-              </button>
-              <button
-                onClick={() => connect()}
-                className="px-2.5 py-1 text-xs font-semibold rounded bg-[#252b2e] hover:bg-[#2b3336] border border-[#41494c] text-white cursor-pointer"
-              >
-                {t('common.retry', 'Réessayer')}
-              </button>
-            </div>
-          </div>
-        )}
+          )}
 
-        {/* 2-Column Responsive Grid */}
-        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 overflow-hidden">
-          {/* Left Column: Timer, Telemetry & Analytics */}
-          <section className="lg:col-span-5 xl:col-span-4 flex flex-col gap-3 min-h-0 overflow-y-auto pr-0.5">
-            {/* Scramble Card */}
-            <div className="p-3 rounded-lg bg-[#202629] border border-[#394144] flex flex-col gap-2">
-              <div className="flex items-center justify-between text-xs text-[#94a3b8]">
-                <span className="font-bold uppercase tracking-wider">{t('smartCube.telemetry.scramble', 'Mélange WCA')}</span>
-                <div className="flex items-center gap-2">
-                  {timerStatus === 'scrambled' && (
-                    <button
-                      onClick={startInspection}
-                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-orange-400 hover:text-orange-300 hover:underline cursor-pointer"
-                    >
-                      <EyeIcon />
-                      <span>{t('smartCube.action.inspect', 'Inspecter')}</span>
-                    </button>
+          {/* Jetons du mélange façon Cube Station */}
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1 sm:gap-1.5 select-text">
+            {activeScrambleMoves.map((moveToken, idx) => {
+              const isDone = timerStatus === 'scrambling' ? idx < activeScrambleIndex : timerStatus === 'solved';
+              const isCurrent = timerStatus === 'scrambling' && idx === activeScrambleIndex;
+              const isHalfDone = isCurrent && scrambleSubStep === 1;
+
+              let tokenClass = 'text-slate-200 border-transparent';
+              if (isDone) {
+                tokenClass = 'text-emerald-400/50 border-transparent';
+              } else if (isCurrent) {
+                tokenClass = scrambleError
+                  ? 'bg-rose-500 text-white border-rose-300 shadow-[0_0_10px_rgba(244,63,94,0.6)] scale-110'
+                  : 'bg-sky-500 text-white border-sky-300 shadow-[0_0_10px_rgba(14,165,233,0.6)] scale-110';
+              }
+
+              return (
+                <span
+                  key={`${moveToken}-${idx}`}
+                  className={`inline-flex items-center justify-center min-w-[26px] px-1.5 py-0.5 rounded-full border font-mono text-xs sm:text-sm font-extrabold transition-all ${tokenClass}`}
+                >
+                  <span>{moveToken}</span>
+                  {isHalfDone && (
+                    <span className="ml-0.5 text-[9px] text-amber-200">½</span>
                   )}
-                  <button
-                    onClick={() => newScramble()}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#9eb5aa] hover:underline cursor-pointer"
-                  >
-                    <Sparkles size={12} />
-                    <span>{t('smartCube.action.scramble', 'Mélanger')}</span>
-                  </button>
+                </span>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* 3. ZONE CENTRALE : CUBE VIRTUEL 3D PLEIN ÉCRAN */}
+      <div className="flex-1 min-h-0 relative w-full flex items-center justify-center overflow-hidden">
+        {/* Contrôles Gyro & Recentrage flottants très discrets en haut du canvas */}
+        <div className="absolute top-2.5 left-3 right-3 z-10 flex items-center justify-between pointer-events-none">
+          <button
+            type="button"
+            onClick={() => toggleGyroActive()}
+            className={`pointer-events-auto inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border backdrop-blur-sm cursor-pointer transition-colors ${
+              isGyroActive
+                ? 'bg-[#202629]/80 border-emerald-500/50 text-emerald-300'
+                : 'bg-[#202629]/80 border-[#394144] text-slate-400'
+            }`}
+            title={t('smartCube.telemetry.gyroToggle', 'Gyroscope')}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${isGyroActive ? 'bg-emerald-400' : 'bg-slate-500'}`} />
+            <span>
+              {t('smartCube.telemetry.gyroToggle', 'Gyro')}: {isGyroActive ? t('smartCube.telemetry.gyroActive', 'Actif') : t('smartCube.telemetry.gyroInactive', 'Inactif')}
+            </span>
+          </button>
+
+          <div className="flex items-center gap-1.5 pointer-events-auto">
+            <button
+              type="button"
+              onClick={recalibrateGyro}
+              className="px-2.5 py-1 rounded-full bg-[#202629]/80 backdrop-blur-sm border border-[#394144] hover:border-[#9eb5aa] text-[11px] font-semibold text-[#f0f1ed] cursor-pointer"
+              title={t('smartCube.action.recalibrate', 'Recentrer orientation 3D')}
+            >
+              {t('smartCube.action.recalibrateShort', 'Recentrer')}
+            </button>
+            {timerStatus !== 'scrambling' && (
+              <button
+                type="button"
+                onClick={resetSolve}
+                className="px-2.5 py-1 rounded-full bg-[#202629]/80 backdrop-blur-sm border border-[#394144] hover:border-rose-400 text-[11px] font-semibold text-slate-300 cursor-pointer"
+              >
+                {t('smartCube.action.reset', 'Réinitialiser')}
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="w-full h-full" aria-label={t('smartCube.view3d', 'Vue 3D temps réel')}>
+          <Canvas camera={{ position: [3.8, 4.2, 5.5], fov: 62 }}>
+            <ambientLight intensity={1.1} />
+            <directionalLight position={[10, 10, 10]} intensity={1} />
+            <SmartCube3DScene controlsRef={controlsRef} />
+            <TrackballControls ref={controlsRef} noPan noZoom rotateSpeed={4} />
+          </Canvas>
+        </div>
+      </div>
+
+      {/* 4. ZONE INFÉRIEURE (BOTTOM DOCK) : Timer, Phases CFOP et Bouton "Tous les temps" */}
+      <footer className="px-3 pb-3 pt-1.5 sm:px-5 sm:pb-4 shrink-0 z-10 w-full max-w-2xl mx-auto flex flex-col gap-2">
+        {/* ÉTAT A : En cours de mélange */}
+        {(timerStatus === 'scrambling' || timerStatus === 'idle') && (
+          <div className="p-3 rounded-2xl bg-[#202629]/95 border border-[#394144] flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="w-2.5 h-2.5 rounded-full bg-sky-400 animate-pulse shrink-0" />
+              <div className="truncate">
+                <div className="text-xs sm:text-sm font-bold text-white">
+                  {t('smartCube.timer.scrambling', 'Effectuez le mélange sur le cube')}
+                </div>
+                <div className="text-[11px] text-[#94a3b8]">
+                  {t('smartCube.timer.ready', 'L’inspection démarrera dès la fin du mélange')}
                 </div>
               </div>
-              <div className="font-mono text-sm sm:text-base font-semibold text-slate-200 break-words leading-relaxed select-text">
-                {scramble || "D' R2 U' B2 U F2 R2 D' F2 U B2 R' D' B' R' B2 D' F' D R2"}
-              </div>
             </div>
 
-            {/* Smart Timer Banner with dynamic glow */}
-            <div className={`p-4 rounded-lg bg-[#202629] border transition-all duration-300 flex flex-col items-center justify-center text-center ${timerStyle.cardBorder}`}>
-              <div className={`text-5xl sm:text-6xl font-mono font-extrabold tracking-tight mb-2 transition-colors duration-200 ${timerStyle.text}`}>
+            <button
+              type="button"
+              onClick={() => setIsHistoryOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-xs font-bold text-[#f0f1ed] cursor-pointer shrink-0"
+            >
+              <ListIcon className="w-3.5 h-3.5 text-[#9eb5aa]" />
+              <span>{t('smartCube.history.title', 'Tous les temps')} ({sessionSolves.length})</span>
+            </button>
+          </div>
+        )}
+
+        {/* ÉTAT B : Inspection WCA (15s) ou Mélangé prêt à démarrer */}
+        {(timerStatus === 'inspecting' || timerStatus === 'scrambled') && (
+          <div className="p-3.5 rounded-2xl bg-[#202629]/95 border border-orange-500/70 shadow-[0_0_25px_rgba(249,115,22,0.2)] flex flex-col items-center gap-2">
+            <div className="flex items-center gap-2 text-xs font-semibold text-orange-300">
+              <Clock size={13} />
+              <span>
+                {timerStatus === 'inspecting'
+                  ? t('smartCube.timer.inspecting', 'Inspection WCA')
+                  : t('smartCube.timer.scrambled', 'Mélangé — Tournez pour lancer')}
+              </span>
+            </div>
+
+            <div className={`text-5xl sm:text-6xl font-mono font-extrabold tracking-tight leading-none ${
+              timerStatus === 'inspecting' ? inspectionInfo.color : 'text-amber-200'
+            }`}>
+              {timerStatus === 'inspecting' ? inspectionInfo.text : '0.00'}
+            </div>
+
+            {timerStatus === 'inspecting' && (
+              <div className="w-full h-1.5 rounded-full bg-[#252b2e] overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-75 ${inspectionInfo.bar}`}
+                  style={{ width: `${inspectionInfo.pct}%` }}
+                />
+              </div>
+            )}
+
+            <div className="w-full flex items-center justify-between pt-1 text-[11px] text-[#94a3b8]">
+              <span>{t('smartCube.telemetry.waitingMove', 'Tournez n’importe quelle face pour démarrer')}</span>
+              <button
+                type="button"
+                onClick={() => setIsHistoryOpen(true)}
+                className="inline-flex items-center gap-1 font-semibold text-[#9eb5aa] hover:underline cursor-pointer"
+              >
+                <ListIcon className="w-3.5 h-3.5" />
+                <span>{t('smartCube.history.toggle', 'Tous les temps')} ({sessionSolves.length})</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ÉTAT C : Résolution en cours (Chrono géant + 4 phases CFOP en direct) */}
+        {timerStatus === 'solving' && (
+          <div className="p-3.5 rounded-2xl bg-[#202629]/95 border border-emerald-500/80 shadow-[0_0_25px_rgba(16,185,129,0.25)] flex flex-col gap-2.5">
+            <div className="flex items-baseline justify-between gap-2">
+              <div className="text-5xl sm:text-6xl font-mono font-extrabold tracking-tight leading-none text-emerald-100">
                 {formatLiveTimer(liveDisplayMs)}
               </div>
-              <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition-all ${timerStyle.badge}`}>
-                <span className={`w-2 h-2 rounded-full shrink-0 ${timerStyle.dot}`} />
-                <Clock size={12} />
-                <span>{timerStyle.label}</span>
+              <div className="flex items-center gap-3 font-mono text-xs sm:text-sm">
+                <span className="text-slate-300">
+                  <strong className="text-white">{moveCount}</strong> {t('smartCube.telemetry.moves', 'mvt')}
+                </span>
+                <span className="text-emerald-400 font-bold">
+                  {currentTps.toFixed(2)} {t('smartCube.telemetry.liveTps', 'TPS')}
+                </span>
               </div>
             </div>
 
-            {/* Live Solve Metrics Grid */}
-            <div className="grid grid-cols-3 gap-2">
-              <div className="p-2.5 rounded-lg bg-[#202629] border border-[#394144] text-center">
-                <div className="text-[10px] sm:text-xs text-[#94a3b8] uppercase font-bold">{t('smartCube.telemetry.moves', 'Mouvements')}</div>
-                <div className="text-xl sm:text-2xl font-mono font-bold text-white mt-0.5">{moveCount}</div>
-              </div>
-              <div className="p-2.5 rounded-lg bg-[#202629] border border-[#394144] text-center">
-                <div className="text-[10px] sm:text-xs text-[#94a3b8] uppercase font-bold">{t('smartCube.telemetry.liveTps', 'TPS actuel')}</div>
-                <div className="text-xl sm:text-2xl font-mono font-bold text-emerald-400 mt-0.5">{currentTps.toFixed(2)}</div>
-              </div>
-              <div className="p-2.5 rounded-lg bg-[#202629] border border-[#394144] text-center">
-                <div className="text-[10px] sm:text-xs text-[#94a3b8] uppercase font-bold">{t('smartCube.telemetry.finalTps', 'TPS final')}</div>
-                <div className="text-xl sm:text-2xl font-mono font-bold text-white mt-0.5">{finalTps !== null ? finalTps.toFixed(2) : '--'}</div>
-              </div>
-            </div>
-
-            {/* Move History Tape */}
-            <div className="p-3 rounded-lg bg-[#202629] border border-[#394144] flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-xs text-[#94a3b8]">
-                <span className="font-bold uppercase tracking-wider">{t('smartCube.telemetry.moveTape', 'Séquence de mouvements')}</span>
-                <div className="flex items-center gap-2">
-                  {moveHistory.length > 0 && (
-                    <button
-                      onClick={handleCopySequence}
-                      className="inline-flex items-center gap-1 text-[11px] text-[#9eb5aa] hover:underline cursor-pointer"
-                    >
-                      <span>{isCopied ? t('smartCube.action.sequenceCopied', 'Copié !') : t('smartCube.action.copySequence', 'Copier la séquence')}</span>
-                    </button>
-                  )}
-                  {moveHistory.length > 0 && (
-                    <button
-                      onClick={resetSolve}
-                      className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:underline cursor-pointer"
-                    >
-                      <span>{t('smartCube.action.clearTape', 'Effacer')}</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5 overflow-x-auto py-1 min-h-[44px] scrollbar-thin">
-                {moveHistory.length === 0 ? (
-                  <span className="text-xs text-[#64748b] italic">{t('smartCube.telemetry.waitingMove', 'En attente du premier mouvement...')}</span>
-                ) : (
-                  moveHistory.map((item, idx) => {
-                    const face = item.move[0];
-                    const badgeColor = getMoveBadgeStyle(face);
-                    const stepLabel = idx === 0 ? '#1' : `+${item.stepTime}ms`;
-                    return (
-                      <div
-                        key={idx}
-                        className={`inline-flex flex-col items-center justify-center px-2 py-0.5 rounded border shrink-0 min-w-[38px] ${badgeColor}`}
-                      >
-                        <span className="text-xs font-mono font-bold leading-tight">{item.move}</span>
-                        <span className="text-[9px] font-mono opacity-80 leading-tight">{stepLabel}</span>
-                      </div>
-                    );
-                  })
-                )}
-                <div ref={tapeEndRef} />
-              </div>
-            </div>
-
-            {/* Session Analytics Dashboard */}
-            <div className="p-3 rounded-lg bg-[#202629] border border-[#394144] flex flex-col gap-2">
-              <div className="flex items-center justify-between text-xs text-[#94a3b8]">
-                <span className="font-bold uppercase tracking-wider">{t('smartCube.stats.title', 'Statistiques de session')}</span>
-                <span className="text-[11px] font-mono text-[#9eb5aa]">{sessionStats.count} {t('smartCube.stats.solves', 'résolutions')}</span>
-              </div>
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-center">
-                <div className="p-2 rounded bg-[#252b2e] border border-[#394144]/60">
-                  <div className="text-[10px] text-[#94a3b8] uppercase font-bold">{t('smartCube.stats.best', 'Meilleur')}</div>
-                  <div className="text-sm font-mono font-bold text-white mt-0.5">
-                    {sessionStats.best !== null ? formatSolveTime(sessionStats.best) : '--'}
-                  </div>
-                </div>
-                <div className="p-2 rounded bg-[#252b2e] border border-[#394144]/60">
-                  <div className="text-[10px] text-[#94a3b8] uppercase font-bold">{t('smartCube.stats.mo3', 'Mo3')}</div>
-                  <div className="text-sm font-mono font-bold text-white mt-0.5">
-                    {typeof sessionStats.mo3 === 'number' ? formatSolveTime(sessionStats.mo3) : (sessionStats.mo3 || '--')}
-                  </div>
-                </div>
-                <div className="p-2 rounded bg-[#252b2e] border border-[#394144]/60">
-                  <div className="text-[10px] text-[#94a3b8] uppercase font-bold">{t('smartCube.stats.ao5', 'Ao5')}</div>
-                  <div className="text-sm font-mono font-bold text-emerald-400 mt-0.5">
-                    {typeof sessionStats.ao5 === 'number' ? formatSolveTime(sessionStats.ao5) : (sessionStats.ao5 || '--')}
-                  </div>
-                </div>
-                <div className="p-2 rounded bg-[#252b2e] border border-[#394144]/60">
-                  <div className="text-[10px] text-[#94a3b8] uppercase font-bold">{t('smartCube.stats.ao12', 'Ao12')}</div>
-                  <div className="text-sm font-mono font-bold text-white mt-0.5">
-                    {typeof sessionStats.ao12 === 'number' ? formatSolveTime(sessionStats.ao12) : (sessionStats.ao12 || '--')}
-                  </div>
-                </div>
-                <div className="p-2 rounded bg-[#252b2e] border border-[#394144]/60">
-                  <div className="text-[10px] text-[#94a3b8] uppercase font-bold">{t('smartCube.stats.worst', 'Pire')}</div>
-                  <div className="text-sm font-mono font-bold text-slate-300 mt-0.5">
-                    {sessionStats.worst !== null ? formatSolveTime(sessionStats.worst) : '--'}
-                  </div>
-                </div>
-                <div className="p-2 rounded bg-[#252b2e] border border-[#394144]/60">
-                  <div className="text-[10px] text-[#94a3b8] uppercase font-bold">{t('smartCube.stats.avgTps', 'TPS moy.')}</div>
-                  <div className="text-sm font-mono font-bold text-white mt-0.5">
-                    {sessionStats.avgTps !== null ? sessionStats.avgTps.toFixed(2) : '--'}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Solves History Drawer */}
-            <div className="p-3 rounded-lg bg-[#202629] border border-[#394144] flex flex-col gap-2">
-              <div className="flex items-center justify-between text-xs text-[#94a3b8]">
-                <button
-                  onClick={() => setIsHistoryOpen(open => !open)}
-                  className="inline-flex items-center gap-1.5 font-bold uppercase tracking-wider text-slate-200 hover:text-white cursor-pointer"
-                >
-                  <span>{t('smartCube.history.title', 'Historique des temps')}</span>
-                  <span className="text-[11px] text-[#9eb5aa]">({sessionSolves.length})</span>
-                  <ChevronIcon isOpen={isHistoryOpen} />
-                </button>
-                {sessionSolves.length > 0 && (
-                  <button
-                    onClick={handleClearSession}
-                    className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 hover:underline cursor-pointer"
+            {/* Barre des 4 phases CFOP en direct */}
+            <div className="grid grid-cols-4 gap-1.5">
+              {CFOP_PHASE_ORDER.map(phase => {
+                const split = phaseSplits?.[phase];
+                const isDone = Boolean(split);
+                const isCurrent = currentPhase === phase && !isDone;
+                return (
+                  <div
+                    key={phase}
+                    className={`px-2 py-1.5 rounded-lg border text-center transition-all ${
+                      isDone
+                        ? 'bg-emerald-950/50 border-emerald-500/70 text-emerald-200'
+                        : isCurrent
+                        ? 'bg-sky-950/70 border-sky-400 text-sky-100 animate-pulse'
+                        : 'bg-[#252b2e] border-[#394144] text-slate-500'
+                    }`}
                   >
-                    <TrashIcon />
-                    <span>{t('smartCube.history.clear', 'Vider')}</span>
-                  </button>
-                )}
+                    <div className="text-[10px] font-extrabold uppercase">{CFOP_PHASE_NAMES[phase]}</div>
+                    <div className="text-xs font-mono font-bold mt-0.5">
+                      {isDone
+                        ? (split.skipped ? 'Skip' : formatSplitSeconds(split.durationMs))
+                        : isCurrent
+                        ? t('smartCube.cfop.inProgress', '...')
+                        : '--'}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ÉTAT D : Cube résolu ! (Temps final + Tableau des 4 phases CFOP façon Cube Station + Bouton Tous les temps) */}
+        {timerStatus === 'solved' && (
+          <div className="p-3 sm:p-3.5 rounded-2xl bg-[#202629]/95 border border-[#394144] shadow-xl flex flex-col gap-2.5">
+            {/* Ligne supérieure : Badge Terminé + Temps encadré + Métriques globales */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-500/60 text-emerald-300 text-[11px] font-bold">
+                  {t('smartCube.timer.solved', 'Terminé')}
+                </span>
+                <div className="px-3 py-1 rounded-xl bg-[#252b2e] border border-yellow-400/70 text-2xl sm:text-3xl font-mono font-extrabold text-yellow-200 leading-none">
+                  {formatSolveTime(
+                    postSolveAnalysis?.totalMs ?? elapsedMs,
+                    postSolveAnalysis?.solve?.penalty
+                  )}
+                </div>
               </div>
 
-              {isHistoryOpen && (
-                <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto scrollbar-thin pr-1 pt-1 border-t border-[#394144]/60 mt-1">
+              <div className="flex items-center gap-2.5 text-xs font-mono text-slate-300">
+                <span>
+                  {t('smartCube.telemetry.moves', 'Étapes')} <strong className="text-white">{postSolveAnalysis?.solve?.moveCount ?? moveCount}</strong>
+                </span>
+                <span>
+                  {t('smartCube.telemetry.finalTps', 'TPS')} <strong className="text-emerald-400">{(postSolveAnalysis?.solve?.tps ?? finalTps ?? 0).toFixed(2)}</strong>
+                </span>
+                {postSolveAnalysis && (
+                  <span>
+                    Fluence <strong className="text-sky-300">{postSolveAnalysis.fluency}</strong>
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Grille des 4 phases CFOP (C, F, O, P) avec Temps, Étapes et TPS comme sur Cube Station */}
+            {postSolveAnalysis && (
+              <div className="grid grid-cols-4 gap-1.5">
+                {postSolveAnalysis.breakdown.map(item => (
+                  <div
+                    key={item.phase}
+                    className={`p-2 rounded-xl border flex flex-col justify-between ${PHASE_BADGE_STYLES[item.phase]}`}
+                  >
+                    <div className="flex items-center justify-between text-[10px] font-extrabold">
+                      <span className="px-1.5 py-0.2 rounded bg-black/30 text-white">{item.shortLabel}</span>
+                      <span className="font-mono opacity-80">{item.skipped ? '0%' : `${item.pct}%`}</span>
+                    </div>
+                    <div className="text-xs sm:text-sm font-mono font-extrabold text-white mt-1">
+                      {item.skipped ? 'Skip' : formatSplitSeconds(item.durationMs)}
+                    </div>
+                    <div className="text-[10px] font-mono opacity-85 mt-0.5 flex items-center justify-between">
+                      <span>{item.moves}m</span>
+                      <span>{item.tps.toFixed(1)}t/s</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Boutons d'action en bas : Voir tous les temps + Mélange suivant */}
+            <div className="flex items-center gap-2 pt-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedSolveId(null);
+                  setIsHistoryOpen(true);
+                }}
+                className="flex-1 inline-flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-xs font-bold text-[#f0f1ed] cursor-pointer"
+              >
+                <ListIcon className="w-4 h-4 text-[#9eb5aa]" />
+                <span>{t('smartCube.history.title', 'Tous les temps')} ({sessionSolves.length})</span>
+              </button>
+
+              {postSolveAnalysis?.solve && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedSolveId(postSolveAnalysis.solve.id);
+                    setIsHistoryOpen(true);
+                  }}
+                  className="py-2 px-3 rounded-xl bg-[#252b2e] border border-[#41494c] hover:border-sky-400 text-xs font-bold text-sky-300 cursor-pointer"
+                >
+                  {t('smartCube.history.inspectSolve', 'Détails')}
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={handleStartNextGuidedScramble}
+                className="py-2 px-3.5 rounded-xl bg-[#9eb5aa] hover:bg-[#b0c6bc] text-xs font-extrabold text-[#1b2023] cursor-pointer"
+              >
+                {t('smartCube.action.scramble', 'Suivant')}
+              </button>
+            </div>
+          </div>
+        )}
+      </footer>
+
+      {/* 5. MODALE PLEIN ÉCRAN PORTRAIT : TOUS LES TEMPS, DÉTAILS D'UN TEMPS & STATISTIQUES */}
+      {isHistoryOpen && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="w-full sm:max-w-xl h-[90dvh] sm:h-[82dvh] bg-[#1b2023] sm:rounded-2xl rounded-t-2xl border border-[#394144] flex flex-col overflow-hidden shadow-2xl">
+            {/* En-tête de la modale */}
+            <div className="flex items-center justify-between px-4 py-3 bg-[#202629] border-b border-[#394144] shrink-0">
+              {modalSolveAnalysis ? (
+                <button
+                  type="button"
+                  onClick={() => setSelectedSolveId(null)}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#9eb5aa] hover:text-white cursor-pointer"
+                >
+                  <ArrowLeft size={15} />
+                  <span>{t('common.back', 'Retour à la liste')}</span>
+                </button>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setHistoryTab('list')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer transition-colors ${
+                      historyTab === 'list'
+                        ? 'bg-[#9eb5aa] text-[#1b2023]'
+                        : 'bg-[#252b2e] text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    {t('smartCube.history.title', 'Résolutions')} ({sessionSolves.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHistoryTab('stats')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer transition-colors ${
+                      historyTab === 'stats'
+                        ? 'bg-[#9eb5aa] text-[#1b2023]'
+                        : 'bg-[#252b2e] text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    {t('smartCube.stats.title', 'Statistiques')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHistoryTab('trends')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer transition-colors ${
+                      historyTab === 'trends'
+                        ? 'bg-[#9eb5aa] text-[#1b2023]'
+                        : 'bg-[#252b2e] text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    AO Trend
+                  </button>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedSolveId(null);
+                  setIsHistoryOpen(false);
+                }}
+                className="px-2.5 py-1 rounded-lg bg-[#252b2e] border border-[#41494c] text-xs font-bold text-slate-200 hover:text-white cursor-pointer"
+              >
+                {t('common.close', 'Fermer')}
+              </button>
+            </div>
+
+            {/* Contenu de la modale */}
+            <div className="flex-1 min-h-0 overflow-y-auto p-3.5 sm:p-4 flex flex-col gap-3">
+              {/* SOUS-VUE 1 : FICHE DÉTAILLÉE D'UN TEMPS ("Voir toutes les infos") */}
+              {modalSolveAnalysis ? (
+                <div className="flex flex-col gap-3">
+                  {/* Résumé principal du temps */}
+                  <div className="p-3.5 rounded-xl bg-[#202629] border border-[#394144] flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="text-[11px] text-[#94a3b8] uppercase font-bold">
+                        {t('smartCube.analysis.title', 'Détails de la résolution')}
+                      </div>
+                      <div className="text-3xl font-mono font-extrabold text-yellow-200 mt-0.5">
+                        {formatSolveTime(modalSolveAnalysis.totalMs, modalSolveAnalysis.solve.penalty)}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-center">
+                      <div className="px-2.5 py-1.5 rounded-lg bg-[#252b2e] border border-[#394144]">
+                        <div className="text-[10px] text-[#94a3b8] uppercase font-bold">Étapes</div>
+                        <div className="text-sm font-mono font-bold text-white">{modalSolveAnalysis.solve.moveCount}</div>
+                      </div>
+                      <div className="px-2.5 py-1.5 rounded-lg bg-[#252b2e] border border-[#394144]">
+                        <div className="text-[10px] text-[#94a3b8] uppercase font-bold">TPS</div>
+                        <div className="text-sm font-mono font-bold text-emerald-400">
+                          {Number(modalSolveAnalysis.solve.tps || 0).toFixed(2)}
+                        </div>
+                      </div>
+                      <div className="px-2.5 py-1.5 rounded-lg bg-[#252b2e] border border-[#394144]">
+                        <div className="text-[10px] text-[#94a3b8] uppercase font-bold">Fluence</div>
+                        <div className="text-sm font-mono font-bold text-sky-300">{modalSolveAnalysis.fluency}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tableau CFOP style Cube Station (C, F, O, P avec Temps, Étapes, TPS, %) */}
+                  <div className="p-3.5 rounded-xl bg-[#202629] border border-[#394144] flex flex-col gap-2.5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-[#9eb5aa]">
+                      {t('smartCube.cfop.title', 'Décomposition CFOP (Cross • F2L • OLL • PLL)')}
+                    </div>
+
+                    <div className="w-full h-2.5 rounded-full bg-[#252b2e] overflow-hidden flex border border-[#394144]">
+                      {modalSolveAnalysis.breakdown.map(item => (
+                        item.pct > 0 && (
+                          <div
+                            key={item.phase}
+                            style={{ width: `${item.pct}%` }}
+                            className={`${PHASE_BAR_COLORS[item.phase]} h-full`}
+                          />
+                        )
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-4 text-[11px] font-bold text-[#94a3b8] px-2 pt-1">
+                      <span>Phase</span>
+                      <span className="text-right">Temps</span>
+                      <span className="text-right">Étapes</span>
+                      <span className="text-right">TPS</span>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      {modalSolveAnalysis.breakdown.map(item => (
+                        <div
+                          key={item.phase}
+                          className="grid grid-cols-4 items-center px-2.5 py-2 rounded-lg bg-[#252b2e] border border-[#394144]/70 font-mono text-xs"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-extrabold border ${PHASE_BADGE_STYLES[item.phase]}`}>
+                              {item.shortLabel}
+                            </span>
+                            <span className="font-sans font-semibold text-slate-200">{item.name}</span>
+                          </div>
+                          <span className="text-right font-bold text-white">
+                            {item.skipped ? 'Skip' : formatSplitSeconds(item.durationMs)}
+                          </span>
+                          <span className="text-right text-slate-300">{item.moves}</span>
+                          <span className="text-right text-emerald-400">{item.tps.toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Hésitations / pauses */}
+                    <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-[#252b2e] border border-[#394144] text-xs">
+                      <span className="text-[#94a3b8] font-semibold">
+                        {t('smartCube.analysis.pauses', 'Hésitations (>450ms)')}
+                      </span>
+                      {modalSolveAnalysis.pauses.count === 0 ? (
+                        <span className="font-mono text-emerald-400 font-semibold">
+                          {t('smartCube.analysis.noPauses', 'Aucune pause')}
+                        </span>
+                      ) : (
+                        <span className="font-mono text-amber-300">
+                          {modalSolveAnalysis.pauses.count} pause(s) • {(modalSolveAnalysis.pauses.totalPauseMs / 1000).toFixed(2)}s
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Mélange utilisé */}
+                  <div className="p-3.5 rounded-xl bg-[#202629] border border-[#394144] flex flex-col gap-1">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#94a3b8]">
+                      {t('smartCube.telemetry.scramble', 'Mélange WCA')}
+                    </span>
+                    <div className="font-mono text-xs sm:text-sm text-slate-200 select-text break-words">
+                      {modalSolveAnalysis.solve.scramble || scramble}
+                    </div>
+                  </div>
+
+                  {/* Séquence de mouvements complète */}
+                  <div className="p-3.5 rounded-xl bg-[#202629] border border-[#394144] flex flex-col gap-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold uppercase tracking-wider text-[#94a3b8]">
+                        {t('smartCube.telemetry.moveTape', 'Séquence de mouvements')} ({modalSolveAnalysis.solve.moveCount})
+                      </span>
+                      {modalSolveAnalysis.solve.moves && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopySequence(modalSolveAnalysis.solve.moves)}
+                          className="text-[11px] font-semibold text-[#9eb5aa] hover:underline cursor-pointer"
+                        >
+                          {isCopied
+                            ? t('smartCube.action.sequenceCopied', 'Copié !')
+                            : t('smartCube.action.copySequence', 'Copier la séquence')}
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-1 max-h-40 overflow-y-auto p-2 rounded-lg bg-[#252b2e] border border-[#394144] font-mono text-xs select-text">
+                      {(modalSolveAnalysis.solve.moves || '')
+                        .split(/\s+/)
+                        .filter(Boolean)
+                        .map((mv, i) => (
+                          <span
+                            key={i}
+                            className={`px-1.5 py-0.5 rounded border text-[11px] font-bold ${getMoveBadgeStyle(mv[0])}`}
+                          >
+                            {mv}
+                          </span>
+                        ))}
+                    </div>
+                  </div>
+                </div>
+              ) : historyTab === 'list' ? (
+                /* SOUS-VUE 2 : LISTE DE TOUS LES TEMPS AVEC BOUTON "DÉTAILS" SUR CHAQUE LIGNE */
+                <div className="flex flex-col gap-2">
+                  {sessionSolves.length > 0 && (
+                    <div className="flex items-center justify-between text-xs text-[#94a3b8] px-1">
+                      <span>{sessionStats.count} {t('smartCube.stats.solves', 'résolutions')}</span>
+                      <button
+                        type="button"
+                        onClick={handleClearSession}
+                        className="inline-flex items-center gap-1 text-rose-400 hover:underline cursor-pointer"
+                      >
+                        <TrashIcon />
+                        <span>{t('smartCube.history.clear', 'Vider la session')}</span>
+                      </button>
+                    </div>
+                  )}
+
                   {sessionSolves.length === 0 ? (
-                    <div className="text-xs text-[#64748b] italic py-2 text-center">
+                    <div className="text-xs text-[#64748b] italic py-8 text-center">
                       {t('smartCube.history.empty', 'Aucun temps enregistré')}
                     </div>
                   ) : (
@@ -741,130 +1248,195 @@ export function SmartCubePage() {
                       const isNone = !solve.penalty || solve.penalty === 'none';
                       const isPlus2 = solve.penalty === '+2';
                       const isDnf = solve.penalty === 'dnf' || solve.isDnf;
+                      const fluency = computeFluencyScore(solve.elapsedMs ?? solve.timeMs, solve.pauses);
 
                       return (
                         <div
                           key={solve.id}
-                          className="flex items-center justify-between gap-2 p-2 rounded bg-[#252b2e] border border-[#394144]/50 text-xs hover:border-[#41494c] transition-colors"
+                          className="p-2.5 rounded-xl bg-[#202629] border border-[#394144] flex flex-col gap-2"
                         >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="font-mono text-[#94a3b8] text-[11px]">#{solveIndex}</span>
-                            <span className={`font-mono font-bold text-sm ${isDnf ? 'text-rose-400 line-through' : isPlus2 ? 'text-amber-300' : 'text-white'}`}>
-                              {formatSolveTime(solve.elapsedMs ?? solve.timeMs, solve.penalty)}
-                            </span>
-                            <span className="text-[11px] text-[#64748b] font-mono hidden sm:inline">
-                              {solve.moveCount} mvt • {solve.tps ? Number(solve.tps).toFixed(2) : '--'} TPS
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-1 shrink-0">
-                            {/* Penalty Selector Pills */}
-                            <div className="inline-flex rounded border border-[#41494c] overflow-hidden text-[10px] font-semibold">
-                              <button
-                                onClick={() => updateSolvePenalty(solve.id, 'none')}
-                                className={`px-1.5 py-0.5 transition-colors cursor-pointer ${
-                                  isNone ? 'bg-slate-700 text-white font-bold' : 'bg-transparent text-[#94a3b8] hover:bg-slate-800'
-                                }`}
-                                title="Sans pénalité"
-                              >
-                                {t('smartCube.history.penaltyOk', 'OK')}
-                              </button>
-                              <button
-                                onClick={() => updateSolvePenalty(solve.id, '+2')}
-                                className={`px-1.5 py-0.5 border-l border-[#41494c] transition-colors cursor-pointer ${
-                                  isPlus2 ? 'bg-amber-600 text-white font-bold' : 'bg-transparent text-[#94a3b8] hover:bg-slate-800'
-                                }`}
-                                title="Pénalité +2 secondes"
-                              >
-                                {t('smartCube.history.penaltyPlus2', '+2')}
-                              </button>
-                              <button
-                                onClick={() => updateSolvePenalty(solve.id, 'dnf')}
-                                className={`px-1.5 py-0.5 border-l border-[#41494c] transition-colors cursor-pointer ${
-                                  isDnf ? 'bg-rose-700 text-white font-bold' : 'bg-transparent text-[#94a3b8] hover:bg-slate-800'
-                                }`}
-                                title="Did Not Finish"
-                              >
-                                {t('smartCube.history.penaltyDnf', 'DNF')}
-                              </button>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className="font-mono text-xs text-[#94a3b8]">#{solveIndex}</span>
+                              <span className={`font-mono font-extrabold text-base ${
+                                isDnf ? 'text-rose-400 line-through' : isPlus2 ? 'text-amber-300' : 'text-white'
+                              }`}>
+                                {formatSolveTime(solve.elapsedMs ?? solve.timeMs, solve.penalty)}
+                              </span>
+                              <span className="text-[11px] font-mono text-[#94a3b8] truncate">
+                                {solve.moveCount}m • {solve.tps ? Number(solve.tps).toFixed(1) : '--'} TPS • F:{fluency}
+                              </span>
                             </div>
 
-                            {/* Delete Solve Button */}
-                            <button
-                              onClick={() => deleteSolve(solve.id)}
-                              className="p-1 rounded text-[#94a3b8] hover:text-rose-400 hover:bg-rose-950/40 transition-colors cursor-pointer"
-                              title={t('smartCube.history.delete', 'Supprimer ce temps')}
-                              aria-label={t('smartCube.history.delete', 'Supprimer ce temps')}
-                            >
-                              <TrashIcon className="w-3.5 h-3.5" />
-                            </button>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {/* Bouton pour ouvrir toutes les infos de ce temps */}
+                              <button
+                                type="button"
+                                onClick={() => setSelectedSolveId(solve.id)}
+                                className="px-2.5 py-1 rounded-lg bg-[#252b2e] border border-sky-500/50 text-sky-300 hover:bg-sky-950/60 text-[11px] font-bold cursor-pointer"
+                              >
+                                {t('smartCube.history.inspectSolve', 'Infos')}
+                              </button>
+
+                              {/* Sélecteur de pénalité */}
+                              <div className="inline-flex rounded-lg border border-[#41494c] overflow-hidden text-[10px] font-semibold">
+                                <button
+                                  type="button"
+                                  onClick={() => updateSolvePenalty(solve.id, 'none')}
+                                  className={`px-1.5 py-1 cursor-pointer ${
+                                    isNone ? 'bg-slate-700 text-white font-bold' : 'text-[#94a3b8]'
+                                  }`}
+                                >
+                                  {t('smartCube.history.penaltyOk', 'OK')}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => updateSolvePenalty(solve.id, '+2')}
+                                  className={`px-1.5 py-1 border-l border-[#41494c] cursor-pointer ${
+                                    isPlus2 ? 'bg-amber-600 text-white font-bold' : 'text-[#94a3b8]'
+                                  }`}
+                                >
+                                  {t('smartCube.history.penaltyPlus2', '+2')}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => updateSolvePenalty(solve.id, 'dnf')}
+                                  className={`px-1.5 py-1 border-l border-[#41494c] cursor-pointer ${
+                                    isDnf ? 'bg-rose-700 text-white font-bold' : 'text-[#94a3b8]'
+                                  }`}
+                                >
+                                  {t('smartCube.history.penaltyDnf', 'DNF')}
+                                </button>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => deleteSolve(solve.id)}
+                                className="p-1 rounded text-[#94a3b8] hover:text-rose-400 cursor-pointer"
+                                aria-label={t('smartCube.history.delete', 'Supprimer ce temps')}
+                              >
+                                <TrashIcon />
+                              </button>
+                            </div>
                           </div>
+
+                          {/* Puces de splits CFOP rapides */}
+                          {solve.splits && (
+                            <div className="flex flex-wrap items-center gap-1">
+                              {CFOP_PHASE_ORDER.map(phase => {
+                                const sp = solve.splits[phase];
+                                if (!sp) return null;
+                                return (
+                                  <span
+                                    key={phase}
+                                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] font-mono ${PHASE_BADGE_STYLES[phase]}`}
+                                  >
+                                    <span className="font-bold">{PHASE_SHORT_LABELS[phase]}:</span>
+                                    <span>{sp.skipped ? 'Skip' : formatSplitSeconds(sp.durationMs)}</span>
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       );
                     })
                   )}
                 </div>
+              ) : historyTab === 'stats' ? (
+                /* SOUS-VUE 3 : STATISTIQUES COMPLÈTES (façon Cube Station) */
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="p-3 rounded-xl bg-[#202629] border border-[#394144]">
+                    <div className="text-[11px] text-[#94a3b8] uppercase font-bold">{t('smartCube.stats.best', 'Meilleur (PB)')}</div>
+                    <div className="text-xl font-mono font-extrabold text-yellow-200 mt-1">
+                      {sessionStats.best !== null ? formatSolveTime(sessionStats.best) : '--'}
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-[#202629] border border-[#394144]">
+                    <div className="text-[11px] text-[#94a3b8] uppercase font-bold">{t('smartCube.stats.ao5', 'Ao5')}</div>
+                    <div className="text-xl font-mono font-extrabold text-emerald-400 mt-1">
+                      {typeof sessionStats.ao5 === 'number' ? formatSolveTime(sessionStats.ao5) : (sessionStats.ao5 || '--')}
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-[#202629] border border-[#394144]">
+                    <div className="text-[11px] text-[#94a3b8] uppercase font-bold">{t('smartCube.stats.ao12', 'Ao12')}</div>
+                    <div className="text-xl font-mono font-extrabold text-white mt-1">
+                      {typeof sessionStats.ao12 === 'number' ? formatSolveTime(sessionStats.ao12) : (sessionStats.ao12 || '--')}
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-[#202629] border border-[#394144]">
+                    <div className="text-[11px] text-[#94a3b8] uppercase font-bold">{t('smartCube.stats.mo3', 'Mo3')}</div>
+                    <div className="text-xl font-mono font-extrabold text-white mt-1">
+                      {typeof sessionStats.mo3 === 'number' ? formatSolveTime(sessionStats.mo3) : (sessionStats.mo3 || '--')}
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-[#202629] border border-[#394144]">
+                    <div className="text-[11px] text-[#94a3b8] uppercase font-bold">{t('smartCube.stats.worst', 'Moins bon')}</div>
+                    <div className="text-xl font-mono font-extrabold text-slate-300 mt-1">
+                      {sessionStats.worst !== null ? formatSolveTime(sessionStats.worst) : '--'}
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-[#202629] border border-[#394144]">
+                    <div className="text-[11px] text-[#94a3b8] uppercase font-bold">{t('smartCube.stats.avgTps', 'TPS moyen')}</div>
+                    <div className="text-xl font-mono font-extrabold text-sky-300 mt-1">
+                      {sessionStats.avgTps !== null ? sessionStats.avgTps.toFixed(2) : '--'}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* SOUS-VUE 4 : COURBE D'ÉVOLUTION AO TREND */
+                <div className="p-3.5 rounded-xl bg-[#202629] border border-[#394144] flex flex-col gap-3">
+                  <div className="text-xs font-bold uppercase tracking-wider text-[#9eb5aa]">
+                    Évolution des temps ({sessionSolves.length})
+                  </div>
+                  {sessionSolves.length < 2 ? (
+                    <div className="text-xs text-[#64748b] italic py-8 text-center">
+                      Enregistrez au moins 2 résolutions pour afficher la courbe d’évolution.
+                    </div>
+                  ) : (
+                    (() => {
+                      const validTimes = sessionSolves
+                        .filter(s => s.penalty !== 'dnf' && !s.isDnf)
+                        .map(s => (s.elapsedMs ?? s.timeMs ?? 0) + (s.penalty === '+2' ? 2000 : 0));
+                      if (validTimes.length < 2) {
+                        return <div className="text-xs text-[#64748b] py-4 text-center">Pas assez de temps valides</div>;
+                      }
+                      const minT = Math.min(...validTimes);
+                      const maxT = Math.max(...validTimes);
+                      const span = Math.max(500, maxT - minT);
+                      const points = validTimes
+                        .map((ms, idx) => {
+                          const x = (idx / (validTimes.length - 1)) * 280 + 10;
+                          const y = 110 - ((ms - minT) / span) * 90;
+                          return `${x.toFixed(1)},${y.toFixed(1)}`;
+                        })
+                        .join(' ');
+                      return (
+                        <div className="flex flex-col gap-2">
+                          <svg viewBox="0 0 300 120" className="w-full h-36 bg-[#252b2e] rounded-lg border border-[#394144]">
+                            <polyline
+                              fill="none"
+                              stroke="#38bdf8"
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              points={points}
+                            />
+                          </svg>
+                          <div className="flex justify-between text-[11px] font-mono text-[#94a3b8]">
+                            <span>PB: {formatSolveTime(minT)}</span>
+                            <span>Max: {formatSolveTime(maxT)}</span>
+                          </div>
+                        </div>
+                      );
+                    })()
+                  )}
+                </div>
               )}
             </div>
-
-            {/* Utility Controls */}
-            <div className="flex items-center gap-2 mt-auto pt-1">
-              <button
-                onClick={recalibrateGyro}
-                className="flex-1 shuffle-btn text-xs py-2 border-[#41494c]"
-              >
-                <span>{t('smartCube.action.recalibrate', 'Recentrer orientation 3D')}</span>
-              </button>
-              <button
-                onClick={resetSolve}
-                className="shuffle-btn text-xs py-2 border-[#41494c]"
-              >
-                <span>{t('smartCube.action.reset', 'Réinitialiser')}</span>
-              </button>
-            </div>
-          </section>
-
-          {/* Right Column: 3D Cube Canvas */}
-          <section className="lg:col-span-7 xl:col-span-8 relative flex flex-col rounded-xl bg-[#202629] border border-[#394144] overflow-hidden min-h-[320px] lg:min-h-0 shadow-inner">
-            <div className="absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#252b2e]/80 backdrop-blur-sm border border-[#41494c] text-[11px] font-semibold text-[#9eb5aa]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#9eb5aa]" />
-              <span>{t('smartCube.view3d', 'Vue 3D temps réel')}</span>
-            </div>
-
-            <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
-              <button
-                onClick={() => toggleGyroActive()}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border backdrop-blur-sm cursor-pointer transition-colors ${
-                  isGyroActive
-                    ? 'bg-emerald-950/60 border-emerald-500/70 text-emerald-300 hover:bg-emerald-900/60'
-                    : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:bg-slate-700/80'
-                }`}
-                title={t('smartCube.telemetry.gyroToggle', 'Gyroscope')}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full ${isGyroActive ? 'bg-emerald-400' : 'bg-slate-500'}`} />
-                <span>
-                  {t('smartCube.telemetry.gyroToggle', 'Gyro')}: {isGyroActive ? t('smartCube.telemetry.gyroActive', 'Actif') : t('smartCube.telemetry.gyroInactive', 'Inactif')}
-                </span>
-              </button>
-              <button
-                onClick={recalibrateGyro}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#252b2e]/80 backdrop-blur-sm border border-[#41494c] hover:border-[#9eb5aa] text-xs font-semibold text-[#f0f1ed] cursor-pointer"
-              >
-                <span>{t('smartCube.action.recalibrateShort', 'Recentrer')}</span>
-              </button>
-            </div>
-
-            <div className="w-full h-full">
-              <Canvas camera={{ position: [3.8, 4.2, 5.5], fov: 66 }}>
-                <ambientLight intensity={1.1} />
-                <directionalLight position={[10, 10, 10]} intensity={1} />
-                <SmartCube3DScene controlsRef={controlsRef} />
-                <TrackballControls ref={controlsRef} noPan noZoom rotateSpeed={4} />
-              </Canvas>
-            </div>
-          </section>
+          </div>
         </div>
-      </main>
+      )}
 
       {/* MAC Address Modal */}
       <MacAddressModal

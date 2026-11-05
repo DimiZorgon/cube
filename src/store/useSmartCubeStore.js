@@ -22,6 +22,28 @@ export const CFOP_PHASE_NAMES = Object.freeze({
   pll: 'PLL'
 });
 
+export const PAUSE_THRESHOLD_MS = 450;
+
+export function parseScramble(scrambleString) {
+  if (!scrambleString || typeof scrambleString !== 'string') return [];
+  return scrambleString.trim().split(/\s+/).filter(Boolean);
+}
+
+export function buildScrambleTracking(moves, index = 0, subStep = 0, error = null) {
+  const safeMoves = Array.isArray(moves) ? moves : [];
+  const safeIndex = typeof index === 'number' ? index : 0;
+  const isComplete = safeIndex >= safeMoves.length && !error;
+  return {
+    moves: safeMoves,
+    expectedMoves: safeMoves,
+    index: safeIndex,
+    currentMoveIndex: safeIndex,
+    subStep: typeof subStep === 'number' ? subStep : 0,
+    error: error || null,
+    isComplete
+  };
+}
+
 export function inverseMove(move) {
   if (!move || typeof move !== 'string') return '';
   const match = move.trim().match(/^([URFDLB])(.*)$/);
@@ -58,7 +80,7 @@ export function processScrambleTurn({
     };
   }
 
-  // Error recovery mode
+  // Mode de récupération d'erreur : annuler le mauvais mouvement
   if (errors.length > 0) {
     const expectedCorrection = errors[errors.length - 1];
     if (moveNotation === expectedCorrection) {
@@ -90,7 +112,6 @@ export function processScrambleTurn({
       errors.push(inverseMove(moveNotation));
     }
   } else {
-    // Double turn (e.g. 'R2')
     if (moveNotation === expectedMove || moveNotation === face + '2') {
       index++;
       subStep = 0;
@@ -98,15 +119,14 @@ export function processScrambleTurn({
     } else if (subStep === 0) {
       if (moveNotation === face) {
         subStep = 1;
-        currentSubStepDir = 1; // CW
+        currentSubStepDir = 1;
       } else if (moveNotation === face + "'") {
         subStep = 1;
-        currentSubStepDir = -1; // CCW
+        currentSubStepDir = -1;
       } else {
         errors.push(inverseMove(moveNotation));
       }
     } else {
-      // subStep === 1: expecting second quarter turn in same direction
       const expectedSecond = currentSubStepDir === 1 ? face : face + "'";
       const undoFirst = currentSubStepDir === 1 ? face + "'" : face;
       if (moveNotation === expectedSecond) {
@@ -144,6 +164,7 @@ export function advanceSolvePhases({
   lastPhaseMoves,
   phaseSplits,
   phaseSteps,
+  crossFace = 'auto',
   forceComplete = false
 }) {
   const splits = { ...(phaseSplits || {}) };
@@ -151,6 +172,7 @@ export function advanceSolvePhases({
   let phase = currentPhase || 'cross';
   let splitMarker = lastPhaseSplitMs || 0;
   let moveMarker = lastPhaseMoves || 0;
+  let resolvedCrossFace = crossFace || 'auto';
 
   const ranks = { cross: 0, f2l: 1, oll: 2, pll: 3, complete: 4 };
 
@@ -158,8 +180,11 @@ export function advanceSolvePhases({
   if (forceComplete) {
     targetPhase = 'complete';
   } else if (facelets) {
-    const detection = detectSolvePhase(facelets, phase, 'D');
+    const detection = detectSolvePhase(facelets, phase, resolvedCrossFace);
     targetPhase = detection.phase;
+    if (detection.detectedCrossFace && resolvedCrossFace === 'auto') {
+      resolvedCrossFace = detection.detectedCrossFace;
+    }
   }
 
   const currentRank = ranks[phase] ?? 0;
@@ -181,6 +206,7 @@ export function advanceSolvePhases({
             durationMs,
             splitMs: elapsedMs,
             moveCount,
+            moves: moveCount,
             tps,
             skipped: false
           };
@@ -195,6 +221,7 @@ export function advanceSolvePhases({
             durationMs: 0,
             splitMs: elapsedMs,
             moveCount: 0,
+            moves: 0,
             tps: 0,
             skipped: true
           };
@@ -210,7 +237,6 @@ export function advanceSolvePhases({
     for (let r = 0; r < 4; r++) {
       const stepPhase = CFOP_PHASE_ORDER[r];
       if (!splits[stepPhase]) {
-        // If this is the active phase at completion, award remaining time/moves
         const isCurrentActive = ranks[stepPhase] === currentRank;
         const durationMs = isCurrentActive ? Math.max(0, elapsedMs - splitMarker) : 0;
         const moveCount = isCurrentActive ? Math.max(0, currentMoveCount - moveMarker) : 0;
@@ -221,6 +247,7 @@ export function advanceSolvePhases({
           durationMs,
           splitMs: elapsedMs,
           moveCount,
+          moves: moveCount,
           tps,
           skipped: !isCurrentActive && durationMs === 0 && moveCount === 0
         };
@@ -240,8 +267,64 @@ export function advanceSolvePhases({
     phaseSplits: splits,
     phaseSteps: steps,
     lastPhaseSplitMs: splitMarker,
-    lastPhaseMoves: moveMarker
+    lastPhaseMoves: moveMarker,
+    crossFace: resolvedCrossFace
   };
+}
+
+export function analyzeSolvePauses(moveHistory = [], phaseSplits = {}, thresholdMs = PAUSE_THRESHOLD_MS) {
+  if (!Array.isArray(moveHistory) || moveHistory.length <= 1) {
+    return { count: 0, totalPauseMs: 0, maxPauseMs: 0, items: [] };
+  }
+
+  const startTs = moveHistory[0]?.timestamp ?? 0;
+  const crossEnd = phaseSplits?.cross?.splitMs ?? Infinity;
+  const f2lEnd = phaseSplits?.f2l?.splitMs ?? Infinity;
+  const ollEnd = phaseSplits?.oll?.splitMs ?? Infinity;
+
+  const getPhaseAtElapsed = (relMs) => {
+    if (relMs <= crossEnd) return 'cross';
+    if (relMs <= f2lEnd) return 'f2l';
+    if (relMs <= ollEnd) return 'oll';
+    return 'pll';
+  };
+
+  const items = [];
+  let totalPauseMs = 0;
+  let maxPauseMs = 0;
+
+  for (let i = 1; i < moveHistory.length; i++) {
+    const entry = moveHistory[i];
+    const stepTime = Number(entry?.stepTime) || 0;
+    if (stepTime >= thresholdMs) {
+      const relMs = Math.max(0, (entry.timestamp ?? startTs) - startTs);
+      const phase = getPhaseAtElapsed(relMs);
+      totalPauseMs += stepTime;
+      if (stepTime > maxPauseMs) maxPauseMs = stepTime;
+      items.push({
+        moveIndex: i + 1,
+        move: entry.move,
+        durationMs: stepTime,
+        atMs: relMs,
+        phase
+      });
+    }
+  }
+
+  return {
+    count: items.length,
+    totalPauseMs,
+    maxPauseMs,
+    items
+  };
+}
+
+function normalizeBatteryValue(payload) {
+  const raw = typeof payload === 'object' && payload !== null
+    ? (payload.batteryLevel ?? payload.level ?? payload.value)
+    : payload;
+  if (typeof raw !== 'number' || isNaN(raw)) return null;
+  return Math.max(0, Math.min(100, Math.round(raw)));
 }
 
 export const FIXED_SMART_CUBE_MAPPING = Object.freeze({
@@ -274,7 +357,7 @@ export function saveSessionSolves(solves) {
   try {
     localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(solves));
   } catch {
-    // Ignore storage quota or security errors
+    // Ignorer les erreurs de quota localStorage
   }
 }
 
@@ -294,9 +377,6 @@ export function generateRandomScramble(moveCount = 20) {
   return result.join(' ');
 }
 
-/**
- * Maps standard notation move (R, R', U, U', etc.) to 3D cube rotation in useCubeStore
- */
 export function applyMoveTo3D(moveNotation) {
   if (!moveNotation) return;
   try {
@@ -324,14 +404,11 @@ export function applyMoveTo3D(moveNotation) {
   }
 }
 
-/**
- * Isolated SmartCubeStore class for headless test runners and multi-instance usage
- */
 export class SmartCubeStore {
   constructor(driver = null) {
     this.driver = driver || new GanBleDriver();
     const initialScramble = "D' R2 U' B2 U F2 R2 D' F2 U B2 R' D' B' R' B2 D' F' D R2";
-    const initialMoves = initialScramble.trim().split(/\s+/).filter(Boolean);
+    const initialMoves = parseScramble(initialScramble);
 
     this.state = {
       connectionStatus: 'disconnected',
@@ -346,6 +423,7 @@ export class SmartCubeStore {
       timerStatus: 'idle',
       timerStartTime: 0,
       wallStartTime: 0,
+      inspectionStartTime: 0,
       elapsedMs: 0,
       moveCount: 0,
       currentTps: 0,
@@ -357,13 +435,9 @@ export class SmartCubeStore {
       scrambleIndex: initialMoves.length,
       scrambleSubStep: 0,
       scrambleError: null,
-      scrambleTracking: {
-        moves: initialMoves,
-        index: initialMoves.length,
-        subStep: 0,
-        error: null
-      },
+      scrambleTracking: buildScrambleTracking(initialMoves, initialMoves.length, 0, null),
       currentPhase: 'cross',
+      activeCrossFace: 'auto',
       phaseSplits: {},
       phaseSteps: []
     };
@@ -372,6 +446,7 @@ export class SmartCubeStore {
     this._errorStack = [];
     this._lastPhaseSplitMs = 0;
     this._lastPhaseMoves = 0;
+    this._autoInspectOnScrambleEnd = false;
 
     this.cubeSimulator = new CubeStateSimulator();
     this._bindDriver();
@@ -397,8 +472,10 @@ export class SmartCubeStore {
     };
 
     this.driver.onBattery = (level) => {
-      if (typeof level !== 'number' || isNaN(level)) return;
-      this.state.batteryLevel = Math.max(0, Math.min(100, Math.round(level)));
+      const normalized = normalizeBatteryValue(level);
+      if (normalized !== null) {
+        this.state.batteryLevel = normalized;
+      }
     };
 
     this.driver.onMove = (moveData) => {
@@ -410,7 +487,7 @@ export class SmartCubeStore {
     };
 
     this.driver.onFacelets = (facelets) => {
-      if (this.cubeSimulator) {
+      if (this.cubeSimulator && this.state.timerStatus !== 'scrambling') {
         this.cubeSimulator = new CubeStateSimulator(facelets);
       }
       if (this.state.timerStatus === 'solving' && this.cubeSimulator?.isSolved()) {
@@ -432,11 +509,19 @@ export class SmartCubeStore {
       this.state.connectionStatus = 'connected';
       this.state.deviceName = info?.deviceName || 'GAN 16 ui';
       this.state.macAddress = targetMac || info?.macAddress || null;
+      if (info?.batteryLevel !== undefined) {
+        const b = normalizeBatteryValue(info.batteryLevel);
+        if (b !== null) this.state.batteryLevel = b;
+      }
       await this.driver.requestHardware().catch(() => {});
       await delay(POST_CONNECT_GAP_MS);
       await this.driver.requestFacelets().catch(() => {});
       await delay(POST_CONNECT_GAP_MS);
-      await this.driver.requestBattery().catch(() => {});
+      const batt = await this.driver.requestBattery().catch(() => null);
+      const normalizedBatt = normalizeBatteryValue(batt ?? this.driver.batteryLevel);
+      if (normalizedBatt !== null) {
+        this.state.batteryLevel = normalizedBatt;
+      }
       return info;
     } catch (err) {
       this.state.connectionStatus = 'error';
@@ -454,36 +539,35 @@ export class SmartCubeStore {
   }
 
   startInspection() {
-    if (this.state.timerStatus === 'scrambled') {
+    if (this.state.timerStatus === 'scrambled' || this.state.timerStatus === 'scrambling') {
       this.state.timerStatus = 'inspecting';
+      this.state.inspectionStartTime = Date.now();
     }
   }
 
-  startScrambleTracking(scrambleString) {
+  startScrambleTracking(scrambleString, options = {}) {
     const scramble = scrambleString || generateRandomScramble(20);
-    const moves = scramble.trim().split(/\s+/).filter(Boolean);
+    const moves = parseScramble(scramble);
+    this._autoInspectOnScrambleEnd = Boolean(options.autoInspect);
     this.state.scramble = scramble;
     this.state.scrambleMoves = moves;
     this.state.scrambleIndex = 0;
     this.state.scrambleSubStep = 0;
     this.state.scrambleError = null;
-    this.state.scrambleTracking = {
-      moves,
-      index: 0,
-      subStep: 0,
-      error: null
-    };
+    this.state.scrambleTracking = buildScrambleTracking(moves, 0, 0, null);
     this._subStepDir = null;
     this._errorStack = [];
     this.state.timerStatus = 'scrambling';
     this.state.timerStartTime = 0;
     this.state.wallStartTime = 0;
+    this.state.inspectionStartTime = 0;
     this.state.moveCount = 0;
     this.state.elapsedMs = 0;
     this.state.currentTps = 0;
     this.state.finalTps = null;
     this.state.moveHistory = [];
     this.state.currentPhase = 'cross';
+    this.state.activeCrossFace = 'auto';
     this.state.phaseSplits = {};
     this.state.phaseSteps = [];
     this._lastPhaseSplitMs = 0;
@@ -499,7 +583,6 @@ export class SmartCubeStore {
     if (!moveNotation) return;
     const now = explicitTimestamp ?? (typeof moveData === 'object' && typeof moveData?.timestamp === 'number' ? moveData.timestamp : Date.now());
 
-    // Post-solve guard: turns after solve update simulator & 3D, but do not change timer status or final stats
     if (this.state.timerStatus === 'solved') {
       if (this.cubeSimulator) {
         this.cubeSimulator.applyMove(moveNotation);
@@ -508,7 +591,6 @@ export class SmartCubeStore {
       return;
     }
 
-    // Scramble tracking mode
     if (this.state.timerStatus === 'scrambling') {
       if (this.cubeSimulator) {
         this.cubeSimulator.applyMove(moveNotation);
@@ -529,15 +611,20 @@ export class SmartCubeStore {
       this.state.scrambleError = result.scrambleError;
       this._subStepDir = result.subStepDir;
       this._errorStack = result.errorStack;
-      this.state.scrambleTracking = {
-        moves: this.state.scrambleMoves,
-        index: result.scrambleIndex,
-        subStep: result.scrambleSubStep,
-        error: result.scrambleError
-      };
+      this.state.scrambleTracking = buildScrambleTracking(
+        this.state.scrambleMoves,
+        result.scrambleIndex,
+        result.scrambleSubStep,
+        result.scrambleError
+      );
 
       if (result.isCompleted) {
-        this.state.timerStatus = 'scrambled';
+        if (this._autoInspectOnScrambleEnd) {
+          this.state.timerStatus = 'inspecting';
+          this.state.inspectionStartTime = Date.now();
+        } else {
+          this.state.timerStatus = 'scrambled';
+        }
       }
       return;
     }
@@ -549,12 +636,13 @@ export class SmartCubeStore {
     let currentTimerStatus = this.state.timerStatus;
     let startTime = this.state.timerStartTime;
 
-    // Auto-start timer on first physical move if scrambled or inspecting
     if (currentTimerStatus === 'scrambled' || currentTimerStatus === 'inspecting') {
       currentTimerStatus = 'solving';
       startTime = now;
       this.state.wallStartTime = Date.now();
+      this.state.inspectionStartTime = 0;
       this.state.currentPhase = 'cross';
+      this.state.activeCrossFace = 'auto';
       this.state.phaseSplits = {};
       this.state.phaseSteps = [];
       this._lastPhaseSplitMs = 0;
@@ -593,10 +681,12 @@ export class SmartCubeStore {
         lastPhaseMoves: this._lastPhaseMoves,
         phaseSplits: this.state.phaseSplits,
         phaseSteps: this.state.phaseSteps,
+        crossFace: this.state.activeCrossFace || 'auto',
         forceComplete: isSolved
       });
 
       this.state.currentPhase = phaseUpdate.currentPhase;
+      this.state.activeCrossFace = phaseUpdate.crossFace;
       this.state.phaseSplits = phaseUpdate.phaseSplits;
       this.state.phaseSteps = phaseUpdate.phaseSteps;
       this._lastPhaseSplitMs = phaseUpdate.lastPhaseSplitMs;
@@ -605,6 +695,7 @@ export class SmartCubeStore {
       if (isSolved) {
         currentTimerStatus = 'solved';
         this.state.finalTps = tps;
+        const pauses = analyzeSolvePauses(this.state.moveHistory, this.state.phaseSplits);
         const solveRecord = {
           id: `solve-${now}-${Math.random().toString(36).slice(2, 7)}`,
           timestamp: now,
@@ -615,6 +706,12 @@ export class SmartCubeStore {
           tps,
           scramble: this.state.scramble || '',
           moves: this.state.moveHistory.map(m => m.move).join(' '),
+          moveTimings: this.state.moveHistory.map(m => ({
+            move: m.move,
+            timestamp: m.timestamp,
+            stepTime: m.stepTime
+          })),
+          pauses,
           penalty: 'none',
           isDnf: false,
           splits: { ...this.state.phaseSplits },
@@ -653,14 +750,17 @@ export class SmartCubeStore {
       lastPhaseMoves: this._lastPhaseMoves,
       phaseSplits: this.state.phaseSplits,
       phaseSteps: this.state.phaseSteps,
+      crossFace: this.state.activeCrossFace || 'auto',
       forceComplete: true
     });
     this.state.currentPhase = phaseUpdate.currentPhase;
+    this.state.activeCrossFace = phaseUpdate.crossFace;
     this.state.phaseSplits = phaseUpdate.phaseSplits;
     this.state.phaseSteps = phaseUpdate.phaseSteps;
     this._lastPhaseSplitMs = phaseUpdate.lastPhaseSplitMs;
     this._lastPhaseMoves = phaseUpdate.lastPhaseMoves;
 
+    const pauses = analyzeSolvePauses(this.state.moveHistory, this.state.phaseSplits);
     const solveRecord = {
       id: `solve-${now}-${Math.random().toString(36).slice(2, 7)}`,
       timestamp: now,
@@ -671,6 +771,12 @@ export class SmartCubeStore {
       tps: finalTps,
       scramble: this.state.scramble || '',
       moves: this.state.moveHistory.map(m => m.move).join(' '),
+      moveTimings: this.state.moveHistory.map(m => ({
+        move: m.move,
+        timestamp: m.timestamp,
+        stepTime: m.stepTime
+      })),
+      pauses,
       penalty: 'none',
       isDnf: false,
       splits: { ...this.state.phaseSplits },
@@ -683,31 +789,28 @@ export class SmartCubeStore {
   newScramble(customScramble, options = {}) {
     const scramble = customScramble || generateRandomScramble(20);
     if (options?.trackScramble) {
-      return this.startScrambleTracking(scramble);
+      return this.startScrambleTracking(scramble, options);
     }
-    const moves = scramble.trim().split(/\s+/).filter(Boolean);
+    const moves = parseScramble(scramble);
     this.state.scramble = scramble;
     this.state.scrambleMoves = moves;
     this.state.scrambleIndex = moves.length;
     this.state.scrambleSubStep = 0;
     this.state.scrambleError = null;
-    this.state.scrambleTracking = {
-      moves,
-      index: moves.length,
-      subStep: 0,
-      error: null
-    };
+    this.state.scrambleTracking = buildScrambleTracking(moves, moves.length, 0, null);
     this._subStepDir = null;
     this._errorStack = [];
-    this.state.timerStatus = 'scrambled';
+    this.state.timerStatus = options?.autoInspect ? 'inspecting' : 'scrambled';
     this.state.timerStartTime = 0;
     this.state.wallStartTime = 0;
+    this.state.inspectionStartTime = options?.autoInspect ? Date.now() : 0;
     this.state.moveCount = 0;
     this.state.elapsedMs = 0;
     this.state.currentTps = 0;
     this.state.finalTps = null;
     this.state.moveHistory = [];
     this.state.currentPhase = 'cross';
+    this.state.activeCrossFace = 'auto';
     this.state.phaseSplits = {};
     this.state.phaseSteps = [];
     this._lastPhaseSplitMs = 0;
@@ -733,12 +836,14 @@ export class SmartCubeStore {
     this.state.timerStatus = 'idle';
     this.state.timerStartTime = 0;
     this.state.wallStartTime = 0;
+    this.state.inspectionStartTime = 0;
     this.state.elapsedMs = 0;
     this.state.moveCount = 0;
     this.state.currentTps = 0;
     this.state.finalTps = null;
     this.state.moveHistory = [];
     this.state.currentPhase = 'cross';
+    this.state.activeCrossFace = 'auto';
     this.state.phaseSplits = {};
     this.state.phaseSteps = [];
     this._lastPhaseSplitMs = 0;
@@ -748,12 +853,7 @@ export class SmartCubeStore {
     this.state.scrambleError = null;
     this._subStepDir = null;
     this._errorStack = [];
-    this.state.scrambleTracking = {
-      moves: this.state.scrambleMoves || [],
-      index: 0,
-      subStep: 0,
-      error: null
-    };
+    this.state.scrambleTracking = buildScrambleTracking(this.state.scrambleMoves || [], 0, 0, null);
     if (this.cubeSimulator) {
       this.cubeSimulator = new CubeStateSimulator();
     }
@@ -788,19 +888,18 @@ export class SmartCubeStore {
   }
 }
 
-// Module-level simulator instance and tracking state for the Zustand singleton store
+// État interne du store singleton Zustand (utilisé par l'interface React)
 let zustandCubeSimulator = new CubeStateSimulator();
 let zustandSubStepDir = null;
 let zustandErrorStack = [];
 let zustandLastPhaseSplitMs = 0;
 let zustandLastPhaseMoves = 0;
+let zustandAutoInspect = true;
 
 const defaultScramble = "D' R2 U' B2 U F2 R2 D' F2 U B2 R' D' B' R' B2 D' F' D R2";
-const defaultMoves = defaultScramble.trim().split(/\s+/).filter(Boolean);
+const defaultMoves = parseScramble(defaultScramble);
 
-// Global Zustand singleton store for React application components
 const rawZustandStore = create((set, get) => {
-  // Bind driver callbacks once on initialization
   defaultGanBleDriver.onStatusChange = (status, error) => {
     set({
       connectionStatus: status,
@@ -812,9 +911,10 @@ const rawZustandStore = create((set, get) => {
   };
 
   defaultGanBleDriver.onBattery = (level) => {
-    if (typeof level !== 'number' || isNaN(level)) return;
-    const clamped = Math.max(0, Math.min(100, Math.round(level)));
-    set({ batteryLevel: clamped });
+    const normalized = normalizeBatteryValue(level);
+    if (normalized !== null) {
+      set({ batteryLevel: normalized });
+    }
   };
 
   defaultGanBleDriver.onMove = (moveData) => {
@@ -826,7 +926,10 @@ const rawZustandStore = create((set, get) => {
   };
 
   defaultGanBleDriver.onFacelets = (facelets) => {
-    zustandCubeSimulator = new CubeStateSimulator(facelets);
+    // Ne pas écraser le simulateur en plein mélange guidé
+    if (get().timerStatus !== 'scrambling') {
+      zustandCubeSimulator = new CubeStateSimulator(facelets);
+    }
     if (get().timerStatus === 'solving' && zustandCubeSimulator.isSolved()) {
       get()._stopTimer();
     }
@@ -845,9 +948,11 @@ const rawZustandStore = create((set, get) => {
     isGyroActive: true,
     gyroZeroQuaternion: null,
 
-    timerStatus: 'idle',
+    // Par défaut, démarre directement en mode guide de mélange interactif
+    timerStatus: 'scrambling',
     timerStartTime: 0,
     wallStartTime: 0,
+    inspectionStartTime: 0,
     elapsedMs: 0,
     moveCount: 0,
     currentTps: 0,
@@ -856,16 +961,12 @@ const rawZustandStore = create((set, get) => {
     sessionSolves: loadSessionSolves(),
     scramble: defaultScramble,
     scrambleMoves: defaultMoves,
-    scrambleIndex: defaultMoves.length,
+    scrambleIndex: 0,
     scrambleSubStep: 0,
     scrambleError: null,
-    scrambleTracking: {
-      moves: defaultMoves,
-      index: defaultMoves.length,
-      subStep: 0,
-      error: null
-    },
+    scrambleTracking: buildScrambleTracking(defaultMoves, 0, 0, null),
     currentPhase: 'cross',
+    activeCrossFace: 'auto',
     phaseSplits: {},
     phaseSteps: [],
 
@@ -886,6 +987,20 @@ const rawZustandStore = create((set, get) => {
       set({ macAddress: null });
     },
 
+    refreshBattery: async () => {
+      if (get().connectionStatus !== 'connected') return null;
+      try {
+        const res = await defaultGanBleDriver.requestBattery();
+        const normalized = normalizeBatteryValue(res ?? defaultGanBleDriver.batteryLevel);
+        if (normalized !== null) {
+          set({ batteryLevel: normalized });
+        }
+        return normalized;
+      } catch {
+        return null;
+      }
+    },
+
     connect: async (deviceInstance = null, explicitMac = null) => {
       const state = get();
       const targetMac = explicitMac || state.macAddress || loadCachedMac();
@@ -902,17 +1017,33 @@ const rawZustandStore = create((set, get) => {
           defaultGanBleDriver.setMacAddress(targetMac);
         }
         const info = await defaultGanBleDriver.connect(deviceInstance);
+        const initialBatt = normalizeBatteryValue(info?.batteryLevel ?? defaultGanBleDriver.batteryLevel);
         set({
           connectionStatus: 'connected',
-          deviceName: info.deviceName || 'GAN 16 ui',
-          macAddress: targetMac || info.macAddress || null
+          deviceName: info?.deviceName || 'GAN 16 ui',
+          macAddress: targetMac || info?.macAddress || null,
+          ...(initialBatt !== null ? { batteryLevel: initialBatt } : {})
         });
+
+        // Lance automatiquement le guide de mélange à la connexion si inactif ou terminé
+        if (get().timerStatus === 'idle' || get().timerStatus === 'solved') {
+          get().startScrambleTracking(get().scramble, { autoInspect: true });
+        }
 
         await defaultGanBleDriver.requestHardware().catch(() => {});
         await delay(POST_CONNECT_GAP_MS);
         await defaultGanBleDriver.requestFacelets().catch(() => {});
         await delay(POST_CONNECT_GAP_MS);
-        await defaultGanBleDriver.requestBattery().catch(() => {});
+        await get().refreshBattery();
+
+        // Relances non bloquantes si le cube GAN ignore la 1re requête batterie pendant l'init GATT
+        for (const waitMs of [500, 1400, 2800]) {
+          setTimeout(() => {
+            if (get().connectionStatus === 'connected' && get().batteryLevel === null) {
+              get().refreshBattery();
+            }
+          }, waitMs);
+        }
       } catch (err) {
         set({
           connectionStatus: 'error',
@@ -932,35 +1063,38 @@ const rawZustandStore = create((set, get) => {
       });
     },
 
-    startScrambleTracking: (scrambleString) => {
+    startScrambleTracking: (scrambleString, options = {}) => {
       const scramble = scrambleString || generateRandomScramble(20);
-      const moves = scramble.trim().split(/\s+/).filter(Boolean);
+      const moves = parseScramble(scramble);
       zustandCubeSimulator = new CubeStateSimulator();
       zustandSubStepDir = null;
       zustandErrorStack = [];
       zustandLastPhaseSplitMs = 0;
       zustandLastPhaseMoves = 0;
+      zustandAutoInspect = options.autoInspect !== undefined ? Boolean(options.autoInspect) : true;
+      try {
+        useCubeStore.getState().initCube(3);
+      } catch {
+        // Ignore en environnement Node sans WebGL
+      }
       set({
         scramble,
         scrambleMoves: moves,
         scrambleIndex: 0,
         scrambleSubStep: 0,
         scrambleError: null,
-        scrambleTracking: {
-          moves,
-          index: 0,
-          subStep: 0,
-          error: null
-        },
+        scrambleTracking: buildScrambleTracking(moves, 0, 0, null),
         timerStatus: 'scrambling',
         timerStartTime: 0,
         wallStartTime: 0,
+        inspectionStartTime: 0,
         elapsedMs: 0,
         moveCount: 0,
         currentTps: 0,
         finalTps: null,
         moveHistory: [],
         currentPhase: 'cross',
+        activeCrossFace: 'auto',
         phaseSplits: {},
         phaseSteps: []
       });
@@ -968,8 +1102,12 @@ const rawZustandStore = create((set, get) => {
     },
 
     startInspection: () => {
-      if (get().timerStatus === 'scrambled') {
-        set({ timerStatus: 'inspecting' });
+      const st = get().timerStatus;
+      if (st === 'scrambled' || st === 'scrambling') {
+        set({
+          timerStatus: 'inspecting',
+          inspectionStartTime: Date.now()
+        });
       }
     },
 
@@ -979,14 +1117,12 @@ const rawZustandStore = create((set, get) => {
       if (!moveNotation) return;
       const now = explicitTimestamp ?? (typeof moveData === 'object' && typeof moveData?.timestamp === 'number' ? moveData.timestamp : Date.now());
 
-      // Post-solve guard: ignore turns after solve without re-entering solving state
       if (state.timerStatus === 'solved') {
         zustandCubeSimulator.applyMove(moveNotation);
         applyMoveTo3D(moveNotation);
         return;
       }
 
-      // Scramble tracking mode
       if (state.timerStatus === 'scrambling') {
         zustandCubeSimulator.applyMove(moveNotation);
         applyMoveTo3D(moveNotation);
@@ -1003,17 +1139,23 @@ const rawZustandStore = create((set, get) => {
         zustandSubStepDir = result.subStepDir;
         zustandErrorStack = result.errorStack;
 
+        const nextStatusPatch = result.isCompleted
+          ? (zustandAutoInspect
+              ? { timerStatus: 'inspecting', inspectionStartTime: Date.now() }
+              : { timerStatus: 'scrambled' })
+          : {};
+
         set({
           scrambleIndex: result.scrambleIndex,
           scrambleSubStep: result.scrambleSubStep,
           scrambleError: result.scrambleError,
-          scrambleTracking: {
-            moves: state.scrambleMoves,
-            index: result.scrambleIndex,
-            subStep: result.scrambleSubStep,
-            error: result.scrambleError
-          },
-          ...(result.isCompleted ? { timerStatus: 'scrambled' } : {})
+          scrambleTracking: buildScrambleTracking(
+            state.scrambleMoves,
+            result.scrambleIndex,
+            result.scrambleSubStep,
+            result.scrambleError
+          ),
+          ...nextStatusPatch
         });
         return;
       }
@@ -1024,6 +1166,7 @@ const rawZustandStore = create((set, get) => {
       let startTime = state.timerStartTime;
       let wallStart = state.wallStartTime;
       let currentPhase = state.currentPhase;
+      let activeCrossFace = state.activeCrossFace || 'auto';
       let phaseSplits = state.phaseSplits;
       let phaseSteps = state.phaseSteps;
 
@@ -1032,6 +1175,7 @@ const rawZustandStore = create((set, get) => {
         startTime = now;
         wallStart = Date.now();
         currentPhase = 'cross';
+        activeCrossFace = 'auto';
         phaseSplits = {};
         phaseSteps = [];
         zustandLastPhaseSplitMs = 0;
@@ -1075,10 +1219,12 @@ const rawZustandStore = create((set, get) => {
           lastPhaseMoves: zustandLastPhaseMoves,
           phaseSplits,
           phaseSteps,
+          crossFace: activeCrossFace,
           forceComplete: isSolved
         });
 
         currentPhase = phaseUpdate.currentPhase;
+        activeCrossFace = phaseUpdate.crossFace;
         phaseSplits = phaseUpdate.phaseSplits;
         phaseSteps = phaseUpdate.phaseSteps;
         zustandLastPhaseSplitMs = phaseUpdate.lastPhaseSplitMs;
@@ -1087,6 +1233,7 @@ const rawZustandStore = create((set, get) => {
         if (isSolved) {
           currentTimerStatus = 'solved';
           finalTps = tps;
+          const pauses = analyzeSolvePauses(newHistory, phaseSplits);
           const solveRecord = {
             id: `solve-${now}-${Math.random().toString(36).slice(2, 7)}`,
             timestamp: now,
@@ -1097,6 +1244,12 @@ const rawZustandStore = create((set, get) => {
             tps,
             scramble: state.scramble || '',
             moves: newHistory.map(m => m.move).join(' '),
+            moveTimings: newHistory.map(m => ({
+              move: m.move,
+              timestamp: m.timestamp,
+              stepTime: m.stepTime
+            })),
+            pauses,
             penalty: 'none',
             isDnf: false,
             splits: { ...phaseSplits },
@@ -1118,6 +1271,7 @@ const rawZustandStore = create((set, get) => {
         finalTps,
         sessionSolves: nextSessionSolves,
         currentPhase,
+        activeCrossFace,
         phaseSplits,
         phaseSteps
       });
@@ -1141,11 +1295,13 @@ const rawZustandStore = create((set, get) => {
         lastPhaseMoves: zustandLastPhaseMoves,
         phaseSplits: state.phaseSplits,
         phaseSteps: state.phaseSteps,
+        crossFace: state.activeCrossFace || 'auto',
         forceComplete: true
       });
       zustandLastPhaseSplitMs = phaseUpdate.lastPhaseSplitMs;
       zustandLastPhaseMoves = phaseUpdate.lastPhaseMoves;
 
+      const pauses = analyzeSolvePauses(state.moveHistory, phaseUpdate.phaseSplits);
       const solveRecord = {
         id: `solve-${now}-${Math.random().toString(36).slice(2, 7)}`,
         timestamp: now,
@@ -1156,6 +1312,12 @@ const rawZustandStore = create((set, get) => {
         tps: finalTps,
         scramble: state.scramble || '',
         moves: state.moveHistory.map(m => m.move).join(' '),
+        moveTimings: state.moveHistory.map(m => ({
+          move: m.move,
+          timestamp: m.timestamp,
+          stepTime: m.stepTime
+        })),
+        pauses,
         penalty: 'none',
         isDnf: false,
         splits: { ...phaseUpdate.phaseSplits },
@@ -1170,6 +1332,7 @@ const rawZustandStore = create((set, get) => {
         currentTps: finalTps,
         sessionSolves: nextSessionSolves,
         currentPhase: phaseUpdate.currentPhase,
+        activeCrossFace: phaseUpdate.crossFace,
         phaseSplits: phaseUpdate.phaseSplits,
         phaseSteps: phaseUpdate.phaseSteps
       });
@@ -1178,9 +1341,9 @@ const rawZustandStore = create((set, get) => {
     newScramble: (customScramble, options = {}) => {
       const scramble = customScramble || generateRandomScramble(20);
       if (options?.trackScramble) {
-        return get().startScrambleTracking(scramble);
+        return get().startScrambleTracking(scramble, options);
       }
-      const moves = scramble.trim().split(/\s+/).filter(Boolean);
+      const moves = parseScramble(scramble);
       zustandCubeSimulator = new CubeStateSimulator();
       zustandCubeSimulator.applyMoves(scramble);
       zustandSubStepDir = null;
@@ -1193,21 +1356,18 @@ const rawZustandStore = create((set, get) => {
         scrambleIndex: moves.length,
         scrambleSubStep: 0,
         scrambleError: null,
-        scrambleTracking: {
-          moves,
-          index: moves.length,
-          subStep: 0,
-          error: null
-        },
-        timerStatus: 'scrambled',
+        scrambleTracking: buildScrambleTracking(moves, moves.length, 0, null),
+        timerStatus: options?.autoInspect ? 'inspecting' : 'scrambled',
         timerStartTime: 0,
         wallStartTime: 0,
+        inspectionStartTime: options?.autoInspect ? Date.now() : 0,
         elapsedMs: 0,
         moveCount: 0,
         moveHistory: [],
         currentTps: 0,
         finalTps: null,
         currentPhase: 'cross',
+        activeCrossFace: 'auto',
         phaseSplits: {},
         phaseSteps: []
       });
@@ -1227,15 +1387,22 @@ const rawZustandStore = create((set, get) => {
     },
 
     resetSolve: () => {
+      const moves = get().scrambleMoves || [];
       zustandCubeSimulator = new CubeStateSimulator();
       zustandSubStepDir = null;
       zustandErrorStack = [];
       zustandLastPhaseSplitMs = 0;
       zustandLastPhaseMoves = 0;
+      try {
+        useCubeStore.getState().initCube(3);
+      } catch {
+        // Ignore en environnement Node
+      }
       set({
-        timerStatus: 'idle',
+        timerStatus: 'scrambling',
         timerStartTime: 0,
         wallStartTime: 0,
+        inspectionStartTime: 0,
         elapsedMs: 0,
         moveCount: 0,
         currentTps: 0,
@@ -1244,13 +1411,9 @@ const rawZustandStore = create((set, get) => {
         scrambleIndex: 0,
         scrambleSubStep: 0,
         scrambleError: null,
-        scrambleTracking: {
-          moves: get().scrambleMoves || [],
-          index: 0,
-          subStep: 0,
-          error: null
-        },
+        scrambleTracking: buildScrambleTracking(moves, 0, 0, null),
         currentPhase: 'cross',
+        activeCrossFace: 'auto',
         phaseSplits: {},
         phaseSteps: []
       });
@@ -1289,12 +1452,6 @@ const rawZustandStore = create((set, get) => {
   };
 });
 
-/**
- * Dual polymorphic export:
- * - As a React hook: `useSmartCubeStore(selector)`
- * - As a static store: `useSmartCubeStore.getState()`
- * - As a constructor for E2E tests: `new useSmartCubeStore(driver)`
- */
 export function useSmartCubeStore(...args) {
   if (new.target) {
     return new SmartCubeStore(...args);
@@ -1302,7 +1459,6 @@ export function useSmartCubeStore(...args) {
   return rawZustandStore(...args);
 }
 
-// Copy Zustand API methods onto useSmartCubeStore
 Object.assign(useSmartCubeStore, rawZustandStore);
 useSmartCubeStore.getState = rawZustandStore.getState;
 useSmartCubeStore.setState = rawZustandStore.setState;
