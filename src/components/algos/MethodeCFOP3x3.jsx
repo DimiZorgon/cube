@@ -82,7 +82,7 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo, activeSection: controlledSe
               onClick={() => setIsQuizOpen(true)}
               title={t('quiz.startTraining', { defaultValue: 'Entraînement Quiz' })}
             >
-              <span>⚡ {t('quiz.modeTitle', { defaultValue: 'Quiz' })}</span>
+              <span>{t('quiz.modeTitle', { defaultValue: 'Quiz' })}</span>
             </button>
           )}
           <button

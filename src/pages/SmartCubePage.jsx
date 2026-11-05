@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next';
 import * as THREE from 'three';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { TrackballControls } from '@react-three/drei';
-import confetti from 'canvas-confetti';
 import { ArrowLeft, AlertTriangle, Sparkles, Clock } from '@getpapillon/papicons';
 import { RubiksCube } from '../components/RubiksCube';
 import { MacAddressModal } from '../components/SmartCube/MacAddressModal';
@@ -30,17 +29,17 @@ const PHASE_SHORT_LABELS = {
 };
 
 const PHASE_BAR_COLORS = {
-  cross: 'bg-sky-500',
-  f2l: 'bg-emerald-500',
-  oll: 'bg-amber-500',
-  pll: 'bg-purple-500'
+  cross: 'bg-sky-600',
+  f2l: 'bg-[#385a49]',
+  oll: 'bg-amber-600',
+  pll: 'bg-violet-600'
 };
 
 const PHASE_BADGE_STYLES = {
-  cross: 'border-sky-500/50 bg-sky-950/50 text-sky-300',
-  f2l: 'border-emerald-500/50 bg-emerald-950/50 text-emerald-300',
-  oll: 'border-amber-500/50 bg-amber-950/50 text-amber-300',
-  pll: 'border-purple-500/50 bg-purple-950/50 text-purple-300'
+  cross: 'border-[#41494c] bg-[#252b2e] text-sky-300',
+  f2l: 'border-[#41494c] bg-[#252b2e] text-[#9eb5aa]',
+  oll: 'border-[#41494c] bg-[#252b2e] text-amber-300',
+  pll: 'border-[#41494c] bg-[#252b2e] text-violet-300'
 };
 
 function safeNormalizeQuaternion([x, y, z, w]) {
@@ -317,26 +316,26 @@ function ConnectionStatusPill({ status }) {
     switch (status) {
       case 'connecting':
         return {
-          container: 'bg-amber-950/40 border-amber-600/70 text-amber-300',
-          dot: 'bg-amber-400 animate-pulse',
+          container: 'bg-[#252b2e] border-[#41494c] text-amber-300',
+          dot: 'bg-amber-400',
           label: t('smartCube.status.connecting', 'Connexion...')
         };
       case 'connected':
         return {
-          container: 'bg-emerald-950/40 border-emerald-600/70 text-emerald-300',
-          dot: 'bg-emerald-400',
+          container: 'bg-[#252b2e] border-[#385a49] text-[#9eb5aa]',
+          dot: 'bg-[#9eb5aa]',
           label: t('smartCube.status.connected', 'Connecté')
         };
       case 'error':
         return {
-          container: 'bg-rose-950/40 border-rose-600/70 text-rose-300',
+          container: 'bg-[#252b2e] border-rose-900/60 text-rose-300',
           dot: 'bg-rose-500',
           label: t('smartCube.status.error', 'Erreur')
         };
       case 'disconnected':
       default:
         return {
-          container: 'bg-slate-800/80 border-slate-700 text-slate-300',
+          container: 'bg-[#252b2e] border-[#394144] text-slate-400',
           dot: 'bg-slate-500',
           label: t('smartCube.status.disconnected', 'Non connecté')
         };
@@ -391,7 +390,6 @@ export function SmartCubePage() {
   const refreshBattery = useSmartCubeStore(state => state.refreshBattery);
   const newScramble = useSmartCubeStore(state => state.newScramble);
   const startScrambleTracking = useSmartCubeStore(state => state.startScrambleTracking);
-  const startInspection = useSmartCubeStore(state => state.startInspection);
   const recalibrateGyro = useSmartCubeStore(state => state.recalibrateGyro);
   const resetSolve = useSmartCubeStore(state => state.resetSolve);
   const deleteSolve = useSmartCubeStore(state => state.deleteSolve);
@@ -443,15 +441,10 @@ export function SmartCubePage() {
 
   const liveDisplayMs = timerStatus === 'solving' ? liveTickMs : elapsedMs;
 
-  // Confettis + son de victoire dès que le cube est résolu
+  // Son de victoire dès que le cube est résolu
   const prevTimerStatus = useRef(timerStatus);
   useEffect(() => {
     if (prevTimerStatus.current === 'solving' && timerStatus === 'solved') {
-      try {
-        confetti({ particleCount: 70, spread: 60, origin: { y: 0.75 } });
-      } catch {
-        // Fallback sécurisé
-      }
       try {
         playSolveVictorySound();
       } catch {
@@ -521,7 +514,7 @@ export function SmartCubePage() {
     if (Array.isArray(scrambleTracking?.expectedMoves) && scrambleTracking.expectedMoves.length > 0) {
       return scrambleTracking.expectedMoves;
     }
-    return (scramble || "D' R2 U' B2 U F2 R2 D' F2 U B2 R' D' B' R' B2 D' F' D R2")
+    return (scramble || '')
       .trim()
       .split(/\s+/)
       .filter(Boolean);
@@ -595,7 +588,7 @@ export function SmartCubePage() {
           <button
             type="button"
             onClick={() => refreshBattery && refreshBattery()}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold bg-slate-800/80 border border-slate-700 text-slate-200 hover:border-slate-500 cursor-pointer shrink-0"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold bg-[#252b2e] border border-[#41494c] text-slate-200 hover:border-[#9eb5aa] cursor-pointer shrink-0"
             title={t('smartCube.telemetry.battery', 'Batterie')}
           >
             <BatteryIcon level={batteryLevel} isConnected={connectionStatus === 'connected'} />
@@ -622,7 +615,7 @@ export function SmartCubePage() {
                 ? t('smartCube.action.disconnect', 'Déconnecter')
                 : connectionStatus === 'connecting'
                 ? t('smartCube.action.connecting', 'Connexion...')
-                : t('smartCube.action.connect', 'Connecter')}
+                : t('smartCube.action.connect', 'Connecter cube')}
             </span>
           </button>
         </div>
@@ -644,7 +637,7 @@ export function SmartCubePage() {
       )}
 
       {connectionStatus === 'error' && (
-        <div className="mx-3 mt-2 shrink-0 flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-rose-950/70 border border-rose-600/70 text-rose-200 text-xs">
+        <div className="mx-3 mt-2 shrink-0 flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-[#2b2123] border border-rose-900/60 text-rose-200 text-xs">
           <div className="flex items-center gap-2 min-w-0">
             <AlertTriangle size={15} className="text-rose-400 shrink-0" />
             <span className="truncate">{errorMessage || t('smartCube.status.error', 'Erreur Bluetooth')}</span>
@@ -652,13 +645,13 @@ export function SmartCubePage() {
           <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={openMacModal}
-              className="px-2 py-0.5 text-[11px] font-semibold rounded bg-rose-900/70 border border-rose-500 text-rose-100 cursor-pointer"
+              className="px-2 py-0.5 text-[11px] font-semibold rounded bg-rose-950/80 border border-rose-800 text-rose-200 hover:border-rose-600 cursor-pointer"
             >
               {t('smartCube.action.changeMac', 'MAC')}
             </button>
             <button
               onClick={() => connect()}
-              className="px-2 py-0.5 text-[11px] font-semibold rounded bg-[#252b2e] border border-[#41494c] text-white cursor-pointer"
+              className="px-2 py-0.5 text-[11px] font-semibold rounded bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-white cursor-pointer"
             >
               {t('common.retry', 'Réessayer')}
             </button>
@@ -666,9 +659,9 @@ export function SmartCubePage() {
         </div>
       )}
 
-      {/* 2. BANDEAU DE MÉLANGE (Visible pendant le mélange et une fois la résolution terminée ; disparaît pendant l'inspection et le solve) */}
+      {/* 2. BANDEAU DE MÉLANGE */}
       {showScrambleBanner && (
-        <section className="mx-2.5 sm:mx-auto sm:w-full sm:max-w-2xl mt-2 px-3 py-2.5 rounded-xl bg-[#202629]/95 border border-[#394144] shadow-md shrink-0 z-10">
+        <section className="mx-2.5 sm:mx-auto sm:w-full sm:max-w-2xl mt-2 px-3 py-2.5 rounded-xl bg-[#202629] border border-[#394144] shrink-0 z-10">
           <div className="flex items-center justify-between gap-2 mb-1.5 text-[11px]">
             <div className="flex items-center gap-2">
               <span className="font-bold uppercase tracking-wider text-[#9eb5aa]">
@@ -680,7 +673,7 @@ export function SmartCubePage() {
                 </span>
               )}
               {timerStatus === 'solved' && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950/80 border border-emerald-500/70 text-emerald-300">
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-[#252b2e] border border-[#385a49] text-[#9eb5aa]">
                   {t('smartCube.scramble.readyBadge', 'Terminé')}
                 </span>
               )}
@@ -690,7 +683,7 @@ export function SmartCubePage() {
               {timerStatus === 'scrambling' && (
                 <button
                   onClick={() => newScramble(scramble, { autoInspect: true })}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#252b2e] border border-[#41494c] text-[11px] font-semibold text-orange-300 hover:border-orange-400 cursor-pointer"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#252b2e] border border-[#41494c] text-[11px] font-semibold text-slate-300 hover:border-[#9eb5aa] hover:text-white cursor-pointer"
                 >
                   <EyeIcon className="w-3 h-3" />
                   <span>{t('smartCube.action.inspect', 'Passer')}</span>
@@ -712,34 +705,34 @@ export function SmartCubePage() {
 
           {/* Alerte d'erreur si une mauvaise face est tournée */}
           {timerStatus === 'scrambling' && scrambleError && (
-            <div className="mb-1.5 flex items-center justify-between gap-2 px-2.5 py-1 rounded-lg bg-rose-950/90 border border-rose-500 text-rose-100 text-xs font-semibold animate-pulse">
-              <span>{t('smartCube.scramble.wrongMove', 'Mauvaise face ! Annulez avec :')}</span>
-              <span className="px-2 py-0.5 rounded font-mono font-extrabold bg-rose-500 text-white">
+            <div className="mb-1.5 flex items-center justify-between gap-2 px-2.5 py-1 rounded-lg bg-[#2f2224] border border-rose-900/70 text-rose-200 text-xs font-medium">
+              <span>{t('smartCube.scramble.wrongMove', 'Mauvais mouvement ! Inverse ajouté au mélange :')}</span>
+              <span className="px-2 py-0.5 rounded font-mono font-bold bg-rose-900/80 text-white">
                 {scrambleError}
               </span>
             </div>
           )}
 
-          {/* Jetons du mélange façon Cube Station */}
+          {/* Jetons du mélange */}
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1 sm:gap-1.5 select-text">
             {activeScrambleMoves.map((moveToken, idx) => {
               const isDone = timerStatus === 'scrambling' ? idx < activeScrambleIndex : timerStatus === 'solved';
               const isCurrent = timerStatus === 'scrambling' && idx === activeScrambleIndex;
               const isHalfDone = isCurrent && scrambleSubStep === 1;
 
-              let tokenClass = 'text-slate-200 border-transparent';
+              let tokenClass = 'text-slate-300 border-transparent';
               if (isDone) {
-                tokenClass = 'text-emerald-400/50 border-transparent';
+                tokenClass = 'text-slate-500 border-transparent';
               } else if (isCurrent) {
                 tokenClass = scrambleError
-                  ? 'bg-rose-500 text-white border-rose-300 shadow-[0_0_10px_rgba(244,63,94,0.6)] scale-110'
-                  : 'bg-sky-500 text-white border-sky-300 shadow-[0_0_10px_rgba(14,165,233,0.6)] scale-110';
+                  ? 'bg-rose-900/60 text-rose-200 border-rose-500/70'
+                  : 'bg-[#303a37] text-white border-[#9eb5aa]';
               }
 
               return (
                 <span
                   key={`${moveToken}-${idx}`}
-                  className={`inline-flex items-center justify-center min-w-[26px] px-1.5 py-0.5 rounded-full border font-mono text-xs sm:text-sm font-extrabold transition-all ${tokenClass}`}
+                  className={`inline-flex items-center justify-center min-w-[26px] px-1.5 py-0.5 rounded border font-mono text-xs sm:text-sm font-semibold transition-colors ${tokenClass}`}
                 >
                   <span>{moveToken}</span>
                   {isHalfDone && (
@@ -759,14 +752,14 @@ export function SmartCubePage() {
           <button
             type="button"
             onClick={() => toggleGyroActive()}
-            className={`pointer-events-auto inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border backdrop-blur-sm cursor-pointer transition-colors ${
+            className={`pointer-events-auto inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold border cursor-pointer transition-colors ${
               isGyroActive
-                ? 'bg-[#202629]/80 border-emerald-500/50 text-emerald-300'
-                : 'bg-[#202629]/80 border-[#394144] text-slate-400'
+                ? 'bg-[#202629] border-[#385a49] text-[#9eb5aa]'
+                : 'bg-[#202629] border-[#394144] text-slate-400'
             }`}
             title={t('smartCube.telemetry.gyroToggle', 'Gyroscope')}
           >
-            <span className={`w-1.5 h-1.5 rounded-full ${isGyroActive ? 'bg-emerald-400' : 'bg-slate-500'}`} />
+            <span className={`w-1.5 h-1.5 rounded-full ${isGyroActive ? 'bg-[#9eb5aa]' : 'bg-slate-500'}`} />
             <span>
               {t('smartCube.telemetry.gyroToggle', 'Gyro')}: {isGyroActive ? t('smartCube.telemetry.gyroActive', 'Actif') : t('smartCube.telemetry.gyroInactive', 'Inactif')}
             </span>
@@ -776,7 +769,7 @@ export function SmartCubePage() {
             <button
               type="button"
               onClick={recalibrateGyro}
-              className="px-2.5 py-1 rounded-full bg-[#202629]/80 backdrop-blur-sm border border-[#394144] hover:border-[#9eb5aa] text-[11px] font-semibold text-[#f0f1ed] cursor-pointer"
+              className="px-2.5 py-1 rounded-md bg-[#202629] border border-[#394144] hover:border-[#9eb5aa] text-[11px] font-semibold text-[#f0f1ed] cursor-pointer"
               title={t('smartCube.action.recalibrate', 'Recentrer orientation 3D')}
             >
               {t('smartCube.action.recalibrateShort', 'Recentrer')}
@@ -785,7 +778,7 @@ export function SmartCubePage() {
               <button
                 type="button"
                 onClick={resetSolve}
-                className="px-2.5 py-1 rounded-full bg-[#202629]/80 backdrop-blur-sm border border-[#394144] hover:border-rose-400 text-[11px] font-semibold text-slate-300 cursor-pointer"
+                className="px-2.5 py-1 rounded-md bg-[#202629] border border-[#394144] hover:border-rose-400 text-[11px] font-semibold text-slate-300 cursor-pointer"
               >
                 {t('smartCube.action.reset', 'Réinitialiser')}
               </button>
@@ -807,9 +800,9 @@ export function SmartCubePage() {
       <footer className="px-3 pb-3 pt-1.5 sm:px-5 sm:pb-4 shrink-0 z-10 w-full max-w-2xl mx-auto flex flex-col gap-2">
         {/* ÉTAT A : En cours de mélange */}
         {(timerStatus === 'scrambling' || timerStatus === 'idle') && (
-          <div className="p-3 rounded-2xl bg-[#202629]/95 border border-[#394144] flex items-center justify-between gap-3">
+          <div className="p-3 rounded-xl bg-[#202629] border border-[#394144] flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
-              <span className="w-2.5 h-2.5 rounded-full bg-sky-400 animate-pulse shrink-0" />
+              <span className="w-2 h-2 rounded-full bg-[#9eb5aa] shrink-0" />
               <div className="truncate">
                 <div className="text-xs sm:text-sm font-bold text-white">
                   {t('smartCube.timer.scrambling', 'Effectuez le mélange sur le cube')}
@@ -823,7 +816,7 @@ export function SmartCubePage() {
             <button
               type="button"
               onClick={() => setIsHistoryOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-xs font-bold text-[#f0f1ed] cursor-pointer shrink-0"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-xs font-semibold text-[#f0f1ed] cursor-pointer shrink-0"
             >
               <ListIcon className="w-3.5 h-3.5 text-[#9eb5aa]" />
               <span>{t('smartCube.history.title', 'Tous les temps')} ({sessionSolves.length})</span>
@@ -833,8 +826,8 @@ export function SmartCubePage() {
 
         {/* ÉTAT B : Inspection WCA (15s) ou Mélangé prêt à démarrer */}
         {(timerStatus === 'inspecting' || timerStatus === 'scrambled') && (
-          <div className="p-3.5 rounded-2xl bg-[#202629]/95 border border-orange-500/70 shadow-[0_0_25px_rgba(249,115,22,0.2)] flex flex-col items-center gap-2">
-            <div className="flex items-center gap-2 text-xs font-semibold text-orange-300">
+          <div className="p-3.5 rounded-xl bg-[#202629] border border-[#394144] flex flex-col items-center gap-2">
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-300">
               <Clock size={13} />
               <span>
                 {timerStatus === 'inspecting'
@@ -874,16 +867,16 @@ export function SmartCubePage() {
 
         {/* ÉTAT C : Résolution en cours (Chrono géant + 4 phases CFOP en direct) */}
         {timerStatus === 'solving' && (
-          <div className="p-3.5 rounded-2xl bg-[#202629]/95 border border-emerald-500/80 shadow-[0_0_25px_rgba(16,185,129,0.25)] flex flex-col gap-2.5">
+          <div className="p-3.5 rounded-xl bg-[#202629] border border-[#394144] flex flex-col gap-2.5">
             <div className="flex items-baseline justify-between gap-2">
-              <div className="text-5xl sm:text-6xl font-mono font-extrabold tracking-tight leading-none text-emerald-100">
+              <div className="text-5xl sm:text-6xl font-mono font-extrabold tracking-tight leading-none text-white">
                 {formatLiveTimer(liveDisplayMs)}
               </div>
               <div className="flex items-center gap-3 font-mono text-xs sm:text-sm">
                 <span className="text-slate-300">
                   <strong className="text-white">{moveCount}</strong> {t('smartCube.telemetry.moves', 'mvt')}
                 </span>
-                <span className="text-emerald-400 font-bold">
+                <span className="text-[#9eb5aa] font-bold">
                   {currentTps.toFixed(2)} {t('smartCube.telemetry.liveTps', 'TPS')}
                 </span>
               </div>
@@ -900,13 +893,13 @@ export function SmartCubePage() {
                     key={phase}
                     className={`px-2 py-1.5 rounded-lg border text-center transition-all ${
                       isDone
-                        ? 'bg-emerald-950/50 border-emerald-500/70 text-emerald-200'
+                        ? 'bg-[#252b2e] border-[#385a49] text-[#9eb5aa]'
                         : isCurrent
-                        ? 'bg-sky-950/70 border-sky-400 text-sky-100 animate-pulse'
-                        : 'bg-[#252b2e] border-[#394144] text-slate-500'
+                        ? 'bg-[#252b2e] border-[#9eb5aa] text-white'
+                        : 'bg-[#1c2124] border-[#343c3f] text-slate-500'
                     }`}
                   >
-                    <div className="text-[10px] font-extrabold uppercase">{CFOP_PHASE_NAMES[phase]}</div>
+                    <div className="text-[10px] font-bold uppercase">{CFOP_PHASE_NAMES[phase]}</div>
                     <div className="text-xs font-mono font-bold mt-0.5">
                       {isDone
                         ? (split.skipped ? 'Skip' : formatSplitSeconds(split.durationMs))
@@ -923,14 +916,14 @@ export function SmartCubePage() {
 
         {/* ÉTAT D : Cube résolu ! (Temps final + Tableau des 4 phases CFOP façon Cube Station + Bouton Tous les temps) */}
         {timerStatus === 'solved' && (
-          <div className="p-3 sm:p-3.5 rounded-2xl bg-[#202629]/95 border border-[#394144] shadow-xl flex flex-col gap-2.5">
+          <div className="p-3 sm:p-3.5 rounded-xl bg-[#202629] border border-[#394144] flex flex-col gap-2.5">
             {/* Ligne supérieure : Badge Terminé + Temps encadré + Métriques globales */}
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
-                <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-500/60 text-emerald-300 text-[11px] font-bold">
+                <span className="px-2 py-0.5 rounded-md bg-[#252b2e] border border-[#385a49] text-[#9eb5aa] text-[11px] font-semibold">
                   {t('smartCube.timer.solved', 'Terminé')}
                 </span>
-                <div className="px-3 py-1 rounded-xl bg-[#252b2e] border border-yellow-400/70 text-2xl sm:text-3xl font-mono font-extrabold text-yellow-200 leading-none">
+                <div className="px-3 py-1 rounded-lg bg-[#252b2e] border border-[#41494c] text-2xl sm:text-3xl font-mono font-extrabold text-white leading-none">
                   {formatSolveTime(
                     postSolveAnalysis?.totalMs ?? elapsedMs,
                     postSolveAnalysis?.solve?.penalty
@@ -943,25 +936,25 @@ export function SmartCubePage() {
                   {t('smartCube.telemetry.moves', 'Étapes')} <strong className="text-white">{postSolveAnalysis?.solve?.moveCount ?? moveCount}</strong>
                 </span>
                 <span>
-                  {t('smartCube.telemetry.finalTps', 'TPS')} <strong className="text-emerald-400">{(postSolveAnalysis?.solve?.tps ?? finalTps ?? 0).toFixed(2)}</strong>
+                  {t('smartCube.telemetry.finalTps', 'TPS')} <strong className="text-[#9eb5aa]">{(postSolveAnalysis?.solve?.tps ?? finalTps ?? 0).toFixed(2)}</strong>
                 </span>
                 {postSolveAnalysis && (
                   <span>
-                    Fluence <strong className="text-sky-300">{postSolveAnalysis.fluency}</strong>
+                    Fluence <strong className="text-slate-200">{postSolveAnalysis.fluency}</strong>
                   </span>
                 )}
               </div>
             </div>
 
-            {/* Grille des 4 phases CFOP (C, F, O, P) avec Temps, Étapes et TPS comme sur Cube Station */}
+            {/* Grille des 4 phases CFOP (C, F, O, P) avec Temps, Étapes et TPS */}
             {postSolveAnalysis && (
               <div className="grid grid-cols-4 gap-1.5">
                 {postSolveAnalysis.breakdown.map(item => (
                   <div
                     key={item.phase}
-                    className={`p-2 rounded-xl border flex flex-col justify-between ${PHASE_BADGE_STYLES[item.phase]}`}
+                    className={`p-2 rounded-lg border flex flex-col justify-between ${PHASE_BADGE_STYLES[item.phase]}`}
                   >
-                    <div className="flex items-center justify-between text-[10px] font-extrabold">
+                    <div className="flex items-center justify-between text-[10px] font-bold">
                       <span className="px-1.5 py-0.2 rounded bg-black/30 text-white">{item.shortLabel}</span>
                       <span className="font-mono opacity-80">{item.skipped ? '0%' : `${item.pct}%`}</span>
                     </div>
@@ -985,7 +978,7 @@ export function SmartCubePage() {
                   setSelectedSolveId(null);
                   setIsHistoryOpen(true);
                 }}
-                className="flex-1 inline-flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-xs font-bold text-[#f0f1ed] cursor-pointer"
+                className="flex-1 inline-flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-xs font-semibold text-[#f0f1ed] cursor-pointer"
               >
                 <ListIcon className="w-4 h-4 text-[#9eb5aa]" />
                 <span>{t('smartCube.history.title', 'Tous les temps')} ({sessionSolves.length})</span>
@@ -998,7 +991,7 @@ export function SmartCubePage() {
                     setSelectedSolveId(postSolveAnalysis.solve.id);
                     setIsHistoryOpen(true);
                   }}
-                  className="py-2 px-3 rounded-xl bg-[#252b2e] border border-[#41494c] hover:border-sky-400 text-xs font-bold text-sky-300 cursor-pointer"
+                  className="py-2 px-3 rounded-lg bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-xs font-semibold text-[#f0f1ed] cursor-pointer"
                 >
                   {t('smartCube.history.inspectSolve', 'Détails')}
                 </button>
@@ -1007,7 +1000,7 @@ export function SmartCubePage() {
               <button
                 type="button"
                 onClick={handleStartNextGuidedScramble}
-                className="py-2 px-3.5 rounded-xl bg-[#9eb5aa] hover:bg-[#b0c6bc] text-xs font-extrabold text-[#1b2023] cursor-pointer"
+                className="py-2 px-3.5 rounded-lg bg-[#9eb5aa] hover:bg-[#b0c6bc] text-xs font-bold text-[#1b2023] cursor-pointer"
               >
                 {t('smartCube.action.scramble', 'Suivant')}
               </button>
@@ -1018,8 +1011,8 @@ export function SmartCubePage() {
 
       {/* 5. MODALE PLEIN ÉCRAN PORTRAIT : TOUS LES TEMPS, DÉTAILS D'UN TEMPS & STATISTIQUES */}
       {isHistoryOpen && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="w-full sm:max-w-xl h-[90dvh] sm:h-[82dvh] bg-[#1b2023] sm:rounded-2xl rounded-t-2xl border border-[#394144] flex flex-col overflow-hidden shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/75 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="w-full sm:max-w-xl h-[90dvh] sm:h-[82dvh] bg-[#1b2023] sm:rounded-xl rounded-t-xl border border-[#394144] flex flex-col overflow-hidden">
             {/* En-tête de la modale */}
             <div className="flex items-center justify-between px-4 py-3 bg-[#202629] border-b border-[#394144] shrink-0">
               {modalSolveAnalysis ? (
@@ -1092,7 +1085,7 @@ export function SmartCubePage() {
                       <div className="text-[11px] text-[#94a3b8] uppercase font-bold">
                         {t('smartCube.analysis.title', 'Détails de la résolution')}
                       </div>
-                      <div className="text-3xl font-mono font-extrabold text-yellow-200 mt-0.5">
+                      <div className="text-3xl font-mono font-extrabold text-white mt-0.5">
                         {formatSolveTime(modalSolveAnalysis.totalMs, modalSolveAnalysis.solve.penalty)}
                       </div>
                     </div>
@@ -1104,13 +1097,13 @@ export function SmartCubePage() {
                       </div>
                       <div className="px-2.5 py-1.5 rounded-lg bg-[#252b2e] border border-[#394144]">
                         <div className="text-[10px] text-[#94a3b8] uppercase font-bold">TPS</div>
-                        <div className="text-sm font-mono font-bold text-emerald-400">
+                        <div className="text-sm font-mono font-bold text-[#9eb5aa]">
                           {Number(modalSolveAnalysis.solve.tps || 0).toFixed(2)}
                         </div>
                       </div>
                       <div className="px-2.5 py-1.5 rounded-lg bg-[#252b2e] border border-[#394144]">
                         <div className="text-[10px] text-[#94a3b8] uppercase font-bold">Fluence</div>
-                        <div className="text-sm font-mono font-bold text-sky-300">{modalSolveAnalysis.fluency}</div>
+                        <div className="text-sm font-mono font-bold text-slate-200">{modalSolveAnalysis.fluency}</div>
                       </div>
                     </div>
                   </div>
@@ -1273,7 +1266,7 @@ export function SmartCubePage() {
                               <button
                                 type="button"
                                 onClick={() => setSelectedSolveId(solve.id)}
-                                className="px-2.5 py-1 rounded-lg bg-[#252b2e] border border-sky-500/50 text-sky-300 hover:bg-sky-950/60 text-[11px] font-bold cursor-pointer"
+                                className="px-2.5 py-1 rounded-lg bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-[#f0f1ed] text-[11px] font-semibold cursor-pointer"
                               >
                                 {t('smartCube.history.inspectSolve', 'Infos')}
                               </button>

@@ -177,7 +177,7 @@ export function AlgoTrainerQuizModal({
         {/* En-tête */}
         <div className="algo-quiz-modal-header">
           <div className="algo-quiz-header-info">
-            <span className="algo-quiz-badge">⚡ {t('quiz.modeTitle', { defaultValue: 'Quiz' })}</span>
+            <span className="algo-quiz-badge">{t('quiz.modeTitle', { defaultValue: 'Quiz' })}</span>
             <h3 className="algo-quiz-title">
               {categoryName ? `${categoryName}` : t('quiz.title', { defaultValue: 'Reconnaissance' })}
             </h3>
@@ -215,7 +215,7 @@ export function AlgoTrainerQuizModal({
               </div>
               <div className="algo-quiz-finished-stat">
                 <span className="stat-label">{t('quiz.bestStreak', { defaultValue: 'Meilleure série' })}</span>
-                <span className="stat-val streak">🔥 {maxStreak}</span>
+                <span className="stat-val streak">{maxStreak}</span>
               </div>
               <div className="algo-quiz-finished-stat">
                 <span className="stat-label">{t('quiz.avgTime', { defaultValue: 'Temps moyen' })}</span>

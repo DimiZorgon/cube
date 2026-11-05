@@ -65,7 +65,7 @@ export function MethodeYau4x4({ onBack, onTestAlgo, activeSection: controlledFil
               onClick={() => setIsQuizOpen(true)}
               title={t('quiz.startTraining', { defaultValue: 'Entraînement Quiz' })}
             >
-              <span>⚡ {t('quiz.modeTitle', { defaultValue: 'Quiz' })}</span>
+              <span>{t('quiz.modeTitle', { defaultValue: 'Quiz' })}</span>
             </button>
           )}
         </div>

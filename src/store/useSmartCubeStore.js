@@ -13,6 +13,7 @@ import { playCubeTurnSound } from '../utils/audioSystem.js';
 import { CubeStateSimulator } from '../utils/cubeMath.js';
 import { safeTps } from '../utils/smartCube/wcaStats.js';
 import { detectSolvePhase } from '../utils/smartCube/solvePhaseDetector.js';
+import { generateWcaScramble } from '../utils/scrambleGenerator.js';
 
 export const CFOP_PHASE_ORDER = Object.freeze(['cross', 'f2l', 'oll', 'pll']);
 export const CFOP_PHASE_NAMES = Object.freeze({
@@ -60,17 +61,18 @@ export function processScrambleTurn({
   scrambleIndex,
   scrambleSubStep,
   subStepDir,
-  errorStack,
+  _errorStack,
   moveNotation
 }) {
   const moves = Array.isArray(scrambleMoves) ? [...scrambleMoves] : [];
   let index = typeof scrambleIndex === 'number' ? scrambleIndex : 0;
   let subStep = typeof scrambleSubStep === 'number' ? scrambleSubStep : 0;
   let currentSubStepDir = subStepDir || null;
-  const errors = Array.isArray(errorStack) ? [...errorStack] : [];
+  let currentError = null;
 
   if (index >= moves.length) {
     return {
+      scrambleMoves: moves,
       scrambleIndex: moves.length,
       scrambleSubStep: 0,
       subStepDir: null,
@@ -80,51 +82,34 @@ export function processScrambleTurn({
     };
   }
 
-  // Mode de récupération d'erreur : annuler le mauvais mouvement
-  if (errors.length > 0) {
-    const expectedCorrection = errors[errors.length - 1];
-    if (moveNotation === expectedCorrection) {
-      errors.pop();
-    } else {
-      errors.push(inverseMove(moveNotation));
-    }
-    const currentError = errors.length > 0 ? errors[errors.length - 1] : null;
-    return {
-      scrambleIndex: index,
-      scrambleSubStep: subStep,
-      subStepDir: currentSubStepDir,
-      errorStack: errors,
-      scrambleError: currentError,
-      isCompleted: false
-    };
-  }
-
   const expectedMove = moves[index];
   const face = expectedMove[0];
   const isDouble = expectedMove.includes('2');
+
+  let isMatch = false;
 
   if (!isDouble) {
     if (moveNotation === expectedMove) {
       index++;
       subStep = 0;
       currentSubStepDir = null;
-    } else {
-      errors.push(inverseMove(moveNotation));
+      isMatch = true;
     }
   } else {
     if (moveNotation === expectedMove || moveNotation === face + '2') {
       index++;
       subStep = 0;
       currentSubStepDir = null;
+      isMatch = true;
     } else if (subStep === 0) {
       if (moveNotation === face) {
         subStep = 1;
         currentSubStepDir = 1;
+        isMatch = true;
       } else if (moveNotation === face + "'") {
         subStep = 1;
         currentSubStepDir = -1;
-      } else {
-        errors.push(inverseMove(moveNotation));
+        isMatch = true;
       }
     } else {
       const expectedSecond = currentSubStepDir === 1 ? face : face + "'";
@@ -133,23 +118,38 @@ export function processScrambleTurn({
         index++;
         subStep = 0;
         currentSubStepDir = null;
+        isMatch = true;
       } else if (moveNotation === undoFirst) {
         subStep = 0;
         currentSubStepDir = null;
-      } else {
-        errors.push(inverseMove(moveNotation));
+        isMatch = true;
       }
     }
   }
 
-  const currentError = errors.length > 0 ? errors[errors.length - 1] : null;
-  const isCompleted = index >= moves.length && errors.length === 0;
+  if (!isMatch) {
+    // Mauvais mouvement effectué : on ajoute son inverse directement dans le mélange
+    const inv = inverseMove(moveNotation);
+    if (subStep === 1) {
+      // Était à mi-chemin d'un coup double : insérer l'inverse puis la moitié restante
+      const remainingHalf = currentSubStepDir === 1 ? face : face + "'";
+      moves.splice(index, 1, inv, remainingHalf);
+      subStep = 0;
+      currentSubStepDir = null;
+    } else {
+      moves.splice(index, 0, inv);
+    }
+    currentError = inv;
+  }
+
+  const isCompleted = index >= moves.length;
 
   return {
+    scrambleMoves: moves,
     scrambleIndex: index,
     scrambleSubStep: subStep,
     subStepDir: currentSubStepDir,
-    errorStack: errors,
+    errorStack: currentError ? [currentError] : [],
     scrambleError: currentError,
     isCompleted
   };
@@ -361,20 +361,8 @@ export function saveSessionSolves(solves) {
   }
 }
 
-export function generateRandomScramble(moveCount = 20) {
-  const faces = ['U', 'D', 'R', 'L', 'F', 'B'];
-  const modifiers = ['', "'", '2'];
-  const result = [];
-  let lastFace = '';
-  for (let i = 0; i < moveCount; i++) {
-    let face;
-    do {
-      face = faces[Math.floor(Math.random() * faces.length)];
-    } while (face === lastFace);
-    lastFace = face;
-    result.push(face + modifiers[Math.floor(Math.random() * modifiers.length)]);
-  }
-  return result.join(' ');
+export function generateRandomScramble(_moveCount = 20) {
+  return generateWcaScramble('3x3x3');
 }
 
 export function applyMoveTo3D(moveNotation) {
@@ -407,7 +395,7 @@ export function applyMoveTo3D(moveNotation) {
 export class SmartCubeStore {
   constructor(driver = null) {
     this.driver = driver || new GanBleDriver();
-    const initialScramble = "D' R2 U' B2 U F2 R2 D' F2 U B2 R' D' B' R' B2 D' F' D R2";
+    const initialScramble = generateWcaScramble('3x3x3');
     const initialMoves = parseScramble(initialScramble);
 
     this.state = {
@@ -606,6 +594,8 @@ export class SmartCubeStore {
         moveNotation
       });
 
+      this.state.scrambleMoves = result.scrambleMoves || this.state.scrambleMoves;
+      this.state.scramble = this.state.scrambleMoves.join(' ');
       this.state.scrambleIndex = result.scrambleIndex;
       this.state.scrambleSubStep = result.scrambleSubStep;
       this.state.scrambleError = result.scrambleError;
@@ -896,7 +886,7 @@ let zustandLastPhaseSplitMs = 0;
 let zustandLastPhaseMoves = 0;
 let zustandAutoInspect = true;
 
-const defaultScramble = "D' R2 U' B2 U F2 R2 D' F2 U B2 R' D' B' R' B2 D' F' D R2";
+const defaultScramble = generateWcaScramble('3x3x3');
 const defaultMoves = parseScramble(defaultScramble);
 
 const rawZustandStore = create((set, get) => {
@@ -1139,6 +1129,7 @@ const rawZustandStore = create((set, get) => {
         zustandSubStepDir = result.subStepDir;
         zustandErrorStack = result.errorStack;
 
+        const nextMoves = result.scrambleMoves || state.scrambleMoves;
         const nextStatusPatch = result.isCompleted
           ? (zustandAutoInspect
               ? { timerStatus: 'inspecting', inspectionStartTime: Date.now() }
@@ -1146,11 +1137,13 @@ const rawZustandStore = create((set, get) => {
           : {};
 
         set({
+          scrambleMoves: nextMoves,
+          scramble: nextMoves.join(' '),
           scrambleIndex: result.scrambleIndex,
           scrambleSubStep: result.scrambleSubStep,
           scrambleError: result.scrambleError,
           scrambleTracking: buildScrambleTracking(
-            state.scrambleMoves,
+            nextMoves,
             result.scrambleIndex,
             result.scrambleSubStep,
             result.scrambleError

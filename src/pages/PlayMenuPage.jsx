@@ -53,7 +53,6 @@ export function PlayMenuPage() {
         <Link className="menu-btn cube-select-card" to={paths.smartCube()}>
           <div className="mini-cube-container smart-cube-menu-preview">
             <BluetoothIcon size={64} />
-            <span className="smart-cube-chip">{t('app.play.smartCube.chip', { defaultValue: 'GAN 16 ui' })}</span>
           </div>
           <div className="menu-card-Meta">
             <span className="menu-card-title">{t('app.play.smartCube.title')}</span>

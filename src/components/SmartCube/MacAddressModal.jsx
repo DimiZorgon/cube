@@ -28,16 +28,16 @@ export function MacAddressModal({ isOpen, initialMac = '', onClose, onSaveAndCon
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 animate-in fade-in duration-200"
       role="dialog"
       aria-modal="true"
       aria-labelledby="mac-modal-title"
     >
-      <div className="relative w-full max-w-md p-5 sm:p-6 rounded-2xl bg-[#202629] border border-[#394144] shadow-2xl text-[#f0f1ed] flex flex-col gap-4">
+      <div className="relative w-full max-w-md p-5 sm:p-6 rounded-xl bg-[#202629] border border-[#394144] text-[#f0f1ed] flex flex-col gap-4">
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-emerald-950/60 border border-emerald-600/50 text-emerald-400">
+            <div className="p-2 rounded-lg bg-[#252b2e] border border-[#385a49] text-[#9eb5aa]">
               <Info size={20} />
             </div>
             <div>

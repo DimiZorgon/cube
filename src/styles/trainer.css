@@ -491,34 +491,34 @@
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  background: #27332c;
-  color: #a3e635;
-  border: 1px solid #4d7c0f;
+  background: #252b2e;
+  color: #e2e8f0;
+  border: 1px solid #41494c;
   border-radius: 6px;
   padding: 0.4rem 0.75rem;
   font-size: 0.85rem;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .trainer-quiz-trigger-btn:hover {
-  background: #365314;
-  color: #bef264;
-  border-color: #65a30d;
+  background: #303a37;
+  color: #ffffff;
+  border-color: #9eb5aa;
 }
 
 .algo-quiz-modal-content {
   background: #202629;
   border: 1px solid #394144;
-  border-radius: 14px;
+  border-radius: 10px;
   width: 92%;
   max-width: 520px;
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1.15rem;
-  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.65);
+  box-shadow: none;
   animation: pbModalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -535,11 +535,11 @@
 }
 
 .algo-quiz-badge {
-  background: #2f3e35;
-  color: #a3e635;
-  border: 1px solid #4d7c0f;
+  background: #2d3633;
+  color: #9eb5aa;
+  border: 1px solid #45564e;
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: 600;
   padding: 0.2rem 0.55rem;
   border-radius: 4px;
 }
@@ -680,25 +680,25 @@
 }
 
 .algo-quiz-option-btn.correct {
-  background: #14532d !important;
-  border-color: #22c55e !important;
-  color: #ffffff !important;
+  background: #1c2b22 !important;
+  border-color: #385a49 !important;
+  color: #e2e8f0 !important;
 }
 
 .algo-quiz-option-btn.correct .option-key-pill {
-  background: #166534;
-  color: #ffffff;
+  background: #273e31;
+  color: #9eb5aa;
 }
 
 .algo-quiz-option-btn.wrong {
-  background: #7f1d1d !important;
-  border-color: #ef4444 !important;
-  color: #ffffff !important;
+  background: #332224 !important;
+  border-color: #613437 !important;
+  color: #f1d4d6 !important;
 }
 
 .algo-quiz-option-btn.wrong .option-key-pill {
-  background: #991b1b;
-  color: #ffffff;
+  background: #47292c;
+  color: #f87171;
 }
 
 .algo-quiz-option-btn.disabled:not(.correct) {
@@ -822,7 +822,7 @@
 }
 
 .algo-quiz-finished-stat .stat-val.accent {
-  color: #a3e635;
+  color: #9eb5aa;
 }
 
 .algo-quiz-finished-stat .stat-val.streak {
