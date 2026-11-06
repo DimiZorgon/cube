@@ -423,7 +423,6 @@ export class SmartCubeStore {
       scrambleIndex: initialMoves.length,
       scrambleSubStep: 0,
       scrambleError: null,
-      hasScrambleError: false,
       scrambleTracking: buildScrambleTracking(initialMoves, initialMoves.length, 0, null),
       currentPhase: 'cross',
       activeCrossFace: 'auto',
@@ -543,7 +542,6 @@ export class SmartCubeStore {
     this.state.scrambleIndex = 0;
     this.state.scrambleSubStep = 0;
     this.state.scrambleError = null;
-    this.state.hasScrambleError = false;
     this.state.scrambleTracking = buildScrambleTracking(moves, 0, 0, null);
     this._subStepDir = null;
     this._errorStack = [];
@@ -578,7 +576,6 @@ export class SmartCubeStore {
         this.cubeSimulator.applyMove(moveNotation);
       }
       applyMoveTo3D(moveNotation);
-      this.startScrambleTracking(null, { autoInspect: this._autoInspectOnScrambleEnd ?? true });
       return;
     }
 
@@ -602,9 +599,6 @@ export class SmartCubeStore {
       this.state.scrambleIndex = result.scrambleIndex;
       this.state.scrambleSubStep = result.scrambleSubStep;
       this.state.scrambleError = result.scrambleError;
-      if (result.scrambleError) {
-        this.state.hasScrambleError = true;
-      }
       this._subStepDir = result.subStepDir;
       this._errorStack = result.errorStack;
       this.state.scrambleTracking = buildScrambleTracking(
@@ -960,7 +954,6 @@ const rawZustandStore = create((set, get) => {
     scrambleIndex: 0,
     scrambleSubStep: 0,
     scrambleError: null,
-    hasScrambleError: false,
     scrambleTracking: buildScrambleTracking(defaultMoves, 0, 0, null),
     currentPhase: 'cross',
     activeCrossFace: 'auto',
@@ -1080,7 +1073,6 @@ const rawZustandStore = create((set, get) => {
         scrambleIndex: 0,
         scrambleSubStep: 0,
         scrambleError: null,
-        hasScrambleError: false,
         scrambleTracking: buildScrambleTracking(moves, 0, 0, null),
         timerStatus: 'scrambling',
         timerStartTime: 0,
@@ -1118,7 +1110,6 @@ const rawZustandStore = create((set, get) => {
       if (state.timerStatus === 'solved') {
         zustandCubeSimulator.applyMove(moveNotation);
         applyMoveTo3D(moveNotation);
-        get().startScrambleTracking(null, { autoInspect: true });
         return;
       }
 
@@ -1145,15 +1136,12 @@ const rawZustandStore = create((set, get) => {
               : { timerStatus: 'scrambled' })
           : {};
 
-        const nextHasScrambleError = state.hasScrambleError || Boolean(result.scrambleError);
-
         set({
           scrambleMoves: nextMoves,
           scramble: nextMoves.join(' '),
           scrambleIndex: result.scrambleIndex,
           scrambleSubStep: result.scrambleSubStep,
           scrambleError: result.scrambleError,
-          hasScrambleError: nextHasScrambleError,
           scrambleTracking: buildScrambleTracking(
             nextMoves,
             result.scrambleIndex,
@@ -1416,7 +1404,6 @@ const rawZustandStore = create((set, get) => {
         scrambleIndex: 0,
         scrambleSubStep: 0,
         scrambleError: null,
-        hasScrambleError: false,
         scrambleTracking: buildScrambleTracking(moves, 0, 0, null),
         currentPhase: 'cross',
         activeCrossFace: 'auto',

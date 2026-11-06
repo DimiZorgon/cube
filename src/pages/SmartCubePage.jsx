@@ -398,7 +398,6 @@ export function SmartCubePage() {
   const scrambleIndex = useSmartCubeStore(state => state.scrambleIndex);
   const scrambleSubStep = useSmartCubeStore(state => state.scrambleSubStep);
   const scrambleError = useSmartCubeStore(state => state.scrambleError);
-  const hasScrambleError = useSmartCubeStore(state => state.hasScrambleError);
   const scrambleTracking = useSmartCubeStore(state => state.scrambleTracking);
   const currentPhase = useSmartCubeStore(state => state.currentPhase);
   const phaseSplits = useSmartCubeStore(state => state.phaseSplits);
@@ -627,11 +626,11 @@ export function SmartCubePage() {
       moveToken,
       idx
     }));
-    if (hasScrambleError && timerStatus === 'scrambling') {
+    if (scrambleError && timerStatus === 'scrambling') {
       return tokens.filter(item => item.idx >= activeScrambleIndex);
     }
     return tokens;
-  }, [activeScrambleMoves, hasScrambleError, timerStatus, activeScrambleIndex]);
+  }, [activeScrambleMoves, scrambleError, timerStatus, activeScrambleIndex]);
 
   // Le bandeau de mélange s'affiche pendant le mélange, disparaît pendant l'inspection/résolution, et réapparaît une fois résolu
   const showScrambleBanner =
