@@ -2,10 +2,50 @@
 // Monotonic CFOP Solve Phase Detection Engine (Cross -> F2L -> OLL -> PLL -> complete)
 // Supports all 6 cross orientations (U, D, F, B, R, L) and automatic cross face detection.
 
-import { isFaceletsSolved } from '../cubeMath.js';
+import { isFaceletsSolved, CubeStateSimulator } from '../cubeMath.js';
 
 export const CFOP_PHASES = Object.freeze(['cross', 'f2l', 'oll', 'pll', 'complete']);
 export const VALID_CROSS_FACES = Object.freeze(['U', 'D', 'F', 'B', 'R', 'L']);
+export const F2L_SLOT_NAMES = Object.freeze(['FR', 'FL', 'BR', 'BL']);
+
+export const F2L_SLOT_DEFINITIONS = Object.freeze({
+  D: {
+    FR: {
+      corner: { stickers: [29, 26, 15], centers: [31, 22, 13] },
+      edge: { stickers: [23, 12], centers: [22, 13] }
+    },
+    FL: {
+      corner: { stickers: [27, 24, 44], centers: [31, 22, 40] },
+      edge: { stickers: [21, 41], centers: [22, 40] }
+    },
+    BR: {
+      corner: { stickers: [35, 51, 17], centers: [31, 49, 13] },
+      edge: { stickers: [48, 14], centers: [49, 13] }
+    },
+    BL: {
+      corner: { stickers: [33, 53, 42], centers: [31, 49, 40] },
+      edge: { stickers: [50, 39], centers: [49, 40] }
+    }
+  },
+  U: {
+    FR: {
+      corner: { stickers: [8, 20, 9], centers: [4, 22, 13] },
+      edge: { stickers: [23, 12], centers: [22, 13] }
+    },
+    FL: {
+      corner: { stickers: [6, 18, 38], centers: [4, 22, 40] },
+      edge: { stickers: [21, 41], centers: [22, 40] }
+    },
+    BR: {
+      corner: { stickers: [2, 45, 11], centers: [4, 49, 13] },
+      edge: { stickers: [48, 14], centers: [49, 13] }
+    },
+    BL: {
+      corner: { stickers: [0, 47, 36], centers: [4, 49, 40] },
+      edge: { stickers: [50, 39], centers: [49, 40] }
+    }
+  }
+});
 
 const PHASE_RANKS = Object.freeze({
   cross: 0,
@@ -72,7 +112,9 @@ function normalizeFacelets(facelets) {
   return '';
 }
 
-function isFaceMonochrome(f, face) {
+export function isFaceMonochrome(facelets, face = 'U') {
+  const f = normalizeFacelets(facelets);
+  if (f.length !== 54) return false;
   const offset = FACE_OFFSETS[face];
   if (offset === undefined) return false;
   const center = f[offset + 4];
@@ -245,4 +287,177 @@ export function detectSolvePhase(facelets, currentPhase = 'cross', crossFace = '
     isAdvance: targetRank > currentRank,
     detectedCrossFace: targetRank > currentRank ? crossFace : null
   };
+}
+
+/**
+ * Identifies the solved status of each of the 4 F2L slots (FR, FL, BR, BL).
+ *
+ * @param {string|string[]} facelets - 54-char facelet string or array
+ * @param {'U'|'D'|'auto'} crossFace - Cross face (defaults to 'D')
+ * @returns {Array<{ slot: 'FR'|'FL'|'BR'|'BL', solved: boolean, cornerSolved: boolean, edgeSolved: boolean }>}
+ */
+export function detectF2LSlots(facelets, crossFace = 'D') {
+  const f = normalizeFacelets(facelets);
+  if (f.length !== 54) {
+    return F2L_SLOT_NAMES.map(slot => ({
+      slot,
+      solved: false,
+      cornerSolved: false,
+      edgeSolved: false
+    }));
+  }
+
+  let effectiveFace = crossFace;
+  if (effectiveFace === 'auto') {
+    effectiveFace = isCrossSolved(f, 'U') && !isCrossSolved(f, 'D') ? 'U' : 'D';
+  }
+
+  const defs = F2L_SLOT_DEFINITIONS[effectiveFace] || F2L_SLOT_DEFINITIONS.D;
+
+  return F2L_SLOT_NAMES.map(slot => {
+    const def = defs[slot];
+    if (!def) {
+      return { slot, solved: false, cornerSolved: false, edgeSolved: false };
+    }
+
+    const { corner, edge } = def;
+    const cornerSolved =
+      f[corner.stickers[0]] === f[corner.centers[0]] &&
+      f[corner.stickers[1]] === f[corner.centers[1]] &&
+      f[corner.stickers[2]] === f[corner.centers[2]];
+
+    const edgeSolved =
+      f[edge.stickers[0]] === f[edge.centers[0]] &&
+      f[edge.stickers[1]] === f[edge.centers[1]];
+
+    return {
+      slot,
+      solved: cornerSolved && edgeSolved,
+      cornerSolved,
+      edgeSolved
+    };
+  });
+}
+
+/**
+ * Detects newly completed F2L slots between two consecutive states.
+ *
+ * @param {Array|object} prevSlots - Previous slots state
+ * @param {Array|object} currSlots - Current slots state
+ * @param {number} timestamp - Current timestamp in ms
+ * @param {number} elapsedMs - Current elapsed solve time in ms
+ * @param {number} lastSplitMs - Elapsed time at previous completion in ms
+ * @returns {Array<{ slot: string, timestamp: number, durationMs: number, splitMs: number }>}
+ */
+export function detectActiveF2LCompletions(prevSlots, currSlots, timestamp, elapsedMs, lastSplitMs = 0) {
+  if (!Array.isArray(currSlots) || currSlots.length === 0) return [];
+
+  const prevMap = new Map();
+  if (Array.isArray(prevSlots)) {
+    for (const s of prevSlots) {
+      if (s?.slot) prevMap.set(s.slot, !!s.solved);
+    }
+  } else if (prevSlots && typeof prevSlots === 'object') {
+    for (const [k, v] of Object.entries(prevSlots)) {
+      prevMap.set(k, typeof v === 'boolean' ? v : !!v?.solved);
+    }
+  }
+
+  const completions = [];
+  let currentSplitMarker = lastSplitMs || 0;
+
+  for (const curr of currSlots) {
+    if (!curr?.slot || !curr.solved) continue;
+    const wasSolved = prevMap.get(curr.slot) === true;
+    if (!wasSolved) {
+      const durationMs = Math.max(0, elapsedMs - currentSplitMarker);
+      completions.push({
+        slot: curr.slot,
+        timestamp: timestamp || Date.now(),
+        durationMs,
+        splitMs: elapsedMs
+      });
+      currentSplitMarker = elapsedMs;
+    }
+  }
+
+  return completions;
+}
+
+/**
+ * Reconstructs the chronological 4 F2L pair completions (F1-F4) by replaying moves from scramble.
+ *
+ * @param {string} scramble - Scramble sequence
+ * @param {Array<{ move: string, timestamp?: number, stepTime?: number }>} moveTimings - Moves with timings
+ * @param {string} crossFace - Cross face (defaults to 'D')
+ * @returns {Record<string, { slot: string, durationMs: number, splitMs: number, timestamp: number }>}
+ */
+export function reconstructF2LBreakdown(scramble, moveTimings = [], crossFace = 'D') {
+  const sim = new CubeStateSimulator();
+  if (scramble) {
+    sim.applyMoves(scramble);
+  }
+
+  const completedSlots = new Set();
+  const f2lBreakdown = {};
+  const pairKeys = ['f1', 'f2', 'f3', 'f4'];
+  let lastSplitMs = 0;
+
+  let crossResolved = isCrossSolved(sim.getFaceletString(), crossFace);
+
+  const initialSlots = detectF2LSlots(sim.getFaceletString(), crossFace);
+  for (const s of initialSlots) {
+    if (s.solved && crossResolved) {
+      completedSlots.add(s.slot);
+      const pairKey = pairKeys[Object.keys(f2lBreakdown).length];
+      if (pairKey) {
+        f2lBreakdown[pairKey] = {
+          slot: s.slot,
+          durationMs: 0,
+          splitMs: 0,
+          timestamp: moveTimings[0]?.timestamp || 0
+        };
+      }
+    }
+  }
+
+  for (let i = 0; i < moveTimings.length; i++) {
+    const item = moveTimings[i];
+    const move = typeof item === 'string' ? item : item.move;
+    const timestamp = typeof item === 'object' ? (item.timestamp || 0) : 0;
+    const elapsedMs = typeof item === 'object' && item.elapsedMs !== undefined
+      ? item.elapsedMs
+      : (i > 0 && typeof item === 'object' && moveTimings[0]?.timestamp
+        ? item.timestamp - moveTimings[0].timestamp
+        : 0);
+
+    sim.applyMove(move);
+    const currFacelets = sim.getFaceletString();
+
+    if (!crossResolved && isCrossSolved(currFacelets, crossFace)) {
+      crossResolved = true;
+      lastSplitMs = elapsedMs;
+    }
+
+    const currSlots = detectF2LSlots(currFacelets, crossFace);
+
+    for (const curr of currSlots) {
+      if (curr.solved && !completedSlots.has(curr.slot)) {
+        completedSlots.add(curr.slot);
+        const pairKey = pairKeys[Object.keys(f2lBreakdown).length];
+        if (pairKey) {
+          const durationMs = Math.max(0, elapsedMs - lastSplitMs);
+          f2lBreakdown[pairKey] = {
+            slot: curr.slot,
+            durationMs,
+            splitMs: elapsedMs,
+            timestamp
+          };
+          lastSplitMs = elapsedMs;
+        }
+      }
+    }
+  }
+
+  return f2lBreakdown;
 }

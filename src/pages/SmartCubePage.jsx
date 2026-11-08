@@ -8,6 +8,9 @@ import { TrackballControls } from '@react-three/drei';
 import { ArrowLeft, AlertTriangle, Sparkles, Clock, ArrowDownBox } from '@getpapillon/papicons';
 import { RubiksCube } from '../components/RubiksCube';
 import { MacAddressModal } from '../components/SmartCube/MacAddressModal';
+import { SmartCubePbModal } from '../components/SmartCube/SmartCubePbModal';
+import { SmartCubeEvolutionChart } from '../components/SmartCube/SmartCubeEvolutionChart';
+import { F2LBreakdownView } from '../components/SmartCube/F2LBreakdownView';
 import { useCubeStore } from '../store/useCubeStore';
 import {
   useSmartCubeStore,
@@ -18,6 +21,7 @@ import {
 import { loadCachedMac } from '../utils/smartCube/macAddressUtils';
 import { playSolveVictorySound } from '../utils/audioSystem';
 import { calculateSessionStats, getEffectiveTime } from '../utils/smartCube/wcaStats';
+import { computeRollingAverage } from '../utils/smartCube/chartStats';
 import { paths } from '../routes/routeConfig';
 import { useSeo } from '../routes/useSeo';
 
@@ -362,11 +366,11 @@ function ConnectionStatusPill({ status }) {
 
   return (
     <div
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold border transition-colors ${config.container}`}
+      className={`inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold border transition-colors shrink-0 ${config.container}`}
       role="status"
     >
       <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${config.dot}`} />
-      <span className="truncate max-w-[90px] sm:max-w-none">{config.label}</span>
+      <span className="truncate max-w-[68px] min-[390px]:max-w-[95px] sm:max-w-none">{config.label}</span>
     </div>
   );
 }
@@ -425,7 +429,10 @@ export function SmartCubePage() {
 
   const [isCopied, setIsCopied] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [historyTab, setHistoryTab] = useState('list'); // 'list' | 'stats' | 'trends'
+  const [isPbModalOpen, setIsPbModalOpen] = useState(false);
+  const [historyTab, setHistoryTab] = useState('list'); // 'list' | 'stats' | 'trends' | 'distribution'
+  const [statsPeriod, setStatsPeriod] = useState('total'); // 'day' | 'total'
+  const [distRange, setDistRange] = useState(50); // 50 | 100 | 200 | 'all'
   const [selectedSolveId, setSelectedSolveId] = useState(null);
 
   const [liveTickMs, setLiveTickMs] = useState(0);
@@ -574,7 +581,7 @@ export function SmartCubePage() {
   }, [sessionSolves]);
 
   const { bestSolveIndex, worstSolveIndex } = useMemo(() => {
-    if (!sessionSolves || sessionSolves.length < 2) {
+    if (!sessionSolves || sessionSolves.length < 1) {
       return { bestSolveIndex: -1, worstSolveIndex: -1 };
     }
 
@@ -599,12 +606,123 @@ export function SmartCubePage() {
       }
     });
 
-    if (minTime === maxTime || !isFinite(minTime) || minTime === Infinity) {
+    if (!isFinite(minTime) || minTime === Infinity) {
       return { bestSolveIndex: -1, worstSolveIndex: -1 };
     }
 
-    return { bestSolveIndex: bestIdx, worstSolveIndex: worstIdx };
+    return {
+      bestSolveIndex: bestIdx,
+      worstSolveIndex: (minTime !== maxTime && sessionSolves.length > 1) ? worstIdx : -1
+    };
   }, [sessionSolves]);
+
+  const pbSolve = useMemo(() => {
+    if (bestSolveIndex === -1 || !sessionSolves) return null;
+    return sessionSolves[bestSolveIndex] || null;
+  }, [sessionSolves, bestSolveIndex]);
+
+  const rollingAo5List = useMemo(() => computeRollingAverage(sessionSolves || [], 5), [sessionSolves]);
+  const rollingAo12List = useMemo(() => computeRollingAverage(sessionSolves || [], 12), [sessionSolves]);
+
+  const periodStats = useMemo(() => {
+    const allSolves = Array.isArray(sessionSolves) ? sessionSolves : [];
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const todayMs = startOfToday.getTime();
+
+    const filtered = statsPeriod === 'day'
+      ? allSolves.filter(s => {
+          const ts = Number(s?.timestamp) || Number(s?.date) || 0;
+          return ts >= todayMs;
+        })
+      : allSolves;
+
+    const validSolves = [];
+    let bestSingleMs = Infinity;
+    let totalTimeMs = 0;
+    let totalMoves = 0;
+    let totalTps = 0;
+    let totalFluency = 0;
+    let totalPauses = 0;
+
+    filtered.forEach(s => {
+      const isDnf = s === 'DNF' || s?.penalty === 'dnf' || s?.isDnf;
+      if (isDnf) return;
+      const eff = getEffectiveTime(s);
+      if (typeof eff === 'number' && !isNaN(eff) && eff > 0) {
+        validSolves.push(s);
+        if (eff < bestSingleMs) bestSingleMs = eff;
+        totalTimeMs += eff;
+        totalMoves += Number(s?.moveCount) || 0;
+        totalTps += Number(s?.tps) || 0;
+        totalFluency += computeFluencyScore(s?.elapsedMs ?? s?.timeMs, s?.pauses);
+        totalPauses += Number(s?.pauses?.count) || 0;
+      }
+    });
+
+    const pAo5 = computeRollingAverage(filtered, 5).filter(v => typeof v === 'number' && !isNaN(v));
+    const pAo12 = computeRollingAverage(filtered, 12).filter(v => typeof v === 'number' && !isNaN(v));
+    const bestAo5Ms = pAo5.length > 0 ? Math.min(...pAo5) : null;
+    const bestAo12Ms = pAo12.length > 0 ? Math.min(...pAo12) : null;
+
+    const vCount = validSolves.length;
+    return {
+      totalCount: filtered.length,
+      validCount: vCount,
+      avgTimeMs: vCount > 0 ? totalTimeMs / vCount : null,
+      bestSingleMs: vCount > 0 && isFinite(bestSingleMs) ? bestSingleMs : null,
+      avgMoves: vCount > 0 ? totalMoves / vCount : null,
+      avgTps: vCount > 0 ? totalTps / vCount : null,
+      avgFluency: vCount > 0 ? totalFluency / vCount : null,
+      avgPauses: vCount > 0 ? totalPauses / vCount : null,
+      bestAo5Ms,
+      bestAo12Ms
+    };
+  }, [sessionSolves, statsPeriod]);
+
+  const distributionData = useMemo(() => {
+    const allSolves = Array.isArray(sessionSolves) ? sessionSolves : [];
+    const sliced = distRange === 'all' ? allSolves : allSolves.slice(-Number(distRange));
+    const validSecs = [];
+    sliced.forEach(s => {
+      const isDnf = s === 'DNF' || s?.penalty === 'dnf' || s?.isDnf;
+      if (isDnf) return;
+      const eff = getEffectiveTime(s);
+      if (typeof eff === 'number' && !isNaN(eff) && eff > 0) {
+        validSecs.push(eff / 1000);
+      }
+    });
+
+    if (validSecs.length === 0) {
+      return { buckets: [], maxCount: 0, totalValid: 0 };
+    }
+
+    const minVal = Math.min(...validSecs);
+    const maxVal = Math.max(...validSecs);
+    const bucketCount = 6;
+    const startSec = Math.max(0, Math.floor(minVal * 2) / 2);
+    const rawSpan = Math.max(1.2, maxVal - startSec + 0.01);
+    const step = Math.max(0.5, Math.ceil((rawSpan / bucketCount) * 2) / 2);
+
+    const buckets = Array.from({ length: bucketCount }, (_, i) => {
+      const low = startSec + i * step;
+      const high = low + step;
+      return {
+        label: `${low % 1 === 0 ? low.toFixed(0) : low.toFixed(1)}-${high % 1 === 0 ? high.toFixed(0) : high.toFixed(1)}s`,
+        low,
+        high,
+        count: 0
+      };
+    });
+
+    validSecs.forEach(sec => {
+      const idx = Math.min(bucketCount - 1, Math.max(0, Math.floor((sec - startSec) / step)));
+      buckets[idx].count += 1;
+    });
+
+    const maxCount = Math.max(1, ...buckets.map(b => b.count));
+    return { buckets, maxCount, totalValid: validSecs.length };
+  }, [sessionSolves, distRange]);
 
   const activeScrambleMoves = useMemo(() => {
     if (Array.isArray(scrambleMoves) && scrambleMoves.length > 0) return scrambleMoves;
@@ -676,7 +794,7 @@ export function SmartCubePage() {
   return (
     <div className="flex flex-col h-[100dvh] w-full bg-[#1b2023] text-[#f0f1ed] overflow-hidden select-none">
       {/* 1. EN-TÊTE MINIMALISTE SUR UNE SEULE LIGNE : Retour + Connecté + Batterie + Déconnecter */}
-      <header className="flex items-center justify-between gap-2 px-3 sm:px-5 h-12 bg-[#202629] border-b border-[#394144] shrink-0 z-20">
+      <header className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-1.5 sm:gap-2 px-2.5 sm:px-5 min-h-12 py-1 bg-[#202629] border-b border-[#394144] shrink-0 z-20">
         <button
           onClick={() => navigate(paths.play())}
           className="inline-flex items-center justify-center w-8 h-8 sm:w-auto sm:px-2.5 rounded-lg bg-[#252b2e] border border-[#41494c] text-[#f0f1ed] hover:border-[#9eb5aa] transition-colors cursor-pointer shrink-0"
@@ -689,14 +807,14 @@ export function SmartCubePage() {
           </span>
         </button>
 
-        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+        <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-wrap sm:flex-nowrap justify-end">
           <ConnectionStatusPill status={connectionStatus} />
 
           {/* Pilule Batterie (cliquable pour rafraîchir) */}
           <button
             type="button"
             onClick={() => refreshBattery && refreshBattery()}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold bg-[#252b2e] border border-[#41494c] text-slate-200 hover:border-[#9eb5aa] cursor-pointer shrink-0"
+            className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold bg-[#252b2e] border border-[#41494c] text-slate-200 hover:border-[#9eb5aa] cursor-pointer shrink-0"
             title={t('smartCube.telemetry.battery', 'Batterie')}
           >
             <BatteryIcon level={batteryLevel} isConnected={connectionStatus === 'connected'} />
@@ -711,14 +829,14 @@ export function SmartCubePage() {
           <button
             onClick={handleConnectClick}
             disabled={!isBluetoothSupported || connectionStatus === 'connecting'}
-            className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold border transition-colors cursor-pointer shrink-0 ${
+            className={`inline-flex items-center gap-1.5 px-2 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold border transition-colors cursor-pointer shrink-0 ${
               connectionStatus === 'connected'
                 ? 'bg-[#252b2e] border-[#56615e] text-slate-200 hover:border-rose-400 hover:text-rose-300'
                 : 'bg-[#9eb5aa] border-[#9eb5aa] text-[#1b2023] font-bold hover:bg-[#b0c6bc]'
             } ${!isBluetoothSupported ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <BluetoothIcon className="w-3.5 h-3.5" />
-            <span>
+            <span className="truncate max-w-[85px] min-[390px]:max-w-none">
               {connectionStatus === 'connected'
                 ? t('smartCube.action.disconnect', 'Déconnecter')
                 : connectionStatus === 'connecting'
@@ -867,7 +985,7 @@ export function SmartCubePage() {
       )}
 
       {/* 3. ZONE CENTRALE : CUBE VIRTUEL 3D PLEIN ÉCRAN */}
-      <div className="flex-1 min-h-0 relative w-full flex items-center justify-center overflow-hidden">
+      <div className="flex-1 min-h-0 relative w-full flex items-center justify-center overflow-hidden touch-none">
         {/* Contrôles Gyro & Recentrage flottants très discrets en haut du canvas */}
         <div className="absolute top-2.5 left-3 right-3 z-10 flex items-center justify-between pointer-events-none">
           <button
@@ -907,7 +1025,7 @@ export function SmartCubePage() {
           </div>
         </div>
 
-        <div className="w-full h-full" aria-label={t('smartCube.view3d', 'Vue 3D temps réel')}>
+        <div className="w-full h-full touch-none overflow-hidden" aria-label={t('smartCube.view3d', 'Vue 3D temps réel')}>
           <Canvas camera={{ position: [3.8, 4.2, 5.5], fov: 62 }}>
             <ambientLight intensity={1.1} />
             <directionalLight position={[10, 10, 10]} intensity={1} />
@@ -1133,38 +1251,88 @@ export function SmartCubePage() {
       {/* 5. MODALE PLEIN ÉCRAN PORTRAIT : TOUS LES TEMPS, DÉTAILS D'UN TEMPS & STATISTIQUES */}
       {isHistoryOpen && (
         <div className="fixed inset-0 z-50 bg-black/75 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="w-full sm:max-w-xl h-[90dvh] sm:h-[82dvh] bg-[#1b2023] sm:rounded-xl rounded-t-xl border border-[#394144] flex flex-col overflow-hidden">
-            {/* En-tête de la modale */}
-            <div className="flex items-center justify-between px-4 py-3 bg-[#202629] border-b border-[#394144] shrink-0">
-              {modalSolveAnalysis ? (
-                <button
-                  type="button"
-                  onClick={() => setSelectedSolveId(null)}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#9eb5aa] hover:text-white cursor-pointer"
-                >
-                  <ArrowLeft size={15} />
-                  <span>{t('common.back', 'Retour à la liste')}</span>
-                </button>
-              ) : (
-                <div className="flex items-center gap-1.5">
+          <div className="w-full sm:max-w-2xl h-[90dvh] sm:h-[85dvh] bg-[#1b2023] sm:rounded-xl rounded-t-xl border border-[#394144] flex flex-col overflow-hidden">
+            {/* En-tête de la modale en 2 niveaux sans débordement */}
+            <div className="flex flex-col bg-[#202629] border-b border-[#394144] shrink-0">
+              {/* Ligne 1 : Titre ou bouton retour + boutons d'action à droite */}
+              <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-2 sm:py-2.5">
+                {modalSolveAnalysis ? (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSolveId(null)}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#9eb5aa] hover:text-white cursor-pointer"
+                  >
+                    <ArrowLeft size={15} />
+                    <span>{t('common.back', 'Retour à la liste')}</span>
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2 min-w-0 flex-1 max-w-full">
+                    <Clock size={16} className="text-[#9eb5aa] shrink-0" />
+                    <span className="text-xs sm:text-sm font-extrabold text-[#f0f1ed] truncate">
+                      {t('smartCube.history.modalTitle', 'Historique & Statistiques')} ({sessionSolves.length})
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap shrink-0 justify-end">
+                  {pbSolve && !modalSolveAnalysis && (
+                    <button
+                      type="button"
+                      onClick={() => setIsPbModalOpen(true)}
+                      className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-xs font-semibold text-[#f0f1ed] cursor-pointer shrink-0"
+                      title={t('smartCube.pbCard.buttonTooltip', 'Partager la carte de record Smart Cube')}
+                    >
+                      <Sparkles size={14} />
+                      <span>{t('smartCube.pbCard.button', 'Carte PB')}</span>
+                    </button>
+                  )}
+                  {sessionSolves.length > 0 && !modalSolveAnalysis && (
+                    <button
+                      type="button"
+                      onClick={handleExportCsTimer}
+                      className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-xs font-semibold text-[#f0f1ed] cursor-pointer shrink-0"
+                      title={t('timer.exportCsTimer', 'Exporter la session au format csTimer')}
+                    >
+                      <ArrowDownBox size={14} />
+                      <span>{t('smartCube.history.export', 'Exporter')}</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedSolveId(null);
+                      setIsHistoryOpen(false);
+                    }}
+                    className="px-2 sm:px-2.5 py-1 rounded-lg bg-[#252b2e] border border-[#41494c] text-xs font-bold text-slate-200 hover:text-white cursor-pointer shrink-0"
+                  >
+                    {t('common.close', 'Fermer')}
+                  </button>
+                </div>
+              </div>
+
+              {/* Ligne 2 : Barre de navigation à 4 onglets bien répartis */}
+              {!modalSolveAnalysis && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 px-3 sm:px-4 pb-2.5 min-w-0">
                   <button
                     type="button"
                     onClick={() => setHistoryTab('list')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer transition-colors ${
+                    title={t('smartCube.history.tabDetails', 'Détails de la résolution')}
+                    className={`min-w-0 px-2 sm:px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-center truncate cursor-pointer transition-colors ${
                       historyTab === 'list'
                         ? 'bg-[#9eb5aa] text-[#1b2023]'
-                        : 'bg-[#252b2e] text-slate-300 hover:text-white'
+                        : 'bg-[#252b2e] text-slate-300 border border-[#394144] hover:text-white'
                     }`}
                   >
-                    {t('smartCube.history.title', 'Résolutions')} ({sessionSolves.length})
+                    {t('smartCube.history.tabDetails', 'Détails de la résolution')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setHistoryTab('stats')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer transition-colors ${
+                    title={t('smartCube.stats.title', 'Statistiques')}
+                    className={`min-w-0 px-2 sm:px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-center truncate cursor-pointer transition-colors ${
                       historyTab === 'stats'
                         ? 'bg-[#9eb5aa] text-[#1b2023]'
-                        : 'bg-[#252b2e] text-slate-300 hover:text-white'
+                        : 'bg-[#252b2e] text-slate-300 border border-[#394144] hover:text-white'
                     }`}
                   >
                     {t('smartCube.stats.title', 'Statistiques')}
@@ -1172,40 +1340,29 @@ export function SmartCubePage() {
                   <button
                     type="button"
                     onClick={() => setHistoryTab('trends')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer transition-colors ${
+                    title={t('smartCube.history.tabTrends', 'AO Trend')}
+                    className={`min-w-0 px-2 sm:px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-center truncate cursor-pointer transition-colors ${
                       historyTab === 'trends'
                         ? 'bg-[#9eb5aa] text-[#1b2023]'
-                        : 'bg-[#252b2e] text-slate-300 hover:text-white'
+                        : 'bg-[#252b2e] text-slate-300 border border-[#394144] hover:text-white'
                     }`}
                   >
-                    AO Trend
+                    {t('smartCube.history.tabTrends', 'AO Trend')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHistoryTab('distribution')}
+                    title={t('smartCube.history.tabDistribution', 'Distribution du temps')}
+                    className={`min-w-0 px-2 sm:px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-center truncate cursor-pointer transition-colors ${
+                      historyTab === 'distribution'
+                        ? 'bg-[#9eb5aa] text-[#1b2023]'
+                        : 'bg-[#252b2e] text-slate-300 border border-[#394144] hover:text-white'
+                    }`}
+                  >
+                    {t('smartCube.history.tabDistribution', 'Distribution du temps')}
                   </button>
                 </div>
               )}
-
-              <div className="flex items-center gap-1.5">
-                {sessionSolves.length > 0 && !modalSolveAnalysis && (
-                  <button
-                    type="button"
-                    onClick={handleExportCsTimer}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-xs font-semibold text-[#f0f1ed] cursor-pointer"
-                    title={t('timer.exportCsTimer', 'Exporter la session au format csTimer')}
-                  >
-                    <ArrowDownBox size={14} />
-                    <span className="hidden sm:inline">{t('smartCube.history.export', 'Exporter')}</span>
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedSolveId(null);
-                    setIsHistoryOpen(false);
-                  }}
-                  className="px-2.5 py-1 rounded-lg bg-[#252b2e] border border-[#41494c] text-xs font-bold text-slate-200 hover:text-white cursor-pointer"
-                >
-                  {t('common.close', 'Fermer')}
-                </button>
-              </div>
             </div>
 
             {/* Contenu de la modale */}
@@ -1305,6 +1462,9 @@ export function SmartCubePage() {
                     </div>
                   </div>
 
+                  {/* Détail des 4 paires F2L */}
+                  <F2LBreakdownView solve={modalSolveAnalysis.solve} />
+
                   {/* Mélange utilisé */}
                   <div className="p-3.5 rounded-xl bg-[#202629] border border-[#394144] flex flex-col gap-1">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-[#94a3b8]">
@@ -1349,30 +1509,19 @@ export function SmartCubePage() {
                   </div>
                 </div>
               ) : historyTab === 'list' ? (
-                /* SOUS-VUE 2 : LISTE DE TOUS LES TEMPS AVEC BOUTON "DÉTAILS" SUR CHAQUE LIGNE */
-                <div className="flex flex-col gap-2">
+                /* ONGLET 1 : DÉTAILS DE LA RÉSOLUTION (TABLEAU STRUCTURÉ FAÇON CUBE STATION) */
+                <div className="flex flex-col gap-2.5">
                   {sessionSolves.length > 0 && (
                     <div className="flex items-center justify-between text-xs text-[#94a3b8] px-1">
                       <span>{sessionStats.count} {t('smartCube.stats.solves', 'résolutions')}</span>
-                      <div className="flex items-center gap-3">
-                        <button
-                          type="button"
-                          onClick={handleExportCsTimer}
-                          className="inline-flex items-center gap-1 text-[#9eb5aa] hover:underline cursor-pointer"
-                          title={t('timer.exportCsTimer', 'Exporter la session au format csTimer')}
-                        >
-                          <ArrowDownBox size={14} />
-                          <span>{t('smartCube.history.export', 'Exporter')}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleClearSession}
-                          className="inline-flex items-center gap-1 text-rose-400 hover:underline cursor-pointer"
-                        >
-                          <TrashIcon />
-                          <span>{t('smartCube.history.clear', 'Vider la session')}</span>
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={handleClearSession}
+                        className="inline-flex items-center gap-1 text-rose-400 hover:underline cursor-pointer"
+                      >
+                        <TrashIcon />
+                        <span>{t('smartCube.history.clear', 'Vider la session')}</span>
+                      </button>
                     </div>
                   )}
 
@@ -1381,212 +1530,353 @@ export function SmartCubePage() {
                       {t('smartCube.history.empty', 'Aucun temps enregistré')}
                     </div>
                   ) : (
-                    [...sessionSolves].reverse().map((solve, revIdx) => {
-                      const solveIndex = sessionSolves.length - revIdx;
-                      const origIndex = solveIndex - 1;
-                      const isNone = !solve.penalty || solve.penalty === 'none';
-                      const isPlus2 = solve.penalty === '+2';
-                      const isDnf = solve.penalty === 'dnf' || solve.isDnf;
-                      const isBest = origIndex === bestSolveIndex;
-                      const isWorst = origIndex === worstSolveIndex;
-                      const fluency = computeFluencyScore(solve.elapsedMs ?? solve.timeMs, solve.pauses);
+                    <div className="rounded-xl bg-[#202629] border border-[#394144] overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead>
+                            <tr className="bg-[#252b2e] border-b border-[#394144] text-[10px] uppercase tracking-wider font-extrabold text-[#94a3b8]">
+                              <th className="py-2.5 px-2.5">{t('smartCube.history.colTotal', 'Total')}</th>
+                              <th className="py-2.5 px-2.5">{t('smartCube.history.colSingle', 'Résolution unique')}</th>
+                              <th className="py-2.5 px-2 text-center">{t('smartCube.history.colSteps', 'Étapes')}</th>
+                              <th className="py-2.5 px-2 text-center">{t('smartCube.history.colTps', 'TPS')}</th>
+                              <th className="py-2.5 px-2 text-center">{t('smartCube.history.colFluency', 'Fluence')}</th>
+                              <th className="py-2.5 px-2 text-center">{t('smartCube.history.colAo5', 'AO5')}</th>
+                              <th className="py-2.5 px-2 text-center">{t('smartCube.history.colAo12', 'AO12')}</th>
+                              <th className="py-2.5 px-2.5 text-right">{t('smartCube.history.colActions', 'Actions')}</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[#394144]/60 font-mono">
+                            {[...sessionSolves].reverse().map((solve, revIdx) => {
+                              const solveIndex = sessionSolves.length - revIdx;
+                              const origIndex = solveIndex - 1;
+                              const isNone = !solve.penalty || solve.penalty === 'none';
+                              const isPlus2 = solve.penalty === '+2';
+                              const isDnf = solve.penalty === 'dnf' || solve.isDnf;
+                              const isBest = origIndex === bestSolveIndex;
+                              const isWorst = origIndex === worstSolveIndex;
+                              const fluency = computeFluencyScore(solve.elapsedMs ?? solve.timeMs, solve.pauses);
+                              const ao5AtIdx = rollingAo5List[origIndex];
+                              const ao12AtIdx = rollingAo12List[origIndex];
 
-                      let timeColor = 'text-white';
-                      if (isDnf) {
-                        timeColor = 'text-rose-400 line-through';
-                      } else if (isBest) {
-                        timeColor = 'text-emerald-400 font-bold';
-                      } else if (isWorst) {
-                        timeColor = 'text-rose-400 font-bold';
-                      } else if (isPlus2) {
-                        timeColor = 'text-amber-300';
-                      }
+                              let timeColor = 'text-white';
+                              if (isDnf) {
+                                timeColor = 'text-rose-400 line-through';
+                              } else if (isBest) {
+                                timeColor = 'text-emerald-400 font-bold';
+                              } else if (isWorst) {
+                                timeColor = 'text-rose-400 font-bold';
+                              } else if (isPlus2) {
+                                timeColor = 'text-amber-300';
+                              }
 
-                      return (
-                        <div
-                          key={solve.id}
-                          className="p-2.5 rounded-xl bg-[#202629] border border-[#394144] flex flex-col gap-2"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <span className="font-mono text-xs text-[#94a3b8]">#{solveIndex}</span>
-                              <span className={`font-mono font-extrabold text-base ${timeColor}`}>
-                                {formatSolveTime(solve.elapsedMs ?? solve.timeMs, solve.penalty)}
-                              </span>
-                              <span className="text-[11px] font-mono text-[#94a3b8] truncate">
-                                {solve.moveCount}m • {solve.tps ? Number(solve.tps).toFixed(1) : '--'} TPS • F:{fluency}
-                              </span>
-                            </div>
-
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              {/* Bouton pour ouvrir toutes les infos de ce temps */}
-                              <button
-                                type="button"
-                                onClick={() => setSelectedSolveId(solve.id)}
-                                className="px-2.5 py-1 rounded-lg bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-[#f0f1ed] text-[11px] font-semibold cursor-pointer"
-                              >
-                                {t('smartCube.history.inspectSolve', 'Infos')}
-                              </button>
-
-                              {/* Sélecteur de pénalité */}
-                              <div className="inline-flex rounded-lg border border-[#41494c] overflow-hidden text-[10px] font-semibold">
-                                <button
-                                  type="button"
-                                  onClick={() => updateSolvePenalty(solve.id, 'none')}
-                                  className={`px-1.5 py-1 cursor-pointer ${
-                                    isNone ? 'bg-slate-700 text-white font-bold' : 'text-[#94a3b8]'
-                                  }`}
-                                >
-                                  {t('smartCube.history.penaltyOk', 'OK')}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => updateSolvePenalty(solve.id, '+2')}
-                                  className={`px-1.5 py-1 border-l border-[#41494c] cursor-pointer ${
-                                    isPlus2 ? 'bg-amber-600 text-white font-bold' : 'text-[#94a3b8]'
-                                  }`}
-                                >
-                                  {t('smartCube.history.penaltyPlus2', '+2')}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => updateSolvePenalty(solve.id, 'dnf')}
-                                  className={`px-1.5 py-1 border-l border-[#41494c] cursor-pointer ${
-                                    isDnf ? 'bg-rose-700 text-white font-bold' : 'text-[#94a3b8]'
-                                  }`}
-                                >
-                                  {t('smartCube.history.penaltyDnf', 'DNF')}
-                                </button>
-                              </div>
-
-                              <button
-                                type="button"
-                                onClick={() => deleteSolve(solve.id)}
-                                className="p-1 rounded text-[#94a3b8] hover:text-rose-400 cursor-pointer"
-                                aria-label={t('smartCube.history.delete', 'Supprimer ce temps')}
-                              >
-                                <TrashIcon />
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Puces de splits CFOP rapides */}
-                          {solve.splits && (
-                            <div className="flex flex-wrap items-center gap-1">
-                              {CFOP_PHASE_ORDER.map(phase => {
-                                const sp = solve.splits[phase];
-                                if (!sp) return null;
-                                return (
-                                  <span
-                                    key={phase}
-                                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] font-mono ${PHASE_BADGE_STYLES[phase]}`}
-                                  >
-                                    <span className="font-bold">{PHASE_SHORT_LABELS[phase]}:</span>
-                                    <span>{sp.skipped ? 'Skip' : formatSplitSeconds(sp.durationMs)}</span>
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })
+                              return (
+                                <tr key={solve.id} className="hover:bg-[#252b2e]/60 transition-colors">
+                                  <td className="py-2.5 px-2.5 text-[#94a3b8] font-semibold">#{solveIndex}</td>
+                                  <td className={`py-2.5 px-2.5 text-sm font-extrabold ${timeColor}`}>
+                                    {formatSolveTime(solve.elapsedMs ?? solve.timeMs, solve.penalty)}
+                                  </td>
+                                  <td className="py-2.5 px-2 text-center text-slate-200">{solve.moveCount ?? '-'}</td>
+                                  <td className="py-2.5 px-2 text-center text-[#9eb5aa]">
+                                    {solve.tps ? Number(solve.tps).toFixed(2) : '-'}
+                                  </td>
+                                  <td className="py-2.5 px-2 text-center text-slate-300">{fluency}</td>
+                                  <td className="py-2.5 px-2 text-center text-amber-300">
+                                    {ao5AtIdx === 'DNF' ? 'DNF' : typeof ao5AtIdx === 'number' ? formatSolveTime(ao5AtIdx) : '-'}
+                                  </td>
+                                  <td className="py-2.5 px-2 text-center text-violet-300">
+                                    {ao12AtIdx === 'DNF' ? 'DNF' : typeof ao12AtIdx === 'number' ? formatSolveTime(ao12AtIdx) : '-'}
+                                  </td>
+                                  <td className="py-2.5 px-2.5 text-right">
+                                    <div className="inline-flex items-center justify-end gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedSolveId(solve.id)}
+                                        className="px-2 py-1 rounded bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-[#f0f1ed] font-sans text-[10px] font-semibold cursor-pointer"
+                                      >
+                                        {t('smartCube.history.inspectSolve', 'Infos')}
+                                      </button>
+                                      <div className="inline-flex rounded border border-[#41494c] overflow-hidden font-sans text-[10px] font-semibold">
+                                        <button
+                                          type="button"
+                                          onClick={() => updateSolvePenalty(solve.id, 'none')}
+                                          className={`px-1.5 py-0.5 cursor-pointer ${
+                                            isNone ? 'bg-slate-700 text-white font-bold' : 'text-[#94a3b8]'
+                                          }`}
+                                        >
+                                          {t('smartCube.history.penaltyOk', 'OK')}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => updateSolvePenalty(solve.id, '+2')}
+                                          className={`px-1.5 py-0.5 border-l border-[#41494c] cursor-pointer ${
+                                            isPlus2 ? 'bg-amber-600 text-white font-bold' : 'text-[#94a3b8]'
+                                          }`}
+                                        >
+                                          {t('smartCube.history.penaltyPlus2', '+2')}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => updateSolvePenalty(solve.id, 'dnf')}
+                                          className={`px-1.5 py-0.5 border-l border-[#41494c] cursor-pointer ${
+                                            isDnf ? 'bg-rose-700 text-white font-bold' : 'text-[#94a3b8]'
+                                          }`}
+                                        >
+                                          {t('smartCube.history.penaltyDnf', 'DNF')}
+                                        </button>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => deleteSolve(solve.id)}
+                                        className="p-1 rounded text-[#94a3b8] hover:text-rose-400 cursor-pointer"
+                                        aria-label={t('smartCube.history.delete', 'Supprimer ce temps')}
+                                      >
+                                        <TrashIcon />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   )}
                 </div>
               ) : historyTab === 'stats' ? (
-                /* SOUS-VUE 3 : STATISTIQUES COMPLÈTES (façon Cube Station) */
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div className="p-3 rounded-xl bg-[#202629] border border-[#394144]">
-                    <div className="text-[11px] text-[#94a3b8] uppercase font-bold">{t('smartCube.stats.best', 'Meilleur (PB)')}</div>
-                    <div className="text-xl font-mono font-extrabold text-yellow-200 mt-1">
-                      {sessionStats.best !== null ? formatSolveTime(sessionStats.best) : '--'}
+                /* ONGLET 2 : STATISTIQUES (TABLEAU MÉTRIQUES | STATISTIQUES AVEC FILTRE JOUR / TOTAL) */
+                <div className="flex flex-col gap-3">
+                  {/* Filtre de période Jour / Total */}
+                  <div className="flex items-center justify-end gap-1.5">
+                    <div className="inline-flex rounded-lg border border-[#41494c] bg-[#252b2e] overflow-hidden text-xs font-bold">
+                      <button
+                        type="button"
+                        onClick={() => setStatsPeriod('day')}
+                        className={`px-3 py-1.5 cursor-pointer transition-colors ${
+                          statsPeriod === 'day'
+                            ? 'bg-[#9eb5aa] text-[#1b2023]'
+                            : 'text-slate-300 hover:text-white'
+                        }`}
+                      >
+                        {t('smartCube.stats.periodDay', 'Jour')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setStatsPeriod('total')}
+                        className={`px-3 py-1.5 border-l border-[#41494c] cursor-pointer transition-colors ${
+                          statsPeriod === 'total'
+                            ? 'bg-[#9eb5aa] text-[#1b2023]'
+                            : 'text-slate-300 hover:text-white'
+                        }`}
+                      >
+                        {t('smartCube.stats.periodTotal', 'Total')}
+                      </button>
                     </div>
                   </div>
-                  <div className="p-3 rounded-xl bg-[#202629] border border-[#394144]">
-                    <div className="text-[11px] text-[#94a3b8] uppercase font-bold">{t('smartCube.stats.ao5', 'Ao5')}</div>
-                    <div className="text-xl font-mono font-extrabold text-emerald-400 mt-1">
-                      {typeof sessionStats.ao5 === 'number' ? formatSolveTime(sessionStats.ao5) : (sessionStats.ao5 || '--')}
-                    </div>
-                  </div>
-                  <div className="p-3 rounded-xl bg-[#202629] border border-[#394144]">
-                    <div className="text-[11px] text-[#94a3b8] uppercase font-bold">{t('smartCube.stats.ao12', 'Ao12')}</div>
-                    <div className="text-xl font-mono font-extrabold text-white mt-1">
-                      {typeof sessionStats.ao12 === 'number' ? formatSolveTime(sessionStats.ao12) : (sessionStats.ao12 || '--')}
-                    </div>
-                  </div>
-                  <div className="p-3 rounded-xl bg-[#202629] border border-[#394144]">
-                    <div className="text-[11px] text-[#94a3b8] uppercase font-bold">{t('smartCube.stats.mo3', 'Mo3')}</div>
-                    <div className="text-xl font-mono font-extrabold text-white mt-1">
-                      {typeof sessionStats.mo3 === 'number' ? formatSolveTime(sessionStats.mo3) : (sessionStats.mo3 || '--')}
-                    </div>
-                  </div>
-                  <div className="p-3 rounded-xl bg-[#202629] border border-[#394144]">
-                    <div className="text-[11px] text-[#94a3b8] uppercase font-bold">{t('smartCube.stats.worst', 'Moins bon')}</div>
-                    <div className="text-xl font-mono font-extrabold text-slate-300 mt-1">
-                      {sessionStats.worst !== null ? formatSolveTime(sessionStats.worst) : '--'}
-                    </div>
-                  </div>
-                  <div className="p-3 rounded-xl bg-[#202629] border border-[#394144]">
-                    <div className="text-[11px] text-[#94a3b8] uppercase font-bold">{t('smartCube.stats.avgTps', 'TPS moyen')}</div>
-                    <div className="text-xl font-mono font-extrabold text-sky-300 mt-1">
-                      {sessionStats.avgTps !== null ? sessionStats.avgTps.toFixed(2) : '--'}
-                    </div>
+
+                  {/* Tableau Métriques | Statistiques */}
+                  <div className="rounded-xl bg-[#202629] border border-[#394144] overflow-hidden">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-[#252b2e] border-b border-[#394144] text-[11px] uppercase tracking-wider font-extrabold text-[#94a3b8]">
+                          <th className="py-2.5 px-4">{t('smartCube.stats.colMetric', 'Métriques')}</th>
+                          <th className="py-2.5 px-4 text-right">{t('smartCube.stats.colValue', 'Statistiques')}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#394144]/60">
+                        <tr className="hover:bg-[#252b2e]/50">
+                          <td className="py-2.5 px-4 font-semibold text-slate-300">{t('smartCube.stats.avgTime', 'Temps moyen')}</td>
+                          <td className="py-2.5 px-4 text-right font-mono font-bold text-white">
+                            {periodStats.avgTimeMs !== null ? formatSolveTime(periodStats.avgTimeMs) : '-'}
+                          </td>
+                        </tr>
+                        <tr
+                          className={`hover:bg-[#252b2e]/50 ${pbSolve ? 'cursor-pointer' : ''}`}
+                          onClick={() => { if (pbSolve) setIsPbModalOpen(true); }}
+                        >
+                          <td className="py-2.5 px-4 font-semibold text-slate-300 flex items-center gap-1.5">
+                            <span>{t('smartCube.stats.pbLabel', 'PB')}</span>
+                            {pbSolve && <Sparkles size={12} className="text-yellow-400" />}
+                          </td>
+                          <td className="py-2.5 px-4 text-right font-mono font-extrabold text-emerald-400">
+                            {periodStats.bestSingleMs !== null ? formatSolveTime(periodStats.bestSingleMs) : '-'}
+                          </td>
+                        </tr>
+                        <tr className="hover:bg-[#252b2e]/50">
+                          <td className="py-2.5 px-4 font-semibold text-slate-300">{t('smartCube.stats.countLabel', 'Compter')}</td>
+                          <td className="py-2.5 px-4 text-right font-mono font-bold text-white">
+                            {periodStats.totalCount}
+                          </td>
+                        </tr>
+                        <tr className="hover:bg-[#252b2e]/50">
+                          <td className="py-2.5 px-4 font-semibold text-slate-300">{t('smartCube.stats.avgSteps', 'AVG.Étapes')}</td>
+                          <td className="py-2.5 px-4 text-right font-mono font-bold text-slate-200">
+                            {periodStats.avgMoves !== null ? periodStats.avgMoves.toFixed(1) : '-'}
+                          </td>
+                        </tr>
+                        <tr className="hover:bg-[#252b2e]/50">
+                          <td className="py-2.5 px-4 font-semibold text-slate-300">{t('smartCube.stats.avgTpsLabel', 'AVG.TPS')}</td>
+                          <td className="py-2.5 px-4 text-right font-mono font-bold text-[#9eb5aa]">
+                            {periodStats.avgTps !== null ? periodStats.avgTps.toFixed(2) : '-'}
+                          </td>
+                        </tr>
+                        <tr className="hover:bg-[#252b2e]/50">
+                          <td className="py-2.5 px-4 font-semibold text-slate-300">{t('smartCube.stats.avgFluency', 'AVG.Flux')}</td>
+                          <td className="py-2.5 px-4 text-right font-mono font-bold text-slate-200">
+                            {periodStats.avgFluency !== null ? Math.round(periodStats.avgFluency) : '-'}
+                          </td>
+                        </tr>
+                        <tr className="hover:bg-[#252b2e]/50">
+                          <td className="py-2.5 px-4 font-semibold text-slate-300">{t('smartCube.stats.avgPauses', 'Tours moyens')}</td>
+                          <td className="py-2.5 px-4 text-right font-mono font-bold text-slate-200">
+                            {periodStats.avgPauses !== null ? periodStats.avgPauses.toFixed(1) : '-'}
+                          </td>
+                        </tr>
+                        <tr className="hover:bg-[#252b2e]/50">
+                          <td className="py-2.5 px-4 font-semibold text-slate-300">{t('smartCube.stats.bestAo5', 'AO5.Meilleur')}</td>
+                          <td className="py-2.5 px-4 text-right font-mono font-bold text-amber-300">
+                            {periodStats.bestAo5Ms !== null ? formatSolveTime(periodStats.bestAo5Ms) : '-'}
+                          </td>
+                        </tr>
+                        <tr className="hover:bg-[#252b2e]/50">
+                          <td className="py-2.5 px-4 font-semibold text-slate-300">{t('smartCube.stats.bestAo12', 'AO12.Meilleur')}</td>
+                          <td className="py-2.5 px-4 text-right font-mono font-bold text-violet-300">
+                            {periodStats.bestAo12Ms !== null ? formatSolveTime(periodStats.bestAo12Ms) : '-'}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-              ) : (
-                /* SOUS-VUE 4 : COURBE D'ÉVOLUTION AO TREND */
+              ) : historyTab === 'trends' ? (
+                /* ONGLET 3 : COURBE D'ÉVOLUTION AO TREND */
                 <div className="p-3.5 rounded-xl bg-[#202629] border border-[#394144] flex flex-col gap-3">
                   <div className="text-xs font-bold uppercase tracking-wider text-[#9eb5aa]">
-                    Évolution des temps ({sessionSolves.length})
+                    {t('smartCube.trends.title', 'Évolution des temps')} ({sessionSolves.length})
                   </div>
-                  {sessionSolves.length < 2 ? (
-                    <div className="text-xs text-[#64748b] italic py-8 text-center">
-                      Enregistrez au moins 2 résolutions pour afficher la courbe d’évolution.
+                  <SmartCubeEvolutionChart sessionSolves={sessionSolves} />
+                </div>
+              ) : (
+                /* ONGLET 4 : DISTRIBUTION DU TEMPS (HISTOGRAMME SVG) */
+                <div className="p-3.5 rounded-xl bg-[#202629] border border-[#394144] flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#9eb5aa]">
+                      {t('smartCube.history.tabDistribution', 'Distribution du temps')} ({distributionData.totalValid})
+                    </span>
+                  </div>
+
+                  {distributionData.totalValid === 0 ? (
+                    <div className="h-44 flex items-center justify-center rounded-xl bg-[#252b2e]/60 border border-[#394144] text-xs text-[#64748b] italic">
+                      {t('smartCube.history.empty', 'Aucun temps enregistré')}
                     </div>
                   ) : (
-                    (() => {
-                      const validTimes = sessionSolves
-                        .filter(s => s.penalty !== 'dnf' && !s.isDnf)
-                        .map(s => (s.elapsedMs ?? s.timeMs ?? 0) + (s.penalty === '+2' ? 2000 : 0));
-                      if (validTimes.length < 2) {
-                        return <div className="text-xs text-[#64748b] py-4 text-center">Pas assez de temps valides</div>;
-                      }
-                      const minT = Math.min(...validTimes);
-                      const maxT = Math.max(...validTimes);
-                      const span = Math.max(500, maxT - minT);
-                      const points = validTimes
-                        .map((ms, idx) => {
-                          const x = (idx / (validTimes.length - 1)) * 280 + 10;
-                          const y = 110 - ((ms - minT) / span) * 90;
-                          return `${x.toFixed(1)},${y.toFixed(1)}`;
-                        })
-                        .join(' ');
-                      return (
-                        <div className="flex flex-col gap-2">
-                          <svg viewBox="0 0 300 120" className="w-full h-36 bg-[#252b2e] rounded-lg border border-[#394144]">
-                            <polyline
-                              fill="none"
-                              stroke="#38bdf8"
-                              strokeWidth="2.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              points={points}
-                            />
-                          </svg>
-                          <div className="flex justify-between text-[11px] font-mono text-[#94a3b8]">
-                            <span>PB: {formatSolveTime(minT)}</span>
-                            <span>Max: {formatSolveTime(maxT)}</span>
-                          </div>
-                        </div>
-                      );
-                    })()
+                    <div className="w-full rounded-xl bg-[#1b2023] border border-[#394144] p-3">
+                      <svg viewBox="0 0 540 210" className="w-full h-auto block select-none">
+                        {/* Lignes de grille horizontales */}
+                        {[0, 0.5, 1].map((ratio, idx) => {
+                          const y = 165 - ratio * 130;
+                          const val = Math.round(ratio * distributionData.maxCount);
+                          return (
+                            <g key={idx}>
+                              <line x1={36} y1={y} x2={520} y2={y} stroke="#2a3236" strokeDasharray="3 3" strokeWidth="1" />
+                              <text x={28} y={y + 3} textAnchor="end" fill="#64748b" fontSize="10" fontFamily="monospace">
+                                {val}
+                              </text>
+                            </g>
+                          );
+                        })}
+
+                        {/* Barres de l'histogramme */}
+                        {distributionData.buckets.map((bucket, idx) => {
+                          const count = distributionData.buckets.length;
+                          const slotWidth = (520 - 44) / count;
+                          const barWidth = Math.min(46, slotWidth * 0.62);
+                          const xCenter = 44 + idx * slotWidth + slotWidth / 2;
+                          const barX = xCenter - barWidth / 2;
+                          const barHeight = distributionData.maxCount > 0
+                            ? (bucket.count / distributionData.maxCount) * 130
+                            : 0;
+                          const barY = 165 - barHeight;
+
+                          return (
+                            <g key={bucket.label}>
+                              <rect
+                                x={barX}
+                                y={barY}
+                                width={barWidth}
+                                height={Math.max(2, barHeight)}
+                                rx="4"
+                                fill={bucket.count > 0 ? '#9eb5aa' : '#252b2e'}
+                              />
+                              <text
+                                x={xCenter}
+                                y={barY - 6}
+                                textAnchor="middle"
+                                fill="#f0f1ed"
+                                fontSize="10"
+                                fontWeight="bold"
+                                fontFamily="monospace"
+                              >
+                                {bucket.count}
+                              </text>
+                              <text
+                                x={xCenter}
+                                y={186}
+                                textAnchor="middle"
+                                fill="#94a3b8"
+                                fontSize="10"
+                                fontFamily="monospace"
+                              >
+                                {bucket.label}
+                              </text>
+                            </g>
+                          );
+                        })}
+                      </svg>
+                    </div>
                   )}
+
+                  {/* Sélecteur de plage en bas : Derniers 50 | Derniers 100 | Derniers 200 | Tout */}
+                  <div className="flex items-center justify-center pt-1">
+                    <div className="inline-flex rounded-lg border border-[#394144] bg-[#202629] overflow-hidden text-[11px] font-semibold">
+                      {[
+                        { value: 50, label: t('smartCube.trends.last50', 'Derniers 50') },
+                        { value: 100, label: t('smartCube.trends.last100', 'Derniers 100') },
+                        { value: 200, label: t('smartCube.trends.last200', 'Derniers 200') },
+                        { value: 'all', label: t('smartCube.trends.rangeAll', 'Tout') }
+                      ].map((opt, idx) => (
+                        <button
+                          key={String(opt.value)}
+                          type="button"
+                          onClick={() => setDistRange(opt.value)}
+                          className={`px-3 py-1 cursor-pointer transition-colors ${
+                            idx > 0 ? 'border-l border-[#394144]' : ''
+                          } ${
+                            distRange === opt.value
+                              ? 'bg-[#9eb5aa] text-[#1b2023] font-bold'
+                              : 'text-[#94a3b8] hover:text-white'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
           </div>
         </div>
       )}
+
+      {/* Smart Cube PB Card Modal */}
+      <SmartCubePbModal
+        isOpen={isPbModalOpen}
+        onClose={() => setIsPbModalOpen(false)}
+        pbSolve={pbSolve}
+        sessionStats={sessionStats}
+        puzzle="3x3"
+      />
 
       {/* MAC Address Modal */}
       <MacAddressModal

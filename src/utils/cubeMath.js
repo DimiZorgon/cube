@@ -150,6 +150,165 @@ export function isFaceletsSolved(faceletString) {
     return true;
 }
 
+/**
+ * Decomposes slice moves, wide moves, and rotations into standard quarter turns.
+ * @param {string} moveNotation
+ * @returns {string[]} Array of standard move tokens
+ */
+export function expandMoveNotation(moveNotation) {
+    if (!moveNotation) return [];
+    const move = moveNotation.trim();
+    if (!move) return [];
+
+    // Whole-cube rotations
+    if (move === 'x') return ['R', "L'", "M'"];
+    if (move === "x'") return ["R'", 'L', 'M'];
+    if (move === 'x2' || move === "x2'") return ['R2', 'L2', 'M2'];
+
+    if (move === 'y') return ['U', "D'", "E'"];
+    if (move === "y'") return ["U'", 'D', 'E'];
+    if (move === 'y2' || move === "y2'") return ['U2', 'D2', 'E2'];
+
+    if (move === 'z') return ['F', "B'", 'S'];
+    if (move === "z'") return ["F'", 'B', "S'"];
+    if (move === 'z2' || move === "z2'") return ['F2', 'B2', 'S2'];
+
+    // Wide moves: r/Rw, l/Lw, u/Uw, d/Dw, f/Fw, b/Bw
+    const wideMatch = move.match(/^([rludfb]|Rw|Lw|Uw|Dw|Fw|Bw)(['2]?)$/i);
+    if (wideMatch) {
+        const base = wideMatch[1];
+        const modifier = wideMatch[2] || '';
+        const isPrime = modifier === "'";
+        const isDouble = modifier === '2';
+
+        if (base === 'r' || base === 'Rw') {
+            if (isDouble) return ['R2', 'M2'];
+            if (isPrime) return ["R'", 'M'];
+            return ['R', "M'"];
+        }
+        if (base === 'l' || base === 'Lw') {
+            if (isDouble) return ['L2', 'M2'];
+            if (isPrime) return ["L'", "M'"];
+            return ['L', 'M'];
+        }
+        if (base === 'u' || base === 'Uw') {
+            if (isDouble) return ['U2', 'E2'];
+            if (isPrime) return ["U'", 'E'];
+            return ['U', "E'"];
+        }
+        if (base === 'd' || base === 'Dw') {
+            if (isDouble) return ['D2', 'E2'];
+            if (isPrime) return ["D'", "E'"];
+            return ['D', 'E'];
+        }
+        if (base === 'f' || base === 'Fw') {
+            if (isDouble) return ['F2', 'S2'];
+            if (isPrime) return ["F'", "S'"];
+            return ['F', 'S'];
+        }
+        if (base === 'b' || base === 'Bw') {
+            if (isDouble) return ['B2', 'S2'];
+            if (isPrime) return ["B'", 'S'];
+            return ['B', "S'"];
+        }
+    }
+
+    // Standard moves: U, D, R, L, F, B, M, E, S (with optional ', 2)
+    return [move];
+}
+
+/**
+ * Converts any algorithm string (including rotations x/y/z, wide moves r/l/u/d/f/b/Rw...,
+ * and slice moves M/E/S) into an equivalent sequence of pure outer-face moves (U, D, R, L, F, B)
+ * relative to the fixed center axles of a physical Smart Cube.
+ *
+ * @param {string|string[]} algInput
+ * @returns {string[]} Array of standard outer-face move tokens (U, D, R, L, F, B with optional ' or 2)
+ */
+export function expandAlgoToOuterMoves(algInput, includeOptional = true) {
+    if (!algInput) return [];
+    const cleanedStr = Array.isArray(algInput)
+        ? algInput.join(' ')
+        : String(algInput).replace(/[’‘`]/g, "'");
+    const withoutOptional = includeOptional
+        ? cleanedStr.replace(/[()[\]]/g, ' ')
+        : cleanedStr.replace(/\[[^\]]*\]/g, ' ').replace(/[()]/g, ' ');
+    const rawTokens = withoutOptional
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+
+    let map = { U: 'U', D: 'D', R: 'R', L: 'L', F: 'F', B: 'B' };
+
+    const rotX = (m) => ({ U: m.F, B: m.U, D: m.B, F: m.D, R: m.R, L: m.L });
+    const rotY = (m) => ({ F: m.R, L: m.F, B: m.L, R: m.B, U: m.U, D: m.D });
+    const rotZ = (m) => ({ R: m.U, D: m.R, L: m.D, U: m.L, F: m.F, B: m.B });
+
+    const applyRot = (axis, quarterTurns) => {
+        const turns = ((quarterTurns % 4) + 4) % 4;
+        for (let i = 0; i < turns; i++) {
+            if (axis === 'x') map = rotX(map);
+            else if (axis === 'y') map = rotY(map);
+            else if (axis === 'z') map = rotZ(map);
+        }
+    };
+
+    const decomposeToken = (raw) => {
+        const clean = raw.replace(/[()[\]]/g, '').replace("2'", '2');
+        if (!clean) return [];
+        const isPrime = clean.endsWith("'");
+        const isDouble = clean.endsWith('2');
+        const base = clean.replace(/[2']/g, '');
+        const mod = isDouble ? '2' : isPrime ? "'" : '';
+        const invMod = isDouble ? '2' : isPrime ? '' : "'";
+
+        // First use expandMoveNotation for wide moves & rotations
+        const expanded = expandMoveNotation(clean);
+        if (expanded.length === 2) {
+            // Wide move (e.g. r -> ['R', "M'"], which is L + x in outer+rotation form)
+            switch (base) {
+                case 'r':
+                case 'Rw': return [`L${mod}`, `x${mod}`];
+                case 'l':
+                case 'Lw': return [`R${mod}`, `x${invMod}`];
+                case 'u':
+                case 'Uw': return [`D${mod}`, `y${mod}`];
+                case 'd':
+                case 'Dw': return [`U${mod}`, `y${invMod}`];
+                case 'f':
+                case 'Fw': return [`B${mod}`, `z${mod}`];
+                case 'b':
+                case 'Bw': return [`F${mod}`, `z${invMod}`];
+                default: break;
+            }
+        }
+
+        switch (base) {
+            case 'M': return [`R${mod}`, `L${invMod}`, `x${invMod}`];
+            case 'E': return [`U${mod}`, `D${invMod}`, `y${invMod}`];
+            case 'S': return [`F${invMod}`, `B${mod}`, `z${mod}`];
+            default: return [ `${base}${mod}` ];
+        }
+    };
+
+    const outerMoves = [];
+    for (const token of rawTokens) {
+        const steps = decomposeToken(token);
+        for (const step of steps) {
+            const face = step[0];
+            const mod = step.slice(1);
+            if (face === 'x' || face === 'y' || face === 'z') {
+                const turns = mod === '2' ? 2 : mod === "'" ? 3 : 1;
+                applyRot(face, turns);
+            } else if (map[face]) {
+                outerMoves.push(`${map[face]}${mod}`);
+            }
+        }
+    }
+
+    return outerMoves;
+}
+
 export class CubeStateSimulator {
     constructor(facelets = SOLVED_FACELETS) {
         this.facelets = facelets.split('');
@@ -157,21 +316,24 @@ export class CubeStateSimulator {
 
     applyMove(moveNotation) {
         if (!moveNotation) return;
-        const move = moveNotation.trim();
-        if (!move) return;
-        const face = move[0];
-        const isPrime = move.includes("'");
-        const isDouble = move.includes("2");
-        const turns = isDouble ? 2 : isPrime ? 3 : 1;
+        const expanded = expandMoveNotation(moveNotation);
+        for (const move of expanded) {
+            const face = move[0];
+            const isPrime = move.includes("'");
+            const isDouble = move.includes("2");
+            const turns = isDouble ? 2 : isPrime ? 3 : 1;
 
-        for (let t = 0; t < turns; t++) {
-            this._applyQuarterTurn(face);
+            for (let t = 0; t < turns; t++) {
+                this._applyQuarterTurn(face);
+            }
         }
     }
 
     applyMoves(moveList) {
         if (!moveList) return;
-        const moves = Array.isArray(moveList) ? moveList : moveList.split(/\s+/).filter(Boolean);
+        const moves = Array.isArray(moveList)
+            ? moveList
+            : moveList.replace(/[()[\]]/g, ' ').trim().split(/\s+/).filter(Boolean);
         for (const m of moves) {
             this.applyMove(m);
         }
@@ -241,6 +403,42 @@ export class CubeStateSimulator {
             f[11] = f[35]; f[14] = f[34]; f[17] = f[33];
             f[35] = f[42]; f[34] = f[39]; f[33] = f[36];
             f[42] = tmp[0]; f[39] = tmp[1]; f[36] = tmp[2];
+        } else if (face === 'M') {
+            const tmp = [f[1], f[4], f[7]];
+            f[1] = f[52]; f[4] = f[49]; f[7] = f[46];
+            f[52] = f[28]; f[49] = f[31]; f[46] = f[34];
+            f[28] = f[19]; f[31] = f[22]; f[34] = f[25];
+            f[19] = tmp[0]; f[22] = tmp[1]; f[25] = tmp[2];
+        } else if (face === 'E') {
+            const tmp = [f[21], f[22], f[23]];
+            f[21] = f[39]; f[22] = f[40]; f[23] = f[41];
+            f[39] = f[48]; f[40] = f[49]; f[41] = f[50];
+            f[48] = f[12]; f[49] = f[13]; f[50] = f[14];
+            f[12] = tmp[0]; f[13] = tmp[1]; f[14] = tmp[2];
+        } else if (face === 'S') {
+            const tmp = [f[3], f[4], f[5]];
+            f[3] = f[43]; f[4] = f[40]; f[5] = f[37];
+            f[43] = f[32]; f[40] = f[31]; f[37] = f[30];
+            f[32] = f[10]; f[31] = f[13]; f[30] = f[16];
+            f[10] = tmp[0]; f[13] = tmp[1]; f[16] = tmp[2];
+        } else if (face === 'x') {
+            this._applyQuarterTurn('R');
+            for (let i = 0; i < 3; i++) {
+                this._applyQuarterTurn('L');
+                this._applyQuarterTurn('M');
+            }
+        } else if (face === 'y') {
+            this._applyQuarterTurn('U');
+            for (let i = 0; i < 3; i++) {
+                this._applyQuarterTurn('D');
+                this._applyQuarterTurn('E');
+            }
+        } else if (face === 'z') {
+            this._applyQuarterTurn('F');
+            for (let i = 0; i < 3; i++) {
+                this._applyQuarterTurn('B');
+            }
+            this._applyQuarterTurn('S');
         }
     }
 }

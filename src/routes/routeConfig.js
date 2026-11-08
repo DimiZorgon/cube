@@ -126,6 +126,10 @@ export const paths = {
   play: () => '/play',
   game: size => `/play/${size}`,
   smartCube: () => '/play/smart-cube',
+  smartCubeAlgo: caseId =>
+    caseId && !caseId.startsWith(':')
+      ? `/smart-cube/algo/${encodeURIComponent(caseId)}`
+      : `/smart-cube/algo/${caseId || ''}`,
   timer: () => '/timer',
   settings: () => '/settings',
   algos: () => '/algos',

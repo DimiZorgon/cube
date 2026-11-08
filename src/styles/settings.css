@@ -260,6 +260,7 @@
   border: 1px solid #343c3f;
   border-radius: 8px;
   cursor: pointer;
+  min-width: 0;
   transition: border-color 0.12s;
 }
 
@@ -271,12 +272,17 @@
   font-size: 0.88rem;
   font-weight: 600;
   color: #e2e8f0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .settings-color-picker-wrap {
   display: flex;
   align-items: center;
   gap: 0.45rem;
+  flex-shrink: 0;
 }
 
 .settings-color-input {
@@ -317,6 +323,12 @@
 
   .settings-colors-grid {
     grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 400px) {
+  .settings-colors-grid {
+    grid-template-columns: 1fr;
   }
 }
 

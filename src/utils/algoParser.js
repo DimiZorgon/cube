@@ -221,8 +221,7 @@ export function createCaseCubies({
   let cubies = generateInitialCubies(size);
 
   if (yellowTop) {
-    const orientAlg = maskMode === 'f2l' ? 'x2 y' : "x2 y'";
-    cubies = applyAlgoInstant(cubies, orientAlg, size, true);
+    cubies = applyAlgoInstant(cubies, 'z2', size, true);
   }
 
   const outer = (size - 1) / 2;
@@ -376,3 +375,66 @@ export function getStickerColor(cubies, x, y, z, nx, ny, nz) {
   }
   return STANDARD_COLORS.grey;
 }
+
+export const PHYSICAL_TO_LOGICAL_CFOP_MAP = Object.freeze({
+  D: 'U',
+  U: 'D',
+  L: 'R',
+  R: 'L',
+  F: 'F',
+  B: 'B'
+});
+
+export function mapPhysicalToLogicalAlgoMove(rawMove) {
+  if (!rawMove || typeof rawMove !== 'string') return rawMove;
+  const clean = rawMove.trim();
+  if (!clean) return rawMove;
+  const face = clean[0];
+  const mappedFace = PHYSICAL_TO_LOGICAL_CFOP_MAP[face];
+  if (!mappedFace) return rawMove;
+  return mappedFace + clean.slice(1);
+}
+
+/**
+ * Maps a relative gyro quaternion (qRel = qZero^-1 * qLive) from GAN hardware frame
+ * to Yellow-top Green-front speedcuber hand frame using z2 basis conjugation.
+ * (x, y, z, w) -> (-x, -y, z, w), sanitizing -0 to 0.
+ *
+ * @param {THREE.Quaternion|Array<number>|{x: number, y: number, z: number, w?: number}} qRel
+ * @returns {[number, number, number, number]} [nx, ny, nz, nw]
+ */
+export function mapRelativeGyroToYellowTopOrientation(qRel) {
+  if (!qRel) return [0, 0, 0, 1];
+
+  let x, y, z, w;
+  if (Array.isArray(qRel)) {
+    [x = 0, y = 0, z = 0, w = 1] = qRel;
+  } else {
+    x = typeof qRel.x === 'number' ? qRel.x : 0;
+    y = typeof qRel.y === 'number' ? qRel.y : 0;
+    z = typeof qRel.z === 'number' ? qRel.z : 0;
+    w = typeof qRel.w === 'number' ? qRel.w : 1;
+  }
+
+  const nx = -x === 0 ? 0 : -x;
+  const ny = -y === 0 ? 0 : -y;
+  const nz = z === 0 ? 0 : z;
+  const nw = w === 0 ? 0 : w;
+
+  return [nx, ny, nz, nw];
+}
+
+/**
+ * Transforms a quaternion from GAN physical body frame to Yellow-top Green-front hand frame.
+ * Under z2 basis rotation, (x, y, z, w) -> (-x, -y, z, w).
+ * Normalizes -0 to 0 and returns a THREE.Quaternion.
+ *
+ * @param {THREE.Quaternion|Array<number>|{x: number, y: number, z: number, w?: number}} q
+ * @returns {THREE.Quaternion}
+ */
+export function transformYellowTopGyroQuaternion(q) {
+  const [nx, ny, nz, nw] = mapRelativeGyroToYellowTopOrientation(q);
+  return new THREE.Quaternion(nx, ny, nz, nw);
+}
+
+

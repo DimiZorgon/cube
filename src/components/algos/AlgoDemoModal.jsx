@@ -1,5 +1,7 @@
 // src/components/algos/AlgoDemoModal.jsx
 import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import {
@@ -11,8 +13,10 @@ import {
   ChevronRight,
   Check,
   Plus,
-  Globe
+  Globe,
+  Sparkles
 } from '@getpapillon/papicons';
+import { paths } from '../../routes/routeConfig';
 import { Cubie } from '../Cubie';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import {
@@ -94,8 +98,18 @@ export function AlgoDemoModal({
   isLearned = false,
   onToggleLearned,
   onTestAlgo,
+  onTestSmartCube,
   onClose
 }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const handleTestSmartCube = () => {
+    if (typeof onTestSmartCube === 'function') {
+      onTestSmartCube({ ...algoCase, size });
+    } else {
+      navigate(paths.smartCubeAlgo(algoCase.id));
+    }
+  };
   const customColors = useSettingsStore(state => state.colors);
   const allTokens = useMemo(() => parseAlgoTokens(algoCase.alg), [algoCase.alg]);
   const tokens = useMemo(
@@ -350,6 +364,17 @@ export function AlgoDemoModal({
             >
               <Play size={18} />
               <span>Tester sur le Cube</span>
+            </button>
+          )}
+          {(onTestSmartCube || size === 3) && (
+            <button
+              className="test-algo-btn smart-cube"
+              style={{ background: '#23333d', borderColor: '#385161', color: '#93c5fd' }}
+              onClick={handleTestSmartCube}
+              title={t('smartCube.algoTest.testOnSmartCube', 'Tester sur Smart Cube')}
+            >
+              <Sparkles size={18} />
+              <span>{t('smartCube.algoTest.testOnSmartCube', 'Tester sur Smart Cube')}</span>
             </button>
           )}
         </div>

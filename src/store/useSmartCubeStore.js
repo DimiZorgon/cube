@@ -12,7 +12,7 @@ import { useCubeStore } from './useCubeStore.js';
 import { playCubeTurnSound } from '../utils/audioSystem.js';
 import { CubeStateSimulator } from '../utils/cubeMath.js';
 import { safeTps } from '../utils/smartCube/wcaStats.js';
-import { detectSolvePhase } from '../utils/smartCube/solvePhaseDetector.js';
+import { detectSolvePhase, detectF2LSlots, F2L_SLOT_NAMES } from '../utils/smartCube/solvePhaseDetector.js';
 import { generateWcaScramble } from '../utils/scrambleGenerator.js';
 
 export const CFOP_PHASE_ORDER = Object.freeze(['cross', 'f2l', 'oll', 'pll']);
@@ -165,7 +165,11 @@ export function advanceSolvePhases({
   phaseSplits,
   phaseSteps,
   crossFace = 'auto',
-  forceComplete = false
+  forceComplete = false,
+  f2lBreakdown = null,
+  completedF2LSlots = null,
+  lastF2LSplitMs = null,
+  timestamp = null
 }) {
   const splits = { ...(phaseSplits || {}) };
   const steps = Array.isArray(phaseSteps) ? [...phaseSteps] : [];
@@ -173,6 +177,16 @@ export function advanceSolvePhases({
   let splitMarker = lastPhaseSplitMs || 0;
   let moveMarker = lastPhaseMoves || 0;
   let resolvedCrossFace = crossFace || 'auto';
+
+  const breakdown = { ...(f2lBreakdown || {}) };
+  const completedSlots = Array.isArray(completedF2LSlots)
+    ? [...completedF2LSlots]
+    : Object.values(breakdown).map(b => b?.slot).filter(Boolean);
+  let f2lMarker = typeof lastF2LSplitMs === 'number'
+    ? lastF2LSplitMs
+    : (splits.cross?.splitMs || splitMarker || 0);
+  const nowTs = timestamp || Date.now();
+  const pairKeys = ['f1', 'f2', 'f3', 'f4'];
 
   const ranks = { cross: 0, f2l: 1, oll: 2, pll: 3, complete: 4 };
 
@@ -189,6 +203,27 @@ export function advanceSolvePhases({
 
   const currentRank = ranks[phase] ?? 0;
   const targetRank = ranks[targetPhase] ?? currentRank;
+
+  // Track incremental F2L slot completions if we are in F2L phase or beyond cross
+  if (facelets && (targetRank >= ranks.f2l || currentRank >= ranks.f2l)) {
+    const currentSlots = detectF2LSlots(facelets, resolvedCrossFace);
+    for (const s of currentSlots) {
+      if (s.solved && !completedSlots.includes(s.slot)) {
+        completedSlots.push(s.slot);
+        const nextKey = pairKeys[Object.keys(breakdown).length];
+        if (nextKey) {
+          const durationMs = Math.max(0, elapsedMs - f2lMarker);
+          breakdown[nextKey] = {
+            slot: s.slot,
+            durationMs,
+            splitMs: elapsedMs,
+            timestamp: nowTs
+          };
+          f2lMarker = elapsedMs;
+        }
+      }
+    }
+  }
 
   if (targetRank > currentRank) {
     for (let r = currentRank; r < targetRank; r++) {
@@ -214,6 +249,9 @@ export function advanceSolvePhases({
           steps.push(record);
           splitMarker = elapsedMs;
           moveMarker = currentMoveCount;
+          if (stepPhase === 'cross') {
+            f2lMarker = elapsedMs;
+          }
         } else {
           const record = {
             phase: stepPhase,
@@ -262,13 +300,38 @@ export function advanceSolvePhases({
     phase = 'complete';
   }
 
+  // Ensure all 4 F2L slots are accounted for if F2L is finished or solve is complete
+  if ((targetRank >= ranks.oll || forceComplete || phase === 'complete') && Object.keys(breakdown).length < 4) {
+    const slotList = F2L_SLOT_NAMES || ['FR', 'FL', 'BR', 'BL'];
+    const remaining = slotList.filter(s => !completedSlots.includes(s));
+    for (const s of remaining) {
+      const nextKey = pairKeys[Object.keys(breakdown).length];
+      if (!nextKey) break;
+      completedSlots.push(s);
+      breakdown[nextKey] = {
+        slot: s,
+        durationMs: 0,
+        splitMs: elapsedMs,
+        timestamp: nowTs
+      };
+    }
+  }
+
+  splits.f2lBreakdown = breakdown;
+  if (splits.f2l) {
+    splits.f2l.breakdown = breakdown;
+  }
+
   return {
     currentPhase: phase,
     phaseSplits: splits,
     phaseSteps: steps,
     lastPhaseSplitMs: splitMarker,
     lastPhaseMoves: moveMarker,
-    crossFace: resolvedCrossFace
+    crossFace: resolvedCrossFace,
+    f2lBreakdown: breakdown,
+    completedF2LSlots: completedSlots,
+    lastF2LSplitMs: f2lMarker
   };
 }
 
@@ -434,6 +497,9 @@ export class SmartCubeStore {
     this._errorStack = [];
     this._lastPhaseSplitMs = 0;
     this._lastPhaseMoves = 0;
+    this._f2lBreakdown = {};
+    this._f2lCompletedSlots = [];
+    this._lastF2LSplitMs = 0;
     this._autoInspectOnScrambleEnd = false;
 
     this.cubeSimulator = new CubeStateSimulator();
@@ -560,6 +626,9 @@ export class SmartCubeStore {
     this.state.phaseSteps = [];
     this._lastPhaseSplitMs = 0;
     this._lastPhaseMoves = 0;
+    this._f2lBreakdown = {};
+    this._f2lCompletedSlots = [];
+    this._lastF2LSplitMs = 0;
     if (this.cubeSimulator) {
       this.cubeSimulator = new CubeStateSimulator();
     }
@@ -637,6 +706,9 @@ export class SmartCubeStore {
       this.state.phaseSteps = [];
       this._lastPhaseSplitMs = 0;
       this._lastPhaseMoves = 0;
+      this._f2lBreakdown = {};
+      this._f2lCompletedSlots = [];
+      this._lastF2LSplitMs = 0;
     }
 
     const lastMoveTs = this.state.moveHistory.length > 0
@@ -672,7 +744,11 @@ export class SmartCubeStore {
         phaseSplits: this.state.phaseSplits,
         phaseSteps: this.state.phaseSteps,
         crossFace: this.state.activeCrossFace || 'auto',
-        forceComplete: isSolved
+        forceComplete: isSolved,
+        f2lBreakdown: this._f2lBreakdown,
+        completedF2LSlots: this._f2lCompletedSlots,
+        lastF2LSplitMs: this._lastF2LSplitMs,
+        timestamp: now
       });
 
       this.state.currentPhase = phaseUpdate.currentPhase;
@@ -681,6 +757,9 @@ export class SmartCubeStore {
       this.state.phaseSteps = phaseUpdate.phaseSteps;
       this._lastPhaseSplitMs = phaseUpdate.lastPhaseSplitMs;
       this._lastPhaseMoves = phaseUpdate.lastPhaseMoves;
+      this._f2lBreakdown = phaseUpdate.f2lBreakdown;
+      this._f2lCompletedSlots = phaseUpdate.completedF2LSlots;
+      this._lastF2LSplitMs = phaseUpdate.lastF2LSplitMs;
 
       if (isSolved) {
         currentTimerStatus = 'solved';
@@ -704,7 +783,11 @@ export class SmartCubeStore {
           pauses,
           penalty: 'none',
           isDnf: false,
-          splits: { ...this.state.phaseSplits },
+          splits: {
+            ...this.state.phaseSplits,
+            f2lBreakdown: { ...phaseUpdate.f2lBreakdown }
+          },
+          f2lBreakdown: { ...phaseUpdate.f2lBreakdown },
           steps: [...this.state.phaseSteps]
         };
         this.state.sessionSolves.push(solveRecord);
@@ -741,7 +824,11 @@ export class SmartCubeStore {
       phaseSplits: this.state.phaseSplits,
       phaseSteps: this.state.phaseSteps,
       crossFace: this.state.activeCrossFace || 'auto',
-      forceComplete: true
+      forceComplete: true,
+      f2lBreakdown: this._f2lBreakdown,
+      completedF2LSlots: this._f2lCompletedSlots,
+      lastF2LSplitMs: this._lastF2LSplitMs,
+      timestamp: now
     });
     this.state.currentPhase = phaseUpdate.currentPhase;
     this.state.activeCrossFace = phaseUpdate.crossFace;
@@ -749,6 +836,9 @@ export class SmartCubeStore {
     this.state.phaseSteps = phaseUpdate.phaseSteps;
     this._lastPhaseSplitMs = phaseUpdate.lastPhaseSplitMs;
     this._lastPhaseMoves = phaseUpdate.lastPhaseMoves;
+    this._f2lBreakdown = phaseUpdate.f2lBreakdown;
+    this._f2lCompletedSlots = phaseUpdate.completedF2LSlots;
+    this._lastF2LSplitMs = phaseUpdate.lastF2LSplitMs;
 
     const pauses = analyzeSolvePauses(this.state.moveHistory, this.state.phaseSplits);
     const solveRecord = {
@@ -769,7 +859,11 @@ export class SmartCubeStore {
       pauses,
       penalty: 'none',
       isDnf: false,
-      splits: { ...this.state.phaseSplits },
+      splits: {
+        ...this.state.phaseSplits,
+        f2lBreakdown: { ...phaseUpdate.f2lBreakdown }
+      },
+      f2lBreakdown: { ...phaseUpdate.f2lBreakdown },
       steps: [...this.state.phaseSteps]
     };
     this.state.sessionSolves.push(solveRecord);
@@ -805,6 +899,9 @@ export class SmartCubeStore {
     this.state.phaseSteps = [];
     this._lastPhaseSplitMs = 0;
     this._lastPhaseMoves = 0;
+    this._f2lBreakdown = {};
+    this._f2lCompletedSlots = [];
+    this._lastF2LSplitMs = 0;
     if (this.cubeSimulator) {
       this.cubeSimulator = new CubeStateSimulator();
       this.cubeSimulator.applyMoves(scramble);
@@ -838,6 +935,9 @@ export class SmartCubeStore {
     this.state.phaseSteps = [];
     this._lastPhaseSplitMs = 0;
     this._lastPhaseMoves = 0;
+    this._f2lBreakdown = {};
+    this._f2lCompletedSlots = [];
+    this._lastF2LSplitMs = 0;
     this.state.scrambleIndex = 0;
     this.state.scrambleSubStep = 0;
     this.state.scrambleError = null;
@@ -884,6 +984,9 @@ let zustandSubStepDir = null;
 let zustandErrorStack = [];
 let zustandLastPhaseSplitMs = 0;
 let zustandLastPhaseMoves = 0;
+let zustandF2lBreakdown = {};
+let zustandF2lCompletedSlots = [];
+let zustandLastF2LSplitMs = 0;
 let zustandAutoInspect = true;
 
 const defaultScramble = generateWcaScramble('3x3x3');
@@ -1061,6 +1164,9 @@ const rawZustandStore = create((set, get) => {
       zustandErrorStack = [];
       zustandLastPhaseSplitMs = 0;
       zustandLastPhaseMoves = 0;
+      zustandF2lBreakdown = {};
+      zustandF2lCompletedSlots = [];
+      zustandLastF2LSplitMs = 0;
       zustandAutoInspect = options.autoInspect !== undefined ? Boolean(options.autoInspect) : true;
       try {
         useCubeStore.getState().initCube(3);
@@ -1173,6 +1279,9 @@ const rawZustandStore = create((set, get) => {
         phaseSteps = [];
         zustandLastPhaseSplitMs = 0;
         zustandLastPhaseMoves = 0;
+        zustandF2lBreakdown = {};
+        zustandF2lCompletedSlots = [];
+        zustandLastF2LSplitMs = 0;
       }
 
       const lastMoveTs = state.moveHistory.length > 0
@@ -1213,7 +1322,11 @@ const rawZustandStore = create((set, get) => {
           phaseSplits,
           phaseSteps,
           crossFace: activeCrossFace,
-          forceComplete: isSolved
+          forceComplete: isSolved,
+          f2lBreakdown: zustandF2lBreakdown,
+          completedF2LSlots: zustandF2lCompletedSlots,
+          lastF2LSplitMs: zustandLastF2LSplitMs,
+          timestamp: now
         });
 
         currentPhase = phaseUpdate.currentPhase;
@@ -1222,6 +1335,9 @@ const rawZustandStore = create((set, get) => {
         phaseSteps = phaseUpdate.phaseSteps;
         zustandLastPhaseSplitMs = phaseUpdate.lastPhaseSplitMs;
         zustandLastPhaseMoves = phaseUpdate.lastPhaseMoves;
+        zustandF2lBreakdown = phaseUpdate.f2lBreakdown;
+        zustandF2lCompletedSlots = phaseUpdate.completedF2LSlots;
+        zustandLastF2LSplitMs = phaseUpdate.lastF2LSplitMs;
 
         if (isSolved) {
           currentTimerStatus = 'solved';
@@ -1245,7 +1361,11 @@ const rawZustandStore = create((set, get) => {
             pauses,
             penalty: 'none',
             isDnf: false,
-            splits: { ...phaseSplits },
+            splits: {
+              ...phaseSplits,
+              f2lBreakdown: { ...phaseUpdate.f2lBreakdown }
+            },
+            f2lBreakdown: { ...phaseUpdate.f2lBreakdown },
             steps: [...phaseSteps]
           };
           nextSessionSolves = [...nextSessionSolves, solveRecord];
@@ -1289,10 +1409,17 @@ const rawZustandStore = create((set, get) => {
         phaseSplits: state.phaseSplits,
         phaseSteps: state.phaseSteps,
         crossFace: state.activeCrossFace || 'auto',
-        forceComplete: true
+        forceComplete: true,
+        f2lBreakdown: zustandF2lBreakdown,
+        completedF2LSlots: zustandF2lCompletedSlots,
+        lastF2LSplitMs: zustandLastF2LSplitMs,
+        timestamp: now
       });
       zustandLastPhaseSplitMs = phaseUpdate.lastPhaseSplitMs;
       zustandLastPhaseMoves = phaseUpdate.lastPhaseMoves;
+      zustandF2lBreakdown = phaseUpdate.f2lBreakdown;
+      zustandF2lCompletedSlots = phaseUpdate.completedF2LSlots;
+      zustandLastF2LSplitMs = phaseUpdate.lastF2LSplitMs;
 
       const pauses = analyzeSolvePauses(state.moveHistory, phaseUpdate.phaseSplits);
       const solveRecord = {
@@ -1313,7 +1440,11 @@ const rawZustandStore = create((set, get) => {
         pauses,
         penalty: 'none',
         isDnf: false,
-        splits: { ...phaseUpdate.phaseSplits },
+        splits: {
+          ...phaseUpdate.phaseSplits,
+          f2lBreakdown: { ...phaseUpdate.f2lBreakdown }
+        },
+        f2lBreakdown: { ...phaseUpdate.f2lBreakdown },
         steps: [...phaseUpdate.phaseSteps]
       };
       const nextSessionSolves = [...state.sessionSolves, solveRecord];
@@ -1343,6 +1474,9 @@ const rawZustandStore = create((set, get) => {
       zustandErrorStack = [];
       zustandLastPhaseSplitMs = 0;
       zustandLastPhaseMoves = 0;
+      zustandF2lBreakdown = {};
+      zustandF2lCompletedSlots = [];
+      zustandLastF2LSplitMs = 0;
       set({
         scramble,
         scrambleMoves: moves,
@@ -1386,6 +1520,9 @@ const rawZustandStore = create((set, get) => {
       zustandErrorStack = [];
       zustandLastPhaseSplitMs = 0;
       zustandLastPhaseMoves = 0;
+      zustandF2lBreakdown = {};
+      zustandF2lCompletedSlots = [];
+      zustandLastF2LSplitMs = 0;
       try {
         useCubeStore.getState().initCube(3);
       } catch {

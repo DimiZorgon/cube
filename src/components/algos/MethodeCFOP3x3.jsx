@@ -1,5 +1,6 @@
 // src/components/algos/MethodeCFOP3x3.jsx
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
@@ -8,18 +9,30 @@ import {
   Play,
   Bookmark,
   Filter,
-  Cross
+  Cross,
+  Sparkles
 } from '@getpapillon/papicons';
 import { CFOP_SECTIONS, CFOP_DATA } from '../../data/cfopData';
 import { CubeDiagram2D } from './CubeDiagram2D';
 import { AlgoDemoModal } from './AlgoDemoModal';
 import { AlgoTrainerQuizModal } from './AlgoTrainerQuizModal';
 import { localizeCFOPGroups } from '../../i18n/localizeData';
+import { paths } from '../../routes/routeConfig';
 
 const LEARNED_STORAGE_KEY = 'rubiks_learned_algos';
 
-export function MethodeCFOP3x3({ onBack, onTestAlgo, activeSection: controlledSection, onSectionChange }) {
+export function MethodeCFOP3x3({ onBack, onTestAlgo, onTestSmartCube, activeSection: controlledSection, onSectionChange }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const handleTestSmartCube = (item) => {
+    if (typeof onTestSmartCube === 'function') {
+      onTestSmartCube(item);
+    } else {
+      navigate(paths.smartCubeAlgo(item.id), {
+        state: { fromSection: activeSection }
+      });
+    }
+  };
   const sections = CFOP_SECTIONS.map(section => ({
     ...section,
     label: t(`data.section.cfop.${section.id}`)
@@ -215,6 +228,15 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo, activeSection: controlledSe
                           <Play size={15} />
                           <span>{t('common.test')}</span>
                         </button>
+                        <button
+                          className="card-mini-btn smart-cube"
+                          style={{ background: '#23333d', borderColor: '#385161', color: '#93c5fd' }}
+                          onClick={() => handleTestSmartCube(item)}
+                          title={t('smartCube.algoTest.testOnSmartCube', 'Tester sur Smart Cube')}
+                        >
+                          <Sparkles size={14} />
+                          <span>Smart Cube</span>
+                        </button>
                       </div>
                     </div>
                   );
@@ -238,6 +260,7 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo, activeSection: controlledSe
               size: 3
             })
           }
+          onTestSmartCube={handleTestSmartCube}
           onClose={() => setSelectedCase(null)}
         />
       )}

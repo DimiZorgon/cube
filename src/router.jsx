@@ -11,6 +11,7 @@ import { GameRoute } from './pages/GameRoute';
 import { MethodRoute } from './pages/MethodRoute';
 import { TimerRoute, SettingsRoute } from './pages/ToolRoutes';
 import { TrainingRoute, SmartCubePage } from './pages/lazyViews';
+import { SmartCubeAlgoTestPage } from './pages/SmartCubeAlgoTestPage';
 import { basenameFor, detectLang, paths } from './routes/routeConfig';
 
 export const routes = [
@@ -29,6 +30,8 @@ export const routes = [
       { path: 'algos/:size/:method', element: <MethodRoute /> },
       { path: 'algos/:size/:method/:section', element: <MethodRoute /> },
       { path: 'algos/:size/:method/test/:caseId', element: <TrainingRoute /> },
+      { path: 'smart-cube/algo/:caseId', element: <SmartCubeAlgoTestPage /> },
+      { path: 'play/smart-cube/algo/:caseId', element: <SmartCubeAlgoTestPage /> },
       { path: '*', element: <NotFoundPage /> }
     ]
   }

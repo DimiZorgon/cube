@@ -14,7 +14,7 @@
   background: #1b2023;
   color: #f8fafc;
   box-sizing: border-box;
-  overflow-y: auto;
+  overflow-x: clip;
   touch-action: pan-y;
 }
 

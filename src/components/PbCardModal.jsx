@@ -106,16 +106,35 @@ export function PbCardModal({ isOpen, onClose, puzzle, stats, latestSolve }) {
     ctx.lineTo(width - 30, 285);
     ctx.stroke();
 
-    // Pied de carte : Scramble tronqué & URL
+    // Pied de carte : Scramble intégral & URL
     ctx.fillStyle = '#64748b';
-    ctx.font = '11px monospace';
-    const cleanScramble = scramble.length > 55 ? scramble.slice(0, 52) + '...' : scramble;
-    ctx.fillText(cleanScramble ? `Scramble: ${cleanScramble}` : '', 30, 315);
+    if (scramble) {
+      const fullText = `Scramble: ${scramble}`;
+      const words = fullText.split(/\s+/);
+      const maxChars = fullText.length > 130 ? 64 : 58;
+      const lines = [];
+      let currentLine = '';
+      words.forEach(word => {
+        const candidate = currentLine ? `${currentLine} ${word}` : word;
+        if (candidate.length > maxChars && currentLine) {
+          lines.push(currentLine);
+          currentLine = word;
+        } else {
+          currentLine = candidate;
+        }
+      });
+      if (currentLine) lines.push(currentLine);
+      const lineSpacing = lines.length >= 3 ? 11 : 14;
+      ctx.font = lines.length >= 3 ? '9px monospace' : '10px monospace';
+      lines.forEach((line, idx) => {
+        ctx.fillText(line, 30, 302 + idx * lineSpacing);
+      });
+    }
 
     ctx.fillStyle = '#9eb5aa';
     ctx.font = '600 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText('cube.noullez.com', width - 30, 315);
+    ctx.fillText('cube.noullez.com', width - 30, 344);
     ctx.textAlign = 'left';
   }, [bestTime, bestAo5, bestAo12, stats, puzzle, scramble, dateStr]);
 

@@ -87,6 +87,8 @@
   background: #202629;
   border-bottom: 1px solid #394144;
   flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .trainer-tabs-scroll {
@@ -94,6 +96,9 @@
   gap: 0.45rem;
   overflow-x: auto;
   scrollbar-width: none;
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 auto;
 }
 
 .trainer-tabs-scroll::-webkit-scrollbar {
@@ -343,13 +348,15 @@
 
 .trainer-card-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   width: 100%;
   margin-top: 0.9rem;
 }
 
 .card-mini-btn {
-  flex: 1;
+  flex: 1 1 calc(33.333% - 0.4rem);
+  min-width: 80px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -428,6 +435,16 @@
   .trainer-algo-card {
     min-width: 0;
     padding: 0.85rem;
+  }
+
+  .trainer-card-actions {
+    gap: 0.4rem;
+  }
+
+  .card-mini-btn {
+    min-width: 75px;
+    padding: 0.45rem 0.45rem;
+    font-size: 0.8rem;
   }
 
   .trainer-card-formula {
@@ -843,5 +860,11 @@
 @media (max-width: 600px) {
   .algo-quiz-options-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 375px) {
+  .card-mini-btn {
+    flex: 1 1 calc(50% - 0.3rem);
   }
 }
