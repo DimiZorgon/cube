@@ -409,7 +409,26 @@ export function loadSessionSolves() {
     const raw = localStorage.getItem(SESSIONS_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    // Sanitize any corrupt timestamps (e.g., from Bluetooth hardware uptime < 100000000000)
+    const minReasonableEpoch = 1577836800000; // 2020-01-01
+    let modified = false;
+    const sanitized = parsed.map(s => {
+      let ts = Number(s?.timestamp) || Number(s?.date) || 0;
+      if (ts < minReasonableEpoch) {
+        // If id contains an epoch timestamp (solve-<timestamp>-<hash>)
+        const match = typeof s?.id === 'string' && s.id.match(/^solve-(\d+)/);
+        const idTs = match ? Number(match[1]) : 0;
+        ts = idTs >= minReasonableEpoch ? idTs : Date.now();
+        modified = true;
+        return { ...s, timestamp: ts, date: ts };
+      }
+      return s;
+    });
+    if (modified) {
+      saveSessionSolves(sanitized);
+    }
+    return sanitized;
   } catch {
     return [];
   }
@@ -638,7 +657,7 @@ export class SmartCubeStore {
   handleIncomingMove(moveData, explicitTimestamp = null) {
     const moveNotation = typeof moveData === 'string' ? moveData : moveData?.move;
     if (!moveNotation) return;
-    const now = explicitTimestamp ?? (typeof moveData === 'object' && typeof moveData?.timestamp === 'number' ? moveData.timestamp : Date.now());
+    const now = explicitTimestamp ?? Date.now();
 
     if (this.state.timerStatus === 'solved') {
       if (this.cubeSimulator) {
@@ -1211,7 +1230,7 @@ const rawZustandStore = create((set, get) => {
       const state = get();
       const moveNotation = typeof moveData === 'string' ? moveData : moveData?.move;
       if (!moveNotation) return;
-      const now = explicitTimestamp ?? (typeof moveData === 'object' && typeof moveData?.timestamp === 'number' ? moveData.timestamp : Date.now());
+      const now = explicitTimestamp ?? Date.now();
 
       if (state.timerStatus === 'solved') {
         zustandCubeSimulator.applyMove(moveNotation);
