@@ -454,14 +454,17 @@ export function SmartCubeAlgoTestView({
         moveNotation: move
       });
 
-      scrambleMovesRef.current = result.scrambleMoves;
-      scrambleIndexRef.current = result.scrambleIndex;
+      const nextMoves = result.isCompleted ? [...initialScrambleTokens] : result.scrambleMoves;
+      const nextIndex = result.isCompleted ? initialScrambleTokens.length : result.scrambleIndex;
+
+      scrambleMovesRef.current = nextMoves;
+      scrambleIndexRef.current = nextIndex;
       scrambleSubStepRef.current = result.scrambleSubStep;
       subStepDirRef.current = result.subStepDir;
       errorStackRef.current = result.errorStack;
 
-      setScrambleMoves(result.scrambleMoves);
-      setScrambleIndex(result.scrambleIndex);
+      setScrambleMoves(nextMoves);
+      setScrambleIndex(nextIndex);
       setScrambleSubStep(result.scrambleSubStep);
       setScrambleError(result.scrambleError);
 
@@ -512,7 +515,7 @@ export function SmartCubeAlgoTestView({
         playSolveVictorySound();
       }
     }
-  }, [caseData, stage]);
+  }, [caseData, stage, initialScrambleTokens]);
 
   // Bluetooth Driver Subscription
   useEffect(() => {

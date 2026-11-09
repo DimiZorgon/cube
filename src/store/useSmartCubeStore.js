@@ -128,17 +128,18 @@ export function processScrambleTurn({
   }
 
   if (!isMatch) {
-    // Mauvais mouvement effectué : on ajoute son inverse directement dans le mélange
+    // Mauvais mouvement effectué : on retire les mouvements déjà faits et on préfixe le reste par l'inverse de l'erreur
     const inv = inverseMove(moveNotation);
     if (subStep === 1) {
-      // Était à mi-chemin d'un coup double : insérer l'inverse puis la moitié restante
+      // Était à mi-chemin d'un coup double : remplacer par l'inverse, la moitié restante et la suite
       const remainingHalf = currentSubStepDir === 1 ? face : face + "'";
-      moves.splice(index, 1, inv, remainingHalf);
+      moves.splice(0, index + 1, inv, remainingHalf);
       subStep = 0;
       currentSubStepDir = null;
     } else {
-      moves.splice(index, 0, inv);
+      moves.splice(0, index, inv);
     }
+    index = 0;
     currentError = inv;
   }
 
@@ -682,16 +683,23 @@ export class SmartCubeStore {
         moveNotation
       });
 
-      this.state.scrambleMoves = result.scrambleMoves || this.state.scrambleMoves;
-      this.state.scramble = this.state.scrambleMoves.join(' ');
-      this.state.scrambleIndex = result.scrambleIndex;
+      const initialMoves = parseScramble(this.state.scramble);
+      const nextMoves = result.isCompleted
+        ? initialMoves
+        : (result.scrambleMoves || this.state.scrambleMoves);
+      const nextIndex = result.isCompleted
+        ? initialMoves.length
+        : result.scrambleIndex;
+
+      this.state.scrambleMoves = nextMoves;
+      this.state.scrambleIndex = nextIndex;
       this.state.scrambleSubStep = result.scrambleSubStep;
       this.state.scrambleError = result.scrambleError;
       this._subStepDir = result.subStepDir;
       this._errorStack = result.errorStack;
       this.state.scrambleTracking = buildScrambleTracking(
-        this.state.scrambleMoves,
-        result.scrambleIndex,
+        nextMoves,
+        nextIndex,
         result.scrambleSubStep,
         result.scrambleError
       );
@@ -957,12 +965,14 @@ export class SmartCubeStore {
     this._f2lBreakdown = {};
     this._f2lCompletedSlots = [];
     this._lastF2LSplitMs = 0;
+    const initialMoves = parseScramble(this.state.scramble);
+    this.state.scrambleMoves = initialMoves;
     this.state.scrambleIndex = 0;
     this.state.scrambleSubStep = 0;
     this.state.scrambleError = null;
     this._subStepDir = null;
     this._errorStack = [];
-    this.state.scrambleTracking = buildScrambleTracking(this.state.scrambleMoves || [], 0, 0, null);
+    this.state.scrambleTracking = buildScrambleTracking(initialMoves, 0, 0, null);
     if (this.cubeSimulator) {
       this.cubeSimulator = new CubeStateSimulator();
     }
@@ -1254,7 +1264,13 @@ const rawZustandStore = create((set, get) => {
         zustandSubStepDir = result.subStepDir;
         zustandErrorStack = result.errorStack;
 
-        const nextMoves = result.scrambleMoves || state.scrambleMoves;
+        const initialMoves = parseScramble(state.scramble);
+        const nextMoves = result.isCompleted
+          ? initialMoves
+          : (result.scrambleMoves || state.scrambleMoves);
+        const nextIndex = result.isCompleted
+          ? initialMoves.length
+          : result.scrambleIndex;
         const nextStatusPatch = result.isCompleted
           ? (zustandAutoInspect
               ? { timerStatus: 'inspecting', inspectionStartTime: Date.now() }
@@ -1263,13 +1279,12 @@ const rawZustandStore = create((set, get) => {
 
         set({
           scrambleMoves: nextMoves,
-          scramble: nextMoves.join(' '),
-          scrambleIndex: result.scrambleIndex,
+          scrambleIndex: nextIndex,
           scrambleSubStep: result.scrambleSubStep,
           scrambleError: result.scrambleError,
           scrambleTracking: buildScrambleTracking(
             nextMoves,
-            result.scrambleIndex,
+            nextIndex,
             result.scrambleSubStep,
             result.scrambleError
           ),
@@ -1533,7 +1548,7 @@ const rawZustandStore = create((set, get) => {
     },
 
     resetSolve: () => {
-      const moves = get().scrambleMoves || [];
+      const moves = parseScramble(get().scramble);
       zustandCubeSimulator = new CubeStateSimulator();
       zustandSubStepDir = null;
       zustandErrorStack = [];
@@ -1557,6 +1572,7 @@ const rawZustandStore = create((set, get) => {
         currentTps: 0,
         finalTps: null,
         moveHistory: [],
+        scrambleMoves: moves,
         scrambleIndex: 0,
         scrambleSubStep: 0,
         scrambleError: null,
