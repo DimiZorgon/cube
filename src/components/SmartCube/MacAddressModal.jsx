@@ -28,12 +28,12 @@ export function MacAddressModal({ isOpen, initialMac = '', onClose, onSaveAndCon
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 animate-in fade-in duration-200"
       role="dialog"
       aria-modal="true"
       aria-labelledby="mac-modal-title"
     >
-      <div className="relative w-full max-w-md p-5 sm:p-6 rounded-xl bg-[#202629] border border-[#394144] text-[#f0f1ed] flex flex-col gap-4">
+      <div className="relative w-full max-w-md max-h-[calc(100dvh-1.5rem)] overflow-y-auto p-4 sm:p-6 rounded-xl bg-[#202629] border border-[#394144] text-[#f0f1ed] flex flex-col gap-4">
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2.5">
@@ -42,7 +42,7 @@ export function MacAddressModal({ isOpen, initialMac = '', onClose, onSaveAndCon
             </div>
             <div>
               <h2 id="mac-modal-title" className="text-base sm:text-lg font-bold text-white leading-tight">
-                {t('smartCube.macModal.title', 'Adresse MAC du GAN 16 ui')}
+                {t('smartCube.macModal.title', 'Adresse MAC de votre cube')}
               </h2>
               <p className="text-xs text-[#94a3b8] mt-0.5">
                 {t('smartCube.macModal.subtitle', 'Nécessaire pour déchiffrer les données Bluetooth')}
@@ -66,11 +66,11 @@ export function MacAddressModal({ isOpen, initialMac = '', onClose, onSaveAndCon
           <ol className="list-decimal list-inside space-y-1 pl-1 text-[11px] sm:text-xs text-[#94a3b8]">
             <li>
               {t('smartCube.macModal.step1', 'Ouvrez un nouvel onglet : ')}
-              <code className="px-1.5 py-0.5 rounded bg-black/40 text-emerald-300 font-mono select-all">
+              <code className="px-1.5 py-0.5 rounded bg-black/40 text-emerald-300 font-mono select-all break-all">
                 chrome://bluetooth-internals/#devices
               </code>
             </li>
-            <li>{t('smartCube.macModal.step2', 'Repérez votre cube (ex. GAN-16ui-MAX-...)')}</li>
+            <li>{t('smartCube.macModal.step2', 'Repérez votre cube')}</li>
             <li>{t('smartCube.macModal.step3', 'Copiez la valeur de la colonne "Address"')}</li>
           </ol>
         </div>

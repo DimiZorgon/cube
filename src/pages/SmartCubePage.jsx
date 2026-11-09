@@ -1039,7 +1039,7 @@ export function SmartCubePage() {
       <footer className="px-3 pb-3 pt-1.5 sm:px-5 sm:pb-4 shrink-0 z-10 w-full max-w-2xl mx-auto flex flex-col gap-2">
         {/* ÉTAT A : En cours de mélange */}
         {(timerStatus === 'scrambling' || timerStatus === 'idle') && (
-          <div className="p-3 rounded-xl bg-[#202629] border border-[#394144] flex items-center justify-between gap-3">
+          <div className="p-3 rounded-xl bg-[#202629] border border-[#394144] flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 sm:gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
               <span className="w-2 h-2 rounded-full bg-[#9eb5aa] shrink-0" />
               <div className="truncate">
@@ -1210,7 +1210,7 @@ export function SmartCubePage() {
             )}
 
             {/* Boutons d'action en bas : Voir tous les temps + Mélange suivant */}
-            <div className="flex items-center gap-2 pt-0.5">
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 pt-0.5">
               <button
                 type="button"
                 onClick={() => {
@@ -1250,8 +1250,8 @@ export function SmartCubePage() {
 
       {/* 5. MODALE PLEIN ÉCRAN PORTRAIT : TOUS LES TEMPS, DÉTAILS D'UN TEMPS & STATISTIQUES */}
       {isHistoryOpen && (
-        <div className="fixed inset-0 z-50 bg-black/75 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="w-full sm:max-w-2xl h-[90dvh] sm:h-[85dvh] bg-[#1b2023] sm:rounded-xl rounded-t-xl border border-[#394144] flex flex-col overflow-hidden">
+        <div className="fixed inset-0 z-50 bg-black/75 flex items-stretch sm:items-center justify-center p-0 sm:p-4">
+          <div className="w-full sm:max-w-2xl h-[100dvh] sm:h-[85dvh] bg-[#1b2023] sm:rounded-xl rounded-none border-0 sm:border border-[#394144] flex flex-col overflow-hidden">
             {/* En-tête de la modale en 2 niveaux sans débordement */}
             <div className="flex flex-col bg-[#202629] border-b border-[#394144] shrink-0">
               {/* Ligne 1 : Titre ou bouton retour + boutons d'action à droite */}

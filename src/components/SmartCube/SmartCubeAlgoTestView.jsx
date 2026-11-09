@@ -653,7 +653,7 @@ export function SmartCubeAlgoTestView({
       {/* 2. MAIN WORKSPACE */}
       <div className="flex-1 min-h-0 flex flex-col md:flex-row relative overflow-hidden">
         {/* LEFT COLUMN: Inverse Scramble & Instructions */}
-        <aside className="w-full md:w-80 lg:w-96 shrink-0 border-b md:border-b-0 md:border-r border-[#2d3539] bg-[#1a1e21] p-3 sm:p-4 flex flex-col gap-3 overflow-y-auto">
+        <aside className="w-full md:w-80 lg:w-96 shrink-0 border-b md:border-b-0 md:border-r border-[#2d3539] bg-[#1a1e21] p-2.5 sm:p-4 flex flex-col gap-2.5 sm:gap-3 overflow-y-auto max-h-[38vh] md:max-h-none">
           {/* Card: Inverse Setup Scramble (Guided step-by-step) */}
           <div className="rounded-xl bg-[#202629] border border-[#394144] p-3 sm:p-4 flex flex-col gap-2.5">
             <div className="flex items-center justify-between gap-2">

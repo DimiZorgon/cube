@@ -53,18 +53,22 @@
 
 .step-header-texts {
   flex: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 
 .step-header-title {
   font-size: 1.1rem;
   font-weight: 700;
   color: #f8fafc;
+  overflow-wrap: break-word;
 }
 
 .step-header-sub {
   font-size: 0.88rem;
   color: #94a3b8;
   margin-top: 0.15rem;
+  overflow-wrap: break-word;
 }
 
 .step-chevron {
@@ -97,5 +101,36 @@
   line-height: 1.6;
   color: #e2e8f0;
   white-space: pre-line;
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 600px) {
+  .step-accordion-header {
+    padding: 0.85rem 1rem;
+    gap: 0.75rem;
+  }
+
+  .step-badge-num {
+    width: 32px;
+    height: 32px;
+    font-size: 0.95rem;
+  }
+
+  .step-header-title {
+    font-size: 0.98rem;
+  }
+
+  .step-header-sub {
+    font-size: 0.82rem;
+  }
+
+  .step-accordion-body {
+    padding: 1rem;
+  }
+
+  .step-explanations p {
+    padding: 0.75rem 0.9rem;
+    font-size: 0.9rem;
+  }
 }
 
