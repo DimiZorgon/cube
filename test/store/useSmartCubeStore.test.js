@@ -1,0 +1,20 @@
+import { describe, it, expect, beforeEach } from 'vitest';
+import useSmartCubeStore, {
+  CFOP_PHASE_ORDER,
+  CFOP_PHASE_NAMES,
+  PAUSE_THRESHOLD_MS,
+  parseScramble,
+  buildScrambleTracking,
+  inverseMove,
+  processScrambleTurn,
+  advanceSolvePhases,
+  analyzeSolvePauses,
+  FIXED_SMART_CUBE_MAPPING,
+  SESSIONS_STORAGE_KEY,
+  POST_CONNECT_GAP_MS,
+  loadSessionSolves,
+  saveSessionSolves,
+  generateRandomScramble,
+  applyMoveTo3D,
+  SmartCubeStore,
+} from '../../src/store/useSmartCubeStore.js';

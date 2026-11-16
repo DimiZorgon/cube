@@ -3,7 +3,7 @@
 // Formatage du temps en secondes ou MM:SS.cc (style csTimer)
 export function formatTimerValue(ms, penalty = null) {
   if (penalty === 'DNF') return 'DNF';
-  if (ms === null || ms === undefined || Number.isNaN(ms)) return '-';
+  if (ms === null || ms === undefined || Number.isNaN(ms) || ms < 0) return '-';
 
   const effectiveMs = penalty === '+2' ? ms + 2000 : ms;
   const totalSeconds = Math.floor(effectiveMs / 1000);
