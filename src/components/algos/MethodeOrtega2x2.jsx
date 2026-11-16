@@ -1,23 +1,27 @@
 // src/components/algos/MethodeOrtega2x2.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Check, Play, Gamepad2 } from 'lucide-react';
+import { ArrowLeft, Check, Play } from '@getpapillon/papicons';
 import { ORTEGA_SECTIONS, ORTEGA_DATA } from '../../data/ortegaData';
 import { CubeDiagram2D } from './CubeDiagram2D';
 import { AlgoDemoModal } from './AlgoDemoModal';
-import { localizeCases, localizeGroups } from '../../i18n/localizeData';
+import { AlgoTrainerQuizModal } from './AlgoTrainerQuizModal';
+import { localizeGroups } from '../../i18n/localizeData';
 
 const LEARNED_STORAGE_KEY = 'rubiks_learned_algos';
 
-export function MethodeOrtega2x2({ onBack, onTestAlgo }) {
+export function MethodeOrtega2x2({ onBack, onTestAlgo, activeSection: controlledFilter, onSectionChange }) {
   const { t } = useTranslation();
   const sections = ORTEGA_SECTIONS.map(section => ({
     ...section,
     label: t(`data.section.ortega.${section.id}`)
   }));
   const groups = localizeGroups('ortega', ORTEGA_DATA, t);
-  const [activeFilter, setActiveFilter] = useState('ALL');
+  const [localFilter, setLocalFilter] = useState('ALL');
+  const activeFilter = controlledFilter ?? localFilter;
+  const setActiveFilter = onSectionChange ?? setLocalFilter;
   const [selectedCase, setSelectedCase] = useState(null);
+  const [isQuizOpen, setIsQuizOpen] = useState(false);
   const [learnedIds, setLearnedIds] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem(LEARNED_STORAGE_KEY) || '[]');
@@ -40,6 +44,10 @@ export function MethodeOrtega2x2({ onBack, onTestAlgo }) {
       ? groups
       : groups.filter(g => g.section === activeFilter);
 
+  const isQuizAvailable = activeFilter === 'OLL' || activeFilter === 'PBL';
+  const quizCases = useMemo(() => visibleGroups.flatMap(g => g.cases), [visibleGroups]);
+  const activeSectionLabel = sections.find(s => s.id === activeFilter)?.label || activeFilter;
+
   return (
     <div className="trainer-page">
       <header className="trainer-topbar">
@@ -50,7 +58,17 @@ export function MethodeOrtega2x2({ onBack, onTestAlgo }) {
         <div className="trainer-topbar-center">
           <h1 className="trainer-topbar-title">{t('method.ortega2x2.title')}</h1>
         </div>
-        <div style={{ width: '90px' }} />
+        <div className="trainer-topbar-actions">
+          {isQuizAvailable && (
+            <button
+              className="trainer-quiz-trigger-btn"
+              onClick={() => setIsQuizOpen(true)}
+              title={t('quiz.startTraining', { defaultValue: 'Entraînement Quiz' })}
+            >
+              <span>{t('quiz.modeTitle', { defaultValue: 'Quiz' })}</span>
+            </button>
+          )}
+        </div>
       </header>
 
       <div className="trainer-tabs-bar">
@@ -75,7 +93,7 @@ export function MethodeOrtega2x2({ onBack, onTestAlgo }) {
               <p className="trainer-group-desc">{group.description}</p>
             )}
             <div className="trainer-cards-grid">
-              {localizeCases(group.cases, t).map(item => {
+              {group.cases.map(item => {
                 const isLearned = learnedIds.includes(item.id);
                 return (
                   <div
@@ -88,7 +106,7 @@ export function MethodeOrtega2x2({ onBack, onTestAlgo }) {
                       onClick={e => toggleLearned(item.id, e)}
                       title={t('common.markLearned')}
                     >
-                      <Check size={16} strokeWidth={2.5} />
+                      <Check size={16} />
                     </button>
 
                     <div className="trainer-card-diagram">
@@ -129,7 +147,7 @@ export function MethodeOrtega2x2({ onBack, onTestAlgo }) {
                           })
                         }
                       >
-                        <Gamepad2 size={15} />
+                        <Play size={15} />
                         <span>{t('common.test')}</span>
                       </button>
                     </div>
@@ -155,6 +173,17 @@ export function MethodeOrtega2x2({ onBack, onTestAlgo }) {
             })
           }
           onClose={() => setSelectedCase(null)}
+        />
+      )}
+
+      {isQuizAvailable && (
+        <AlgoTrainerQuizModal
+          isOpen={isQuizOpen}
+          onClose={() => setIsQuizOpen(false)}
+          cases={quizCases}
+          size={2}
+          categoryName={`Ortega ${activeSectionLabel}`}
+          onTestAlgo={onTestAlgo}
         />
       )}
     </div>

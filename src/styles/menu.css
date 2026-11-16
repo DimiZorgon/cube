@@ -1,7 +1,7 @@
 /* src/App.css */
 
 /* =========================================================
-   MENU PRINCIPAL & SOUS-MENUS (STYLE SHADCN / KHROMA)
+   MENU PRINCIPAL & SOUS-MENUS 
    ========================================================= */
 .main-menu-container {
   position: relative;
@@ -14,7 +14,7 @@
   background: #1b2023;
   color: #f8fafc;
   box-sizing: border-box;
-  overflow-y: auto;
+  overflow-x: clip;
   touch-action: pan-y;
 }
 
@@ -33,6 +33,7 @@
   font-weight: 700;
   text-decoration: none;
   transition: border-color 0.12s, background 0.12s;
+  text-decoration: none;
 }
 
 .language-switcher:hover {
@@ -99,6 +100,7 @@
   border-radius: 8px;
   color: #f8fafc;
   transition: border-color 0.12s ease, background 0.12s ease;
+  text-decoration: none;
 }
 
 .menu-btn:hover {
@@ -164,6 +166,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 
 .menu-card-title {
@@ -183,10 +187,44 @@
   pointer-events: none;
 }
 
+/* Smart Cube Card Preview */
+.smart-cube-menu-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  color: #38bdf8;
+  background: #1c2225;
+  border-radius: 6px;
+  border: 1px solid #343c3f;
+  transition: border-color 0.12s ease, color 0.12s ease;
+}
+
+.cube-select-card:hover .smart-cube-menu-preview,
+.menu-btn:hover .smart-cube-menu-preview {
+  border-color: #38bdf8;
+  color: #7dd3fc;
+}
+
+.smart-cube-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #9eb5aa;
+  background: #252b2e;
+  border: 1px solid #41494c;
+  border-radius: 4px;
+}
+
 /* Grille des 4 méthodes dans le sous-menu Algorithmes */
 .algo-methods-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(290px, 100%), 1fr));
   gap: 1.15rem;
   max-width: 860px;
   width: 100%;
@@ -204,6 +242,7 @@
   text-align: left;
   cursor: pointer;
   transition: border-color 0.12s ease, background 0.12s ease;
+  text-decoration: none;
 }
 
 .method-select-card:hover {
@@ -215,38 +254,29 @@
   width: 52px;
   height: 52px;
   border-radius: 12px;
+  background: #303a37;
+  color: #b9c9bf;
+  border: 1px solid #4b5a53;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
-.method-card-icon.cyan {
-  background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.3);
-}
-
-.method-card-icon.amber {
-  background: rgba(250, 204, 21, 0.15);
-  color: #facc15;
-  border: 1px solid rgba(250, 204, 21, 0.3);
-}
-
-.method-card-icon.emerald {
-  background: rgba(52, 211, 153, 0.15);
-  color: #34d399;
-  border: 1px solid rgba(52, 211, 153, 0.3);
-}
-
-.method-card-icon.rose {
-  background: rgba(251, 113, 133, 0.15);
-  color: #fb7185;
-  border: 1px solid rgba(251, 113, 133, 0.3);
+.method-card-icon.cyan,
+.method-card-icon.amber,
+.method-card-icon.emerald,
+.method-card-icon.rose,
+.method-card-icon.purple {
+  background: #303a37;
+  color: #b9c9bf;
+  border: 1px solid #4b5a53;
 }
 
 .method-card-body {
   flex: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 
 .method-card-tag {
@@ -296,6 +326,7 @@
   font-weight: 600;
   cursor: pointer;
   transition: border-color 0.12s, background 0.12s;
+  text-decoration: none;
 }
 
 .menu-back-btn:hover {
@@ -372,6 +403,20 @@
     font-size: 0.82rem;
   }
 
+  .smart-cube-menu-preview {
+    gap: 0.25rem;
+  }
+
+  .smart-cube-menu-preview svg {
+    width: 38px;
+    height: 38px;
+  }
+
+  .smart-cube-chip {
+    font-size: 0.6rem;
+    padding: 0.1rem 0.35rem;
+  }
+
   .algo-methods-grid {
     grid-template-columns: minmax(0, 1fr);
     gap: 0.7rem;
@@ -401,4 +446,25 @@
     font-size: 0.82rem;
   }
 
+}
+
+@media (max-width: 380px) {
+  .mini-cube-container {
+    width: 68px;
+    height: 68px;
+    flex: 0 0 68px;
+  }
+
+  .primary-pole-card {
+    padding: 0.75rem;
+  }
+
+  .pole-icon-badge {
+    width: 40px;
+    height: 40px;
+  }
+
+  .main-menu-title {
+    font-size: 1.75rem;
+  }
 }

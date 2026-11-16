@@ -1,6 +1,7 @@
 // src/components/algos/CubeDiagram2D.jsx
 import React, { useMemo, useId } from 'react';
 import { createCaseCubies, getStickerColor } from '../../utils/algoParser';
+import { useSettingsStore } from '../../store/useSettingsStore';
 
 export function CubeDiagram2D({
   size = 3,
@@ -13,9 +14,11 @@ export function CubeDiagram2D({
   width = 135,
   height = 135
 }) {
+  const customColors = useSettingsStore(state => state.colors);
+
   const cubies = useMemo(
-    () => createCaseCubies({ size, alg, setup, yellowTop, maskMode, applySetup: true }),
-    [size, alg, setup, yellowTop, maskMode]
+    () => createCaseCubies({ size, alg, setup, yellowTop, maskMode, applySetup: true, colors: customColors }),
+    [size, alg, setup, yellowTop, maskMode, customColors]
   );
 
   const reactId = useId();
@@ -28,13 +31,10 @@ export function CubeDiagram2D({
     const cx = 70;
     const cy = 70;
     const n = size;
-    const scale = size === 2 ? 29 : size === 4 ? 14.5 : 19.5;
+    const scale = size === 2 ? 29 : size === 4 ? 14.5 : size === 5 ? 11.5 : 19.5;
     const cos30 = Math.cos(Math.PI / 6);
     const sin30 = Math.sin(Math.PI / 6);
 
-    // u : de Droite (+X, u=0) vers Gauche (-X, u=n) -> haut-gauche
-    // w : de Avant (+Z, w=0) vers Arrière (-Z, w=n) -> haut-droite
-    // v : de Haut (+Y, v=0) vers Bas (-Y, v=n) -> bas vertical
     const projectIso = (u, v, w) => ({
       x: cx + (w - u) * cos30 * scale,
       y: cy - (u + w) * sin30 * scale + v * scale
@@ -152,7 +152,18 @@ export function CubeDiagram2D({
         const backColor = getStickerColor(cubies, xVal, outer, -outer, 0, 0, -1);
         const frontColor = getStickerColor(cubies, xVal, outer, outer, 0, 0, 1);
         return (
-          <React.Fragment key={`tb_${col}`}> <rect x={pad + col * cellSize} y={pad - sideThick - 2} width={cellSize} height={sideThick} fill={backColor} stroke="#111" strokeWidth="1.8" /> <rect x={pad + col * cellSize} y={pad + n * cellSize + 2} width={cellSize} height={sideThick} fill={frontColor} stroke="#111" strokeWidth="1.8" /> </React.Fragment> ); })}  {coords.map((zVal, row) => { const leftColor = getStickerColor(cubies, -outer, outer, zVal, -1, 0, 0); const rightColor = getStickerColor(cubies, outer, outer, zVal, 1, 0, 0); return ( <React.Fragment key={`lr_${row}`}>
+          <React.Fragment key={`tb_${col}`}>
+            <rect x={pad + col * cellSize} y={pad - sideThick - 2} width={cellSize} height={sideThick} fill={backColor} stroke="#111" strokeWidth="1.8" />
+            <rect x={pad + col * cellSize} y={pad + n * cellSize + 2} width={cellSize} height={sideThick} fill={frontColor} stroke="#111" strokeWidth="1.8" />
+          </React.Fragment>
+        );
+      })}
+
+      {coords.map((zVal, row) => {
+        const leftColor = getStickerColor(cubies, -outer, outer, zVal, -1, 0, 0);
+        const rightColor = getStickerColor(cubies, outer, outer, zVal, 1, 0, 0);
+        return (
+          <React.Fragment key={`lr_${row}`}>
             <rect
               x={pad - sideThick - 2}
               y={pad + row * cellSize}
@@ -217,7 +228,8 @@ export function CubeDiagram2D({
             stroke="#111"
             strokeWidth="3.2"
             strokeLinecap="round"
-            markerEnd={`url(#${markerId}_end)`} markerStart={arr.bi ? `url(#${markerId}_end)` : undefined}
+            markerEnd={`url(#${markerId}_end)`}
+            markerStart={arr.bi ? `url(#${markerId}_end)` : undefined}
           />
         );
       })}

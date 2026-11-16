@@ -1,40 +1,50 @@
 // src/components/CubeGame.jsx
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Canvas } from '@react-three/fiber';
 import { TrackballControls } from '@react-three/drei';
 import {
-  RotateCcw,
-  Shuffle,
-  Eye,
-  EyeOff,
+  ArrowLeftBox,
+  Sparkles,
+  Info,
+  Cross,
   Lock,
   Unlock,
   ArrowLeft,
-  Target,
-  Trophy,
-  CheckCircle2
-} from 'lucide-react';
+  Star,
+  Crown,
+  Check,
+  Globe,
+  Grid
+} from '@getpapillon/papicons';
 import { RubiksCube } from './RubiksCube';
 import { useCubeStore } from '../store/useCubeStore';
+import { useSettingsStore } from '../store/useSettingsStore';
 import { CameraMapper } from './CameraMapper';
 import { CustomLockControls } from './LockCamera';
 import { createCaseCubies } from '../utils/algoParser';
 import confetti from 'canvas-confetti';
+import { playCubeTurnSound, playSolveVictorySound } from '../utils/audioSystem';
 
 export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves, onBack, trainingCase = null }) {
   const { t } = useTranslation();
   const [time, setTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [showAlgo, setShowAlgo] = useState(false);
+  const controlsRef = useRef(null);
 
   const initCube = useCubeStore(state => state.initCube);
   const setCustomCubies = useCubeStore(state => state.setCustomCubies);
   const cameraMapping = useCubeStore(state => state.cameraMapping);
   const isSolved = useCubeStore(state => state.isSolved);
+  const activeRotation = useCubeStore(state => state.activeRotation);
   const handleMoveAction = useCubeStore(state => state.startRotation);
+  const customColors = useSettingsStore(state => state.colors);
+  const cameraSpeed = useSettingsStore(state => state.cameraSpeed);
 
-  const [isMobile, setIsMobile] = useState(false);
+  const supportsTouchSwipe = size >= 2 && size <= 5;
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+  const [touchOnly, setTouchOnly] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768 && (size >= 2 && size <= 5));
   const [isLocked, setIsLocked] = useState(false);
 
   const highScoreKey = `rubiksHighScore_${size}x${size}`;
@@ -50,20 +60,25 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
       setup: trainingCase.setup ?? null,
       yellowTop: trainingCase.yellowTop ?? true,
       maskMode: trainingCase.maskMode || 'full',
-      applySetup: true
+      applySetup: true,
+      colors: customColors
     });
     setCustomCubies(size, customCubies);
     setTime(0);
     setMoveCount(0);
     setIsRunning(false);
     setHasShuffled(true);
-  }, [trainingCase, size, setCustomCubies]);
+  }, [trainingCase, size, setCustomCubies, customColors]);
 
   useEffect(() => {
     if (trainingCase) {
       initTrainingPattern();
     } else {
       initCube(size);
+      setTime(0);
+      setMoveCount(0);
+      setIsRunning(false);
+      setHasShuffled(false);
     }
   }, [size, trainingCase, initCube, initTrainingPattern]);
 
@@ -89,6 +104,7 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
       setIsRunning(false);
       setHasShuffled(false);
       confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
+      playSolveVictorySound();
       if (!trainingCase && (!highScore || time < highScore)) {
         localStorage.setItem(highScoreKey, time);
         setHighScore(time);
@@ -96,21 +112,55 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
     }
   }, [isSolved, isRunning, highScore, time, highScoreKey, trainingCase]);
 
+  const handleSwipeMove = useCallback((axis, value, direction) => {
+    if (!supportsTouchSwipe) return;
+    // Autorise le mouvement uniquement si le cube a été mélangé (Play) ou est dans son état initial/actif (Training)
+    if (!hasShuffled || isSolved) return;
+    // Bloque les mouvements manuels tant que le mélange automatique n'est pas terminé
+    if (!isRunning && moveCount === 0 && activeRotation !== null) return;
+
+    if (!isRunning && time === 0) {
+      setIsRunning(true);
+    }
+    setMoveCount(prev => prev + 1);
+    playCubeTurnSound();
+    handleMoveAction(axis, value, direction);
+  }, [supportsTouchSwipe, hasShuffled, isSolved, isRunning, moveCount, activeRotation, time, handleMoveAction]);
+
   const handleMove = useCallback((move, isManual = true) => {
-    if (isSolved && isManual) return;
     if (isManual) {
-      if (hasShuffled && !isRunning && time === 0) setIsRunning(true);
-      if (!isSolved) setMoveCount(prev => prev + 1);
+      // Autorise le mouvement manuel uniquement si le cube est mélangé (Play) ou dans son état de départ/actif (Training)
+      if (!hasShuffled || isSolved) return;
+      // Bloque les mouvements manuels tant que le mélange automatique n'est pas terminé
+      if (!isRunning && moveCount === 0 && activeRotation !== null) return;
+
+      if (!isRunning && time === 0) setIsRunning(true);
+      setMoveCount(prev => prev + 1);
     }
 
     const { Right, Left, Up, Down, Front, Back } = cameraMapping;
     const outer = (size - 1) / 2;
     const allLayers = Array.from({ length: size }, (_, i) => i - outer);
     // Sur 3x3 la 2e couche d'un mouvement large est 0, sur 4x4 c'est ±0.5 (soit Dir.value / 3)
-    const wideLayers = (dirObj) => size === 4 ? [dirObj.value, dirObj.value / 3] : [dirObj.value, 0];
-    const innerLayer = (dirObj) => size === 4 ? [dirObj.value / 3] : [0];
+    const wideLayers = (dirObj) => {
+      if (size === 5) return [dirObj.value, dirObj.value - Math.sign(dirObj.value)];
+      if (size === 4) return [dirObj.value, dirObj.value / 3];
+      return [dirObj.value, 0];
+    };
+    const wide3Layers = (dirObj) => {
+      if (size === 5) return [dirObj.value, dirObj.value - Math.sign(dirObj.value), 0];
+      return wideLayers(dirObj);
+    };
+    const innerLayer = (dirObj) => {
+      if (size === 5) return [dirObj.value - Math.sign(dirObj.value)];
+      if (size === 4) return [dirObj.value / 3];
+      return [0];
+    };
 
-    const runMove = (axis, val, dir) => handleMoveAction(axis, val, dir);
+    const runMove = (axis, val, dir) => {
+      playCubeTurnSound();
+      handleMoveAction(axis, val, dir);
+    };
 
     switch (move) {
       case "R": runMove(Right.axis, [Right.value], 1 * Right.dirMultiplier); break;
@@ -155,6 +205,19 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
       case "b'":
       case "Bw'": runMove(Back.axis, wideLayers(Back), -1 * Back.dirMultiplier); break;
 
+      case "3Rw": runMove(Right.axis, wide3Layers(Right), 1 * Right.dirMultiplier); break;
+      case "3Rw'": runMove(Right.axis, wide3Layers(Right), -1 * Right.dirMultiplier); break;
+      case "3Lw": runMove(Left.axis, wide3Layers(Left), 1 * Left.dirMultiplier); break;
+      case "3Lw'": runMove(Left.axis, wide3Layers(Left), -1 * Left.dirMultiplier); break;
+      case "3Uw": runMove(Up.axis, wide3Layers(Up), 1 * Up.dirMultiplier); break;
+      case "3Uw'": runMove(Up.axis, wide3Layers(Up), -1 * Up.dirMultiplier); break;
+      case "3Dw": runMove(Down.axis, wide3Layers(Down), 1 * Down.dirMultiplier); break;
+      case "3Dw'": runMove(Down.axis, wide3Layers(Down), -1 * Down.dirMultiplier); break;
+      case "3Fw": runMove(Front.axis, wide3Layers(Front), 1 * Front.dirMultiplier); break;
+      case "3Fw'": runMove(Front.axis, wide3Layers(Front), -1 * Front.dirMultiplier); break;
+      case "3Bw": runMove(Back.axis, wide3Layers(Back), 1 * Back.dirMultiplier); break;
+      case "3Bw'": runMove(Back.axis, wide3Layers(Back), -1 * Back.dirMultiplier); break;
+
       case "2R": runMove(Right.axis, innerLayer(Right), 1 * Right.dirMultiplier); break;
       case "2R'": runMove(Right.axis, innerLayer(Right), -1 * Right.dirMultiplier); break;
       case "2L": runMove(Left.axis, innerLayer(Left), 1 * Left.dirMultiplier); break;
@@ -170,7 +233,7 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
       case "z'": runMove(Front.axis, allLayers, -1 * Front.dirMultiplier); break;
       default: break;
     }
-  }, [isSolved, hasShuffled, isRunning, time, cameraMapping, size, handleMoveAction]);
+  }, [isSolved, hasShuffled, isRunning, time, moveCount, activeRotation, cameraMapping, size, handleMoveAction]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -186,6 +249,7 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
       initTrainingPattern();
       return;
     }
+    initCube(size);
     let previousMove = "";
     for (let i = 0; i < 20; i++) {
       let randomMove = shuffleMoves[Math.floor(Math.random() * shuffleMoves.length)];
@@ -214,12 +278,12 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
         <div className="header-left">
           {trainingCase ? (
             <div className="highscore">
-              <Target size={18} className="inline-icon accent" />
+              <Star size={18} className="inline-icon accent" />
               <span>{t('game.case', { name: trainingCase.name })}</span>
             </div>
           ) : (
             <div className="highscore">
-              <Trophy size={18} className="inline-icon amber" />
+              <Crown size={18} className="inline-icon amber" />
               <span>{t('game.record', { time: highScore ? formatTime(highScore) : '-' })}</span>
             </div>
           )}
@@ -228,12 +292,12 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
           <button className="shuffle-btn" onClick={handleShuffle}>
             {trainingCase ? (
               <>
-                <RotateCcw size={16} />
+                <ArrowLeftBox size={16} />
                 <span>{t('game.resetCase')}</span>
               </>
             ) : (
               <>
-                <Shuffle size={16} />
+                <Sparkles size={16} />
                 <span>{t('game.shuffle')}</span>
               </>
             )}
@@ -243,12 +307,22 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
               className={`shuffle-btn ${showAlgo ? 'active-toggle' : ''}`}
               onClick={() => setShowAlgo(prev => !prev)}
             >
-              {showAlgo ? <EyeOff size={16} /> : <Eye size={16} />}
+              {showAlgo ? <Cross size={16} /> : <Info size={16} />}
               <span>{showAlgo ? t('game.hideAlgorithm') : t('game.showAlgorithm')}</span>
             </button>
           )}
         </div>
-        <div className="header-right">
+        <div className="header-right" style={{ gap: '0.5rem' }}>
+          {supportsTouchSwipe && (
+            <button
+              className={`shuffle-btn ${touchOnly ? 'active-toggle' : ''}`}
+              onClick={() => setTouchOnly(prev => !prev)}
+              title={touchOnly ? t('game.touchMode', { defaultValue: 'Tactile' }) : t('game.buttonsMode', { defaultValue: 'Boutons' })}
+            >
+              {touchOnly ? <Globe size={16} /> : <Grid size={16} />}
+              <span>{touchOnly ? t('game.touchMode', { defaultValue: 'Tactile' }) : t('game.buttonsMode', { defaultValue: 'Boutons' })}</span>
+            </button>
+          )}
           <button className="shuffle-btn" onClick={() => setIsLocked(!isLocked)}>
             {isLocked ? <Lock size={16} /> : <Unlock size={16} />}
             <span>{isLocked ? t('game.locked') : t('game.free')}</span>
@@ -276,10 +350,10 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
           </div>
         )}
 
-        {isSolved && hasShuffled && !isRunning && (time > 0 || moveCount > 0) && (
+        {isSolved && !isRunning && (time > 0 || moveCount > 0) && (
           <div className="solved-banner-modal">
             <div className="solved-banner-icon">
-              <CheckCircle2 size={36} />
+              <Check size={36} />
             </div>
             <h2 style={{ margin: '0 0 0.4rem 0', fontSize: '1.75rem' }}>
               {trainingCase ? t('game.caseSolved') : t('game.cubeSolved')}
@@ -288,27 +362,40 @@ export function CubeGame({ size, controlsRenderer, keyboardMapping, shuffleMoves
               {t('game.result', { time: formatTime(time), count: moveCount })}
             </p>
             <button className="shuffle-btn primary-action" onClick={handleShuffle}>
-              <RotateCcw size={16} />
+              <ArrowLeftBox size={16} />
               <span>{trainingCase ? t('game.retryCase') : t('game.replay')}</span>
             </button>
           </div>
         )}
 
         <div className="cube-container">
-          <Canvas camera={{ position: [3.8, 4.2, 5.5], fov: isMobile ? 80 : 65 }}>
+          <Canvas camera={{ position: size === 5 ? [5.6, 6.0, 7.8] : size === 4 ? [4.6, 5.0, 6.5] : [3.8, 4.2, 5.5], fov: isMobile ? 82 : 66 }}>
             <ambientLight intensity={1.1} />
             <directionalLight position={[10, 10, 10]} intensity={1} />
-            <RubiksCube />
+            <RubiksCube
+              enableSwipe={supportsTouchSwipe}
+              onSwipeMove={handleSwipeMove}
+              controlsRef={controlsRef}
+              isLocked={isLocked}
+            />
             <CameraMapper />
 
-            <TrackballControls enabled={!isLocked} noPan={true} noZoom={true} rotateSpeed={isMobile ? 2 : 7} />
-            <CustomLockControls isLocked={isLocked} cameraMapping={cameraMapping} />
+            <TrackballControls
+              ref={controlsRef}
+              enabled={!isLocked}
+              noPan={true}
+              noZoom={true}
+              rotateSpeed={(isMobile ? 2 : 7) * cameraSpeed}
+            />
+            <CustomLockControls isLocked={isLocked} cameraMapping={cameraMapping} cameraSpeed={cameraSpeed} />
           </Canvas>
         </div>
 
-        <div className="controls-layer">
-          {controlsRenderer(handleMove)}
-        </div>
+        {(!supportsTouchSwipe || !touchOnly) && (
+          <div className="controls-layer">
+            {controlsRenderer(handleMove)}
+          </div>
+        )}
       </main>
     </div>
   );

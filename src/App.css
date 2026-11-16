@@ -5,3 +5,10 @@
 @import './styles/algoModal.css';
 @import './styles/blind3x3.css';
 @import './styles/speedTimer.css';
+@import './styles/settings.css';
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: clip;
+}

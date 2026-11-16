@@ -2,14 +2,11 @@ import { useEffect, useRef } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 
-export const CustomLockControls = ({ isLocked, cameraMapping }) => {
-    
-    // Access the camera and WebGL renderer from the Three.js context
+export const CustomLockControls = ({ isLocked, cameraMapping, cameraSpeed = 1 }) => {
     const { camera, gl } = useThree();
     const isDragging = useRef(false);
     const previousX = useRef(0);
 
-    // Effect to handle camera rotation when the camera is locked
     useEffect(() => {
         if (!isLocked) return;
         
@@ -28,7 +25,7 @@ export const CustomLockControls = ({ isLocked, cameraMapping }) => {
             if (!isDragging.current) return;
 
             const deltaX = e.clientX - previousX.current;
-            const rotationSpeed = 0.01; 
+            const rotationSpeed = 0.01 * cameraSpeed; 
 
             camera.position.applyAxisAngle(axisVector, -deltaX * rotationSpeed);
             camera.lookAt(0, 0, 0);
@@ -49,7 +46,7 @@ export const CustomLockControls = ({ isLocked, cameraMapping }) => {
             gl.domElement.removeEventListener('pointermove', onPointerMove);
             window.removeEventListener('pointerup', onPointerUp);
         };
-    }, [isLocked, camera, gl, cameraMapping]);
+    }, [isLocked, camera, gl, cameraMapping, cameraSpeed]);
 
     return null;
 };

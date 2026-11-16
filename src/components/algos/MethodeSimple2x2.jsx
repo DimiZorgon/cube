@@ -1,7 +1,7 @@
 // src/components/algos/MethodeSimple2x2.jsx
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, ChevronUp, ChevronDown, Play, Gamepad2 } from 'lucide-react';
+import { ArrowLeft, ChevronUp, ChevronDown, Play } from '@getpapillon/papicons';
 import { SIMPLE_2X2_STEPS } from '../../data/simple2x2Data';
 import { CubeDiagram2D } from './CubeDiagram2D';
 import { AlgoDemoModal } from './AlgoDemoModal';
@@ -103,7 +103,7 @@ export function MethodeSimple2x2({ onBack, onTestAlgo }) {
                               })
                             }
                           >
-                            <Gamepad2 size={15} />
+                            <Play size={15} />
                             <span>{t('common.test')}</span>
                           </button>
                         </div>

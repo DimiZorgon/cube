@@ -1,20 +1,24 @@
 // src/components/algos/AlgoDemoModal.jsx
 import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import {
-  X,
-  RotateCcw,
-  SkipBack,
+  Cross,
+  ArrowLeftBox,
+  ChevronLeft,
   Play,
   Pause,
-  SkipForward,
-  CheckCircle2,
-  Circle,
-  Gamepad2,
-  Move3d
-} from 'lucide-react';
+  ChevronRight,
+  Check,
+  Plus,
+  Globe,
+  Sparkles
+} from '@getpapillon/papicons';
+import { paths } from '../../routes/routeConfig';
 import { Cubie } from '../Cubie';
+import { useSettingsStore } from '../../store/useSettingsStore';
 import {
   createCaseCubies,
   parseAlgoTokens,
@@ -23,11 +27,13 @@ import {
   invertSingleMove
 } from '../../utils/algoParser';
 
+const DICO_AXIS = { x: 0, y: 1, z: 2 };
+
 function AnimatedDemoCube({ cubies, activeAnim, onFinishAnim }) {
   const pivotRefs = useRef({});
   const currentAngle = useRef(0);
   const finishedRef = useRef(false);
-  const dicoAxis = { x: 0, y: 1, z: 2 };
+  const turnSpeed = useSettingsStore(state => state.turnSpeed);
 
   // Synchronise la remise à zéro des pivots exactement au moment où React applique les nouvelles positions
   useLayoutEffect(() => {
@@ -41,8 +47,7 @@ function AnimatedDemoCube({ cubies, activeAnim, onFinishAnim }) {
   useFrame((_, delta) => {
     if (!activeAnim || finishedRef.current) return;
 
-    const speed = 5.5;
-    currentAngle.current += speed * delta;
+    currentAngle.current += turnSpeed * delta;
     const targetAngle = (Math.PI / 2) * activeAnim.quarterTurns;
     const clampedAngle = Math.min(currentAngle.current, targetAngle);
     const rotValue = clampedAngle * -activeAnim.direction;
@@ -51,7 +56,7 @@ function AnimatedDemoCube({ cubies, activeAnim, onFinishAnim }) {
       const grp = pivotRefs.current[c.id];
       if (!grp) continue;
       const isMoving = activeAnim.value.some(
-        v => Math.abs(c.position[dicoAxis[activeAnim.axis]] - v) < 0.1
+        v => Math.abs(c.position[DICO_AXIS[activeAnim.axis]] - v) < 0.1
       );
       if (isMoving) {
         grp.rotation[activeAnim.axis] = rotValue;
@@ -93,8 +98,19 @@ export function AlgoDemoModal({
   isLearned = false,
   onToggleLearned,
   onTestAlgo,
+  onTestSmartCube,
   onClose
 }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const handleTestSmartCube = () => {
+    if (typeof onTestSmartCube === 'function') {
+      onTestSmartCube({ ...algoCase, size });
+    } else {
+      navigate(paths.smartCubeAlgo(algoCase.id));
+    }
+  };
+  const customColors = useSettingsStore(state => state.colors);
   const allTokens = useMemo(() => parseAlgoTokens(algoCase.alg), [algoCase.alg]);
   const tokens = useMemo(
     () => allTokens.filter(t => !t.isOptional),
@@ -109,9 +125,10 @@ export function AlgoDemoModal({
         setup: algoCase.setup ?? null,
         yellowTop: algoCase.yellowTop ?? true,
         maskMode: algoCase.maskMode || 'full',
-        applySetup: true
+        applySetup: true,
+        colors: customColors
       }),
-    [algoCase, size]
+    [algoCase, size, customColors]
   );
 
   const [cubies, setCubies] = useState(initialCubies);
@@ -202,7 +219,14 @@ export function AlgoDemoModal({
     setIsPlaying(prev => !prev);
   };
 
-  const camPos = size === 2 ? [3.4, 3.0, 3.6] : size === 4 ? [5.5, 4.8, 5.8] : [4.3, 3.8, 4.6];
+  const camPos =
+    size === 2
+      ? [3.4, 3.0, 3.6]
+      : size === 4
+      ? [5.5, 4.8, 5.8]
+      : size === 5
+      ? [7.2, 6.2, 7.5]
+      : [4.3, 3.8, 4.6];
   const progressPercent = tokens.length > 0 ? Math.round((stepIndex / tokens.length) * 100) : 0;
 
   return (
@@ -214,7 +238,7 @@ export function AlgoDemoModal({
             <h2 className="algo-modal-title">{algoCase.name}</h2>
           </div>
           <button className="algo-modal-close" onClick={onClose} aria-label="Fermer">
-            <X size={20} />
+            <Cross size={20} />
           </button>
         </div>
 
@@ -225,7 +249,7 @@ export function AlgoDemoModal({
         <div className="algo-modal-canvas-wrapper">
           <div className="algo-modal-canvas-topbar">
             <span className="canvas-Interactive-pill">
-              <Move3d size={14} />
+              <Globe size={14} />
               <span>Glisser pour orienter</span>
             </span>
             <span className="canvas-step-pill">
@@ -276,7 +300,7 @@ export function AlgoDemoModal({
             onClick={handleReset}
             title="Retour au début"
           >
-            <RotateCcw size={16} />
+            <ArrowLeftBox size={16} />
             <span>Début</span>
           </button>
           <button
@@ -285,7 +309,7 @@ export function AlgoDemoModal({
             disabled={stepIndex <= 0 || !!activeAnim}
             title="Mouvement précédent"
           >
-            <SkipBack size={16} />
+            <ChevronLeft size={16} />
             <span>Préc.</span>
           </button>
           <button
@@ -299,7 +323,7 @@ export function AlgoDemoModal({
               </>
             ) : stepIndex >= tokens.length ? (
               <>
-                <RotateCcw size={16} />
+                <ArrowLeftBox size={16} />
                 <span>Rejouer</span>
               </>
             ) : (
@@ -319,7 +343,7 @@ export function AlgoDemoModal({
             title="Mouvement suivant"
           >
             <span>Suiv.</span>
-            <SkipForward size={16} />
+            <ChevronRight size={16} />
           </button>
         </div>
 
@@ -329,7 +353,7 @@ export function AlgoDemoModal({
               className={`learned-toggle-btn ${isLearned ? 'learned' : ''}`}
               onClick={() => onToggleLearned(algoCase.id)}
             >
-              {isLearned ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+              {isLearned ? <Check size={18} /> : <Plus size={18} />}
               <span>{isLearned ? 'Appris' : 'Marquer comme appris'}</span>
             </button>
           )}
@@ -338,8 +362,19 @@ export function AlgoDemoModal({
               className="test-algo-btn"
               onClick={() => onTestAlgo({ ...algoCase, size })}
             >
-              <Gamepad2 size={18} />
+              <Play size={18} />
               <span>Tester sur le Cube</span>
+            </button>
+          )}
+          {(onTestSmartCube || size === 3) && (
+            <button
+              className="test-algo-btn smart-cube"
+              style={{ background: '#23333d', borderColor: '#385161', color: '#93c5fd' }}
+              onClick={handleTestSmartCube}
+              title={t('smartCube.algoTest.testOnSmartCube', 'Tester sur Smart Cube')}
+            >
+              <Sparkles size={18} />
+              <span>{t('smartCube.algoTest.testOnSmartCube', 'Tester sur Smart Cube')}</span>
             </button>
           )}
         </div>

@@ -1,7 +1,6 @@
 // src/store/useCubeStore.js
 import { create } from 'zustand';
-import * as THREE from 'three';
-import { checkIsSolved, generateInitialCubies } from '../utils/cubeMath';
+import { checkIsSolved, generateInitialCubies, applyRotationToCubies } from '../utils/cubeMath.js';
 
 export { generateInitialCubies };
 
@@ -20,19 +19,19 @@ const getDefaultMapping = (size) => {
 export const useCubeStore = create((set) => ({
     size: 3,
     cubies: generateInitialCubies(3),
+    logicalCubies: generateInitialCubies(3),
     isSolved: true,
-    history: [],
     cameraMapping: getDefaultMapping(3),
 
     initCube: (size) => {
         set({
             size,
             cubies: generateInitialCubies(size),
+            logicalCubies: generateInitialCubies(size),
             isSolved: true,
             rotationFile: [],
             activeRotation: null,
-            cameraMapping: getDefaultMapping(size),
-            history: []
+            cameraMapping: getDefaultMapping(size)
         });
     },
 
@@ -41,11 +40,11 @@ export const useCubeStore = create((set) => ({
         set({
             size,
             cubies: customCubies,
+            logicalCubies: customCubies,
             isSolved: false,
             rotationFile: [],
             activeRotation: null,
-            cameraMapping: getDefaultMapping(size),
-            history: []
+            cameraMapping: getDefaultMapping(size)
         });
     },
 
@@ -55,71 +54,53 @@ export const useCubeStore = create((set) => ({
     rotationFile: [],
 
     startRotation: (axis, value, direction) => {
-        const newMove = { axis, value, direction, progress: 0 };
+        const sliceArr = Array.isArray(value) ? value : [value];
+        const newMove = { axis, value: sliceArr, direction, progress: 0 };
         set((state) => {
+            // Pipeline 1: Synchronous 0ms logical commit & solve check
+            const nextLogical = applyRotationToCubies(state.logicalCubies || state.cubies, axis, sliceArr, direction);
+            const solved = checkIsSolved(nextLogical);
+
             if (state.activeRotation === null) {
-                return { activeRotation: newMove, isSolved: false };
+                return { logicalCubies: nextLogical, isSolved: solved, activeRotation: newMove };
             } else {
-                return { rotationFile: [...state.rotationFile, newMove], isSolved: false };
+                return { logicalCubies: nextLogical, isSolved: solved, rotationFile: [...state.rotationFile, newMove] };
             }
         });
     },
 
     commitRotation: (axis, value, direction) => {
         set((state) => {
-            const dico_axis = { x: 0, y: 1, z: 2 };
-            const axedCubies = state.cubies.map((c) => {
-                const pos = c.position[dico_axis[axis]];
-                const isMoving = value.some(v => Math.abs(pos - v) < 0.1);
-
-                if (isMoving) {
-                    const axisVector = new THREE.Vector3(
-                        axis === 'x' ? 1 : 0,
-                        axis === 'y' ? 1 : 0,
-                        axis === 'z' ? 1 : 0
-                    );
-                    const dummy = new THREE.Object3D();
-                    dummy.position.set(...c.position);
-                    dummy.rotation.set(...c.rotation);
-                    dummy.position.applyAxisAngle(axisVector, -direction * Math.PI / 2);
-                    dummy.position.x = Math.round(dummy.position.x * 2) / 2;
-                    dummy.position.y = Math.round(dummy.position.y * 2) / 2;
-                    dummy.position.z = Math.round(dummy.position.z * 2) / 2;
-                    dummy.rotateOnWorldAxis(axisVector, -direction * Math.PI / 2);
-
-                    return {
-                        ...c,
-                        position: [dummy.position.x, dummy.position.y, dummy.position.z],
-                        rotation: [dummy.rotation.x, dummy.rotation.y, dummy.rotation.z]
-                    };
-                } else {
-                    return c;
-                }
-            });
-
-            const solved = checkIsSolved(axedCubies);
-            const newHistory = [...state.history, state.cubies];
-
+            const nextVisual = applyRotationToCubies(state.cubies, axis, value, direction);
             if (state.rotationFile.length > 0) {
                 const [activeRotation, ...rest] = state.rotationFile;
-                return { cubies: axedCubies, activeRotation, rotationFile: rest, isSolved: solved, history: newHistory };
+                return { cubies: nextVisual, activeRotation, rotationFile: rest };
             }
-            return { cubies: axedCubies, activeRotation: null, isSolved: solved, history: newHistory };
+            return { cubies: nextVisual, activeRotation: null };
         });
     },
 
-    undo: () => {
+    snapQueue: (keepCount = 0) => {
         set((state) => {
-            if (state.history.length === 0) return state;
-            const previousCubies = state.history[state.history.length - 1];
-            const newHistory = state.history.slice(0, state.history.length - 1);
-            const solved = checkIsSolved(previousCubies);
+            const allPending = [];
+            if (state.activeRotation) allPending.push(state.activeRotation);
+            allPending.push(...state.rotationFile);
+            if (allPending.length <= keepCount) return state;
+
+            const snapCount = allPending.length - keepCount;
+            const movesToSnap = allPending.slice(0, snapCount);
+            const remaining = allPending.slice(snapCount);
+
+            const newVisual = movesToSnap.reduce(
+                (c, m) => applyRotationToCubies(c, m.axis, m.value, m.direction),
+                state.cubies
+            );
+
+            const [newActive, ...newRest] = remaining;
             return {
-                cubies: previousCubies,
-                history: newHistory,
-                isSolved: solved,
-                activeRotation: null,
-                rotationFile: []
+                cubies: newVisual,
+                activeRotation: newActive || null,
+                rotationFile: newRest
             };
         });
     }

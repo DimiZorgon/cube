@@ -1,33 +1,49 @@
 // src/components/algos/MethodeCFOP3x3.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
   Menu,
   Check,
   Play,
-  Gamepad2,
-  BookOpen,
+  Bookmark,
   Filter,
-  X
-} from 'lucide-react';
+  Cross,
+  Sparkles
+} from '@getpapillon/papicons';
 import { CFOP_SECTIONS, CFOP_DATA } from '../../data/cfopData';
 import { CubeDiagram2D } from './CubeDiagram2D';
 import { AlgoDemoModal } from './AlgoDemoModal';
-import { localizeCFOPGroups, localizeCases } from '../../i18n/localizeData';
+import { AlgoTrainerQuizModal } from './AlgoTrainerQuizModal';
+import { localizeCFOPGroups } from '../../i18n/localizeData';
+import { paths } from '../../routes/routeConfig';
 
 const LEARNED_STORAGE_KEY = 'rubiks_learned_algos';
 
-export function MethodeCFOP3x3({ onBack, onTestAlgo }) {
+export function MethodeCFOP3x3({ onBack, onTestAlgo, onTestSmartCube, activeSection: controlledSection, onSectionChange }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const handleTestSmartCube = (item) => {
+    if (typeof onTestSmartCube === 'function') {
+      onTestSmartCube(item);
+    } else {
+      navigate(paths.smartCubeAlgo(item.id), {
+        state: { fromSection: activeSection }
+      });
+    }
+  };
   const sections = CFOP_SECTIONS.map(section => ({
     ...section,
     label: t(`data.section.cfop.${section.id}`)
   }));
-  const [activeSection, setActiveSection] = useState('PLL');
+  const [localSection, setLocalSection] = useState('F2L');
+  const activeSection = controlledSection ?? localSection;
+  const setActiveSection = onSectionChange ?? setLocalSection;
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedCase, setSelectedCase] = useState(null);
   const [showOnlyUnlearned, setShowOnlyUnlearned] = useState(false);
+  const [isQuizOpen, setIsQuizOpen] = useState(false);
   const [learnedIds, setLearnedIds] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem(LEARNED_STORAGE_KEY) || '[]');
@@ -45,13 +61,19 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo }) {
     setLearnedIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
   };
 
-  const groups = localizeCFOPGroups(activeSection, CFOP_DATA[activeSection] || [], t);
+  const groups = useMemo(
+    () => localizeCFOPGroups(activeSection, CFOP_DATA[activeSection] || [], t),
+    [activeSection, t]
+  );
   const activeSectionLabel = sections.find(section => section.id === activeSection)?.label || activeSection;
   const totalCases = groups.reduce((acc, g) => acc + g.cases.length, 0);
   const learnedCount = groups.reduce(
     (acc, g) => acc + g.cases.filter(c => learnedIds.includes(c.id)).length,
     0
   );
+
+  const isQuizAvailable = ['OLL', '2-LOOK OLL', 'PLL', '2-LOOK PLL'].includes(activeSection);
+  const quizCases = useMemo(() => groups.flatMap(g => g.cases), [groups]);
 
   return (
     <div className="trainer-page">
@@ -67,6 +89,15 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo }) {
           </span>
         </div>
         <div className="trainer-topbar-actions">
+          {isQuizAvailable && (
+            <button
+              className="trainer-quiz-trigger-btn"
+              onClick={() => setIsQuizOpen(true)}
+              title={t('quiz.startTraining', { defaultValue: 'Entraînement Quiz' })}
+            >
+              <span>{t('quiz.modeTitle', { defaultValue: 'Quiz' })}</span>
+            </button>
+          )}
           <button
             className="trainer-icon-btn"
             onClick={() => setDrawerOpen(true)}
@@ -108,7 +139,7 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo }) {
                 <div className="trainer-drawer-banner-sub">{t('algo.selectStage')}</div>
               </div>
               <button className="algo-modal-close" onClick={() => setDrawerOpen(false)}>
-                <X size={18} />
+                <Cross size={18} />
               </button>
             </div>
             <nav className="trainer-drawer-nav">
@@ -121,7 +152,7 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo }) {
                     setDrawerOpen(false);
                   }}
                 >
-                  <BookOpen size={18} />
+                  <Bookmark size={18} />
                   <span>{sec.label}</span>
                 </button>
               ))}
@@ -142,7 +173,7 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo }) {
             <section key={group.group} className="trainer-group-section">
               <h2 className="trainer-group-header">{group.group}</h2>
               <div className="trainer-cards-grid">
-                {localizeCases(filteredCases, t).map(item => {
+                {filteredCases.map(item => {
                   const isLearned = learnedIds.includes(item.id);
                   return (
                     <div
@@ -155,7 +186,7 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo }) {
                         onClick={e => toggleLearned(item.id, e)}
                         title={isLearned ? t('algo.markedLearned') : t('algo.notMarkedLearned')}
                       >
-                        <Check size={16} strokeWidth={2.5} />
+                        <Check size={16} />
                       </button>
 
                       <div className="trainer-card-diagram">
@@ -194,8 +225,17 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo }) {
                             })
                           }
                         >
-                          <Gamepad2 size={15} />
+                          <Play size={15} />
                           <span>{t('common.test')}</span>
+                        </button>
+                        <button
+                          className="card-mini-btn smart-cube"
+                          style={{ background: '#23333d', borderColor: '#385161', color: '#93c5fd' }}
+                          onClick={() => handleTestSmartCube(item)}
+                          title={t('smartCube.algoTest.testOnSmartCube', 'Tester sur Smart Cube')}
+                        >
+                          <Sparkles size={14} />
+                          <span>Smart Cube</span>
                         </button>
                       </div>
                     </div>
@@ -220,7 +260,19 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo }) {
               size: 3
             })
           }
+          onTestSmartCube={handleTestSmartCube}
           onClose={() => setSelectedCase(null)}
+        />
+      )}
+
+      {isQuizAvailable && (
+        <AlgoTrainerQuizModal
+          isOpen={isQuizOpen}
+          onClose={() => setIsQuizOpen(false)}
+          cases={quizCases}
+          size={3}
+          categoryName={`CFOP ${activeSectionLabel}`}
+          onTestAlgo={onTestAlgo}
         />
       )}
     </div>
