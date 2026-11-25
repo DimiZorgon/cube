@@ -10,7 +10,7 @@ import { NotFoundPage } from './pages/NotFoundPage';
 import { GameRoute } from './pages/GameRoute';
 import { MethodRoute } from './pages/MethodRoute';
 import { TimerRoute, SettingsRoute } from './pages/ToolRoutes';
-import { TrainingRoute, SmartCubePage } from './pages/lazyViews';
+import { TrainingRoute, SmartCubePage, SmartCubeReplayPage } from './pages/lazyViews';
 import { SmartCubeAlgoTestPage } from './pages/SmartCubeAlgoTestPage';
 import { basenameFor, detectLang, paths } from './routes/routeConfig';
 
@@ -32,6 +32,8 @@ export const routes = [
       { path: 'algos/:size/:method/test/:caseId', element: <TrainingRoute /> },
       { path: 'smart-cube/algo/:caseId', element: <SmartCubeAlgoTestPage /> },
       { path: 'play/smart-cube/algo/:caseId', element: <SmartCubeAlgoTestPage /> },
+      { path: 'smart-cube/replay', element: <SmartCubeReplayPage /> },
+      { path: 'smart-cube/replay/:solveNum', element: <SmartCubeReplayPage /> },
       { path: '*', element: <NotFoundPage /> }
     ]
   }

@@ -17,6 +17,7 @@
     "aes-js": "^3.1.2",
     "canvas-confetti": "^1.9.4",
     "i18next": "^26.4.5",
+    "idb-keyval": "^6.3.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-i18next": "^17.0.16",

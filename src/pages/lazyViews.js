@@ -35,6 +35,7 @@ export const SpeedTimer = named(() => import('../components/SpeedTimer'), 'Speed
 export const SettingsPage = named(() => import('../components/SettingsPage'), 'SettingsPage');
 export const TrainingRoute = named(() => import('./TrainingRoute'), 'TrainingRoute');
 export const SmartCubePage = named(() => import('./SmartCubePage'), 'SmartCubePage');
+export const SmartCubeReplayPage = named(() => import('./SmartCubeReplayPage'), 'SmartCubeReplayPage');
 
 /** Clé de méthode (routeConfig.METHODS[].key) → composant du guide. */
 export const METHOD_VIEWS = {

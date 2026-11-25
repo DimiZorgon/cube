@@ -1,7 +1,7 @@
 // src/components/SmartCube/SolveReplayPlayer.jsx
 import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import { TrackballControls } from '@react-three/drei';
 import {
   Play,
   Pause,
@@ -23,6 +23,7 @@ import {
   invertSingleMove
 } from '../../utils/algoParser';
 import { buildAnnotatedReconstruction } from '../../utils/smartCube/solveMetrics';
+import { useSettingsStore } from '../../store/useSettingsStore';
 
 const AXIS_INDEX = { x: 0, y: 1, z: 2 };
 const SPEED_OPTIONS = [0.25, 0.5, 1, 2];
@@ -190,7 +191,14 @@ function AnimatedReplayCube({ cubies, activeAnim, onFinishAnim }) {
   );
 }
 
-export function SolveReplayPlayer({ solve }) {
+export function SolveReplayPlayer({
+  solve,
+  layout = 'compact',
+  enableKeyboardShortcuts = false,
+  rightPanelHeader = null
+}) {
+  const cameraSpeed = useSettingsStore(state => state.cameraSpeed);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const steps = useMemo(() => parseSolveSteps(solve), [solve]);
 
   const initialCubies = useMemo(
@@ -348,14 +356,60 @@ export function SolveReplayPlayer({ solve }) {
     return () => clearTimeout(timer);
   }, [activeAnim, isPlaying, playbackSpeed, stepIndex, steps, timingMode, triggerStepForward]);
 
-  const handlePlayPause = () => {
+  const handlePlayPause = useCallback(() => {
     if (stepIndex >= steps.length && !activeAnim) {
       seekToStep(0, false);
       setIsPlaying(true);
       return;
     }
     setIsPlaying(prev => !prev);
-  };
+  }, [activeAnim, seekToStep, stepIndex, steps.length]);
+
+  useEffect(() => {
+    if (!enableKeyboardShortcuts || typeof window === 'undefined' || steps.length === 0) {
+      return undefined;
+    }
+    const handleKeyDown = (e) => {
+      const target = e.target;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        handlePlayPause();
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        triggerStepBackward();
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        setIsPlaying(false);
+        triggerStepForward(true);
+      } else if (e.code === 'Home') {
+        e.preventDefault();
+        seekToStep(0, true);
+      } else if (e.code === 'End') {
+        e.preventDefault();
+        seekToStep(steps.length, true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    enableKeyboardShortcuts,
+    handlePlayPause,
+    seekToStep,
+    steps.length,
+    triggerStepBackward,
+    triggerStepForward
+  ]);
 
   const segmentsWithMoves = useMemo(() => {
     if (reconstruction.segments.length > 0) {
@@ -439,20 +493,27 @@ export function SolveReplayPlayer({ solve }) {
     return segmentsWithMoves[0]?.key || null;
   })();
 
-  return (
+  const isSplitLayout = layout === 'split';
+  const focusClass = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9eb5aa]';
+
+  const playerControlsBlock = (
     <div className="rounded-xl bg-[#202629] border border-[#394144] p-3 sm:p-4 flex flex-col gap-3 text-[#f0f1ed]">
       {/* 3D Canvas */}
-      <div className="relative w-full h-56 sm:h-64 rounded-lg bg-[#1b2023] border border-[#394144] overflow-hidden">
+      <div
+        className={`relative w-full ${
+          isSplitLayout ? 'h-[320px] sm:h-[420px] lg:h-[500px]' : 'h-56 sm:h-64'
+        } rounded-lg bg-[#1b2023] border border-[#394144] overflow-hidden touch-none`}
+      >
         <div className="absolute top-2.5 left-2.5 right-2.5 z-10 flex items-center justify-between gap-2 pointer-events-none">
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#202629]/90 border border-[#394144] text-[11px] font-semibold text-[#9eb5aa]">
             <Globe size={13} />
             <span className="hidden min-[380px]:inline">Glisser pour orienter</span>
           </span>
           <div className="flex items-center gap-1.5">
-            <span className="px-2.5 py-1 rounded-full bg-[#202629]/90 border border-[#394144] font-mono text-[11px] font-bold text-[#f0f1ed]">
+            <span className="px-2.5 py-1 rounded-full bg-[#202629]/90 border border-[#394144] font-mono tabular-nums text-[11px] font-bold text-[#f0f1ed]">
               {formatReplayMs(currentRelMs)} / {formatReplayMs(totalMs)}
             </span>
-            <span className="px-2.5 py-1 rounded-full bg-[#252b2e]/95 border border-[#41494c] font-mono text-[11px] font-bold text-[#9eb5aa]">
+            <span className="px-2.5 py-1 rounded-full bg-[#252b2e]/95 border border-[#41494c] font-mono tabular-nums text-[11px] font-bold text-[#9eb5aa]">
               {stepIndex} / {steps.length}
             </span>
           </div>
@@ -462,12 +523,18 @@ export function SolveReplayPlayer({ solve }) {
           <ambientLight intensity={1.15} />
           <directionalLight position={[10, 14, 10]} intensity={1.1} />
           <directionalLight position={[-8, -8, -8]} intensity={0.35} />
-          <AnimatedReplayCube
-            cubies={cubies}
-            activeAnim={activeAnim}
-            onFinishAnim={handleFinishAnim}
+          <group rotation={[0, 0, Math.PI]}>
+            <AnimatedReplayCube
+              cubies={cubies}
+              activeAnim={activeAnim}
+              onFinishAnim={handleFinishAnim}
+            />
+          </group>
+          <TrackballControls
+            noPan={true}
+            noZoom={true}
+            rotateSpeed={(isMobile ? 2 : 7) * cameraSpeed}
           />
-          <OrbitControls enablePan={false} enableZoom={false} />
         </Canvas>
       </div>
 
@@ -486,7 +553,7 @@ export function SolveReplayPlayer({ solve }) {
                   style={{ width: `${widthPct}%` }}
                   className={`${getSegmentBarColor(seg.phase, idx)} h-full cursor-pointer transition-opacity ${
                     activeSegmentKey === seg.key ? 'opacity-100' : 'opacity-70 hover:opacity-100'
-                  }`}
+                  } ${focusClass}`}
                   title={`${seg.label} (${count})`}
                   aria-label={`Aller à ${seg.label}`}
                 />
@@ -502,7 +569,7 @@ export function SolveReplayPlayer({ solve }) {
           value={stepIndex}
           onChange={e => seekToStep(Number(e.target.value), true)}
           aria-label="Position de la lecture"
-          className="w-full accent-[#9eb5aa] cursor-pointer h-6"
+          className={`w-full accent-[#9eb5aa] cursor-pointer h-6 ${focusClass}`}
         />
 
         {segmentsWithMoves.length > 1 && (
@@ -514,11 +581,11 @@ export function SolveReplayPlayer({ solve }) {
                   key={`${seg.key}-pill-${idx}`}
                   type="button"
                   onClick={() => seekToStep(seg.startIndex, true)}
-                  className={`min-h-[44px] sm:min-h-[32px] px-2.5 py-1 rounded-md border text-xs font-semibold cursor-pointer transition-colors ${
+                  className={`min-h-[44px] sm:min-h-[34px] px-2.5 py-1 rounded-md border text-xs font-semibold cursor-pointer transition-colors ${
                     isActive
                       ? 'bg-[#303a37] border-[#9eb5aa] text-white'
                       : `${getPhasePillColor(seg.phase)} hover:border-[#9eb5aa]`
-                  }`}
+                  } ${focusClass}`}
                 >
                   {seg.label}
                 </button>
@@ -534,7 +601,7 @@ export function SolveReplayPlayer({ solve }) {
           type="button"
           onClick={() => seekToStep(0, true)}
           disabled={stepIndex === 0 && !activeAnim}
-          className="min-h-[44px] inline-flex items-center justify-center gap-1 rounded-lg bg-[#252b2e] border border-[#394144] hover:border-[#9eb5aa] disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold text-[#f0f1ed] cursor-pointer"
+          className={`min-h-[44px] inline-flex items-center justify-center gap-1 rounded-lg bg-[#252b2e] border border-[#394144] hover:border-[#9eb5aa] disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold text-[#f0f1ed] cursor-pointer ${focusClass}`}
           title="Début"
           aria-label="Début"
         >
@@ -546,7 +613,7 @@ export function SolveReplayPlayer({ solve }) {
           type="button"
           onClick={triggerStepBackward}
           disabled={stepIndex <= 0}
-          className="min-h-[44px] inline-flex items-center justify-center gap-1 rounded-lg bg-[#252b2e] border border-[#394144] hover:border-[#9eb5aa] disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold text-[#f0f1ed] cursor-pointer"
+          className={`min-h-[44px] inline-flex items-center justify-center gap-1 rounded-lg bg-[#252b2e] border border-[#394144] hover:border-[#9eb5aa] disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold text-[#f0f1ed] cursor-pointer ${focusClass}`}
           title="Précédent (-1)"
           aria-label="Mouvement précédent"
         >
@@ -557,7 +624,7 @@ export function SolveReplayPlayer({ solve }) {
         <button
           type="button"
           onClick={handlePlayPause}
-          className="min-h-[44px] inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#9eb5aa] border border-[#b9c9bf] hover:bg-[#b9c9bf] text-xs font-bold text-[#1b2023] cursor-pointer"
+          className={`min-h-[44px] inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#9eb5aa] border border-[#b9c9bf] hover:bg-[#b9c9bf] text-xs font-bold text-[#1b2023] cursor-pointer ${focusClass}`}
           aria-label={isPlaying ? 'Pause' : 'Lecture'}
         >
           {isPlaying ? <Pause size={16} /> : <Play size={16} />}
@@ -573,7 +640,7 @@ export function SolveReplayPlayer({ solve }) {
             triggerStepForward(true);
           }}
           disabled={stepIndex >= steps.length}
-          className="min-h-[44px] inline-flex items-center justify-center gap-1 rounded-lg bg-[#252b2e] border border-[#394144] hover:border-[#9eb5aa] disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold text-[#f0f1ed] cursor-pointer"
+          className={`min-h-[44px] inline-flex items-center justify-center gap-1 rounded-lg bg-[#252b2e] border border-[#394144] hover:border-[#9eb5aa] disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold text-[#f0f1ed] cursor-pointer ${focusClass}`}
           title="Suivant (+1)"
           aria-label="Mouvement suivant"
         >
@@ -585,7 +652,7 @@ export function SolveReplayPlayer({ solve }) {
           type="button"
           onClick={() => seekToStep(steps.length, true)}
           disabled={stepIndex >= steps.length && !activeAnim}
-          className="min-h-[44px] inline-flex items-center justify-center gap-1 rounded-lg bg-[#252b2e] border border-[#394144] hover:border-[#9eb5aa] disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold text-[#f0f1ed] cursor-pointer"
+          className={`min-h-[44px] inline-flex items-center justify-center gap-1 rounded-lg bg-[#252b2e] border border-[#394144] hover:border-[#9eb5aa] disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold text-[#f0f1ed] cursor-pointer ${focusClass}`}
           title="Fin"
           aria-label="Fin"
         >
@@ -602,11 +669,11 @@ export function SolveReplayPlayer({ solve }) {
               key={spd}
               type="button"
               onClick={() => setPlaybackSpeed(spd)}
-              className={`min-h-[44px] sm:min-h-[34px] min-w-[44px] px-2.5 rounded-md border font-mono text-xs font-bold cursor-pointer transition-colors ${
+              className={`min-h-[44px] sm:min-h-[34px] min-w-[44px] px-2.5 rounded-md border font-mono tabular-nums text-xs font-bold cursor-pointer transition-colors ${
                 playbackSpeed === spd
                   ? 'bg-[#9eb5aa] border-[#b9c9bf] text-[#1b2023]'
                   : 'bg-[#252b2e] border-[#394144] text-[#cbd5e1] hover:border-[#9eb5aa]'
-              }`}
+              } ${focusClass}`}
             >
               {spd}x
             </button>
@@ -616,69 +683,119 @@ export function SolveReplayPlayer({ solve }) {
         <button
           type="button"
           onClick={() => setTimingMode(m => (m === 'realtime' ? 'uniform' : 'realtime'))}
-          className="min-h-[44px] sm:min-h-[34px] inline-flex items-center gap-1.5 px-3 rounded-md bg-[#252b2e] border border-[#394144] hover:border-[#9eb5aa] text-xs font-semibold text-[#9eb5aa] cursor-pointer"
+          className={`min-h-[44px] sm:min-h-[34px] inline-flex items-center gap-1.5 px-3 rounded-md bg-[#252b2e] border border-[#394144] hover:border-[#9eb5aa] text-xs font-semibold text-[#9eb5aa] cursor-pointer ${focusClass}`}
         >
           <Clock size={14} />
           <span>{timingMode === 'realtime' ? 'Temps réel' : 'Uniforme'}</span>
         </button>
       </div>
 
-      {/* Annotated CFOP Reconstruction Panel */}
-      <div className="rounded-lg bg-[#1b2023] border border-[#394144] p-3 flex flex-col gap-2.5">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-[#9eb5aa]">
-            Reconstruction CFOP
+      {enableKeyboardShortcuts && (
+        <div className="hidden sm:flex flex-wrap items-center gap-3 text-[11px] text-[#94a3b8] pt-1 border-t border-[#394144]/60">
+          <span>
+            <kbd className="px-1.5 py-0.5 rounded bg-[#1b2023] border border-[#394144] font-mono text-[10px] text-[#cbd5e1]">
+              Espace
+            </kbd>{' '}
+            Lecture / Pause
           </span>
-          <button
-            type="button"
-            onClick={handleCopyReconstruction}
-            className="min-h-[44px] sm:min-h-[32px] inline-flex items-center gap-1.5 px-3 rounded-md bg-[#252b2e] border border-[#394144] hover:border-[#9eb5aa] text-xs font-semibold text-[#f0f1ed] cursor-pointer"
-          >
-            {copied ? <Check size={14} /> : <Paper size={14} />}
-            <span>{copied ? 'Copié' : 'Copier'}</span>
-          </button>
+          <span>
+            <kbd className="px-1.5 py-0.5 rounded bg-[#1b2023] border border-[#394144] font-mono text-[10px] text-[#cbd5e1]">
+              ← / →
+            </kbd>{' '}
+            -1 / +1
+          </span>
+          <span>
+            <kbd className="px-1.5 py-0.5 rounded bg-[#1b2023] border border-[#394144] font-mono text-[10px] text-[#cbd5e1]">
+              Début / Fin
+            </kbd>{' '}
+            Aller aux extrémités
+          </span>
         </div>
+      )}
+    </div>
+  );
 
-        <div className="flex flex-col gap-2.5 max-h-56 overflow-y-auto pr-1">
-          {segmentsWithMoves.map((seg, sIdx) => (
-            <div key={`${seg.key}-block-${sIdx}`} className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between gap-2 text-[11px] font-mono">
-                <span className="font-bold text-[#9eb5aa]">
-                  {`// ${seg.label}`}
-                </span>
-                <span className="text-[#94a3b8]">
-                  {typeof seg.durationMs === 'number' ? formatReplayMs(seg.durationMs) : ''}
-                  {typeof seg.tps === 'number' && seg.tps > 0 ? ` · ${seg.tps.toFixed(1)} TPS` : ''}
-                </span>
-              </div>
+  const reconstructionBlock = (
+    <div className="rounded-xl bg-[#202629] border border-[#394144] p-3 sm:p-4 flex flex-col gap-2.5 text-[#f0f1ed]">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-bold uppercase tracking-wider text-[#9eb5aa]">
+          Reconstruction CFOP
+        </span>
+        <button
+          type="button"
+          onClick={handleCopyReconstruction}
+          aria-live="polite"
+          className={`min-h-[44px] sm:min-h-[34px] inline-flex items-center gap-1.5 px-3 rounded-md bg-[#252b2e] border border-[#394144] hover:border-[#9eb5aa] text-xs font-semibold text-[#f0f1ed] cursor-pointer ${focusClass}`}
+        >
+          {copied ? <Check size={14} /> : <Paper size={14} />}
+          <span>{copied ? 'Copié' : 'Copier'}</span>
+        </button>
+      </div>
 
-              <div className="flex flex-wrap gap-1.5">
-                {seg.segMoves.map((tok, mIdx) => {
-                  const globalIdx = seg.startIndex + mIdx;
-                  const isCurrent = globalIdx === activeMoveIdx;
-                  const isDone = globalIdx < stepIndex && !isCurrent;
-                  return (
-                    <button
-                      key={`${globalIdx}-${tok}`}
-                      type="button"
-                      onClick={() => seekToStep(globalIdx + 1, true)}
-                      className={`min-h-[36px] sm:min-h-[28px] min-w-[34px] px-2 py-0.5 rounded border font-mono text-xs font-bold cursor-pointer transition-colors ${
-                        isCurrent
-                          ? 'bg-[#9eb5aa] border-[#b9c9bf] text-[#1b2023]'
-                          : isDone
-                          ? 'bg-[#252b2e] border-[#385a49] text-[#86efac]'
-                          : 'bg-[#202629] border-[#394144] text-[#f0f1ed] hover:border-[#9eb5aa]'
-                      }`}
-                    >
-                      {tok}
-                    </button>
-                  );
-                })}
-              </div>
+      <div
+        className={`flex flex-col gap-2.5 ${
+          isSplitLayout ? 'max-h-80 lg:max-h-[420px]' : 'max-h-56'
+        } overflow-y-auto pr-1`}
+      >
+        {segmentsWithMoves.map((seg, sIdx) => (
+          <div key={`${seg.key}-block-${sIdx}`} className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between gap-2 text-[11px] font-mono tabular-nums">
+              <span className="font-bold text-[#9eb5aa]">
+                {`// ${seg.label}`}
+              </span>
+              <span className="text-[#94a3b8]">
+                {typeof seg.durationMs === 'number' ? formatReplayMs(seg.durationMs) : ''}
+                {typeof seg.tps === 'number' && seg.tps > 0 ? ` · ${seg.tps.toFixed(1)} TPS` : ''}
+              </span>
             </div>
-          ))}
+
+            <div className="flex flex-wrap gap-1.5">
+              {seg.segMoves.map((tok, mIdx) => {
+                const globalIdx = seg.startIndex + mIdx;
+                const isCurrent = globalIdx === activeMoveIdx;
+                const isDone = globalIdx < stepIndex && !isCurrent;
+                return (
+                  <button
+                    key={`${globalIdx}-${tok}`}
+                    type="button"
+                    onClick={() => seekToStep(globalIdx + 1, true)}
+                    className={`min-h-[36px] sm:min-h-[28px] min-w-[34px] px-2 py-0.5 rounded border font-mono text-xs font-bold cursor-pointer transition-colors ${
+                      isCurrent
+                        ? 'bg-[#9eb5aa] border-[#b9c9bf] text-[#1b2023]'
+                        : isDone
+                        ? 'bg-[#252b2e] border-[#385a49] text-[#86efac]'
+                        : 'bg-[#1b2023] border-[#394144] text-[#f0f1ed] hover:border-[#9eb5aa]'
+                    } ${focusClass}`}
+                  >
+                    {tok}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  if (isSplitLayout) {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+        <div className="lg:col-span-7 flex flex-col gap-3">
+          {playerControlsBlock}
+        </div>
+        <div className="lg:col-span-5 flex flex-col gap-3">
+          {rightPanelHeader}
+          {reconstructionBlock}
         </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {playerControlsBlock}
+      {reconstructionBlock}
     </div>
   );
 }

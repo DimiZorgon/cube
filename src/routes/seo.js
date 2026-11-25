@@ -40,6 +40,10 @@ const TEXTS = {
       title: 'Smart Cube GAN – Synchronisation 3D & Chronomètre',
       description: 'Connectez votre Rubik’s Cube intelligent GAN en Bluetooth : synchronisation 3D temps réel, chronométrage automatique, TPS et statistiques.'
     },
+    smartCubeReplay: {
+      title: 'Replay 3D Smart Cube',
+      description: 'Analysez et partagez votre résolution Smart Cube en 3D : timeline CFOP, splits F2L, TPS et reconstruction coup par coup.'
+    },
     timer: {
       title: 'Chronomètre de speedcubing WCA',
       description: 'Chronomètre speedcubing avec mélanges WCA, inspection 15 s, ao5, ao12 et export csTimer pour 2x2, 3x3 et 4x4.'
@@ -220,6 +224,10 @@ const TEXTS = {
       title: 'GAN Smart Cube – Real-Time 3D Sync & Timer',
       description: 'Connect your GAN smart cube via Web Bluetooth: live 3D face synchronization, auto-timer, TPS metrics, and solve stats.'
     },
+    smartCubeReplay: {
+      title: 'Smart Cube 3D Replay',
+      description: 'Inspect and share your Smart Cube 3D solve replay: CFOP timeline, F2L splits, TPS metrics, and move-by-move reconstruction.'
+    },
     timer: {
       title: 'WCA Speedcubing Timer',
       description: 'Speedcubing timer with WCA scrambles, 15 s inspection, ao5, ao12 and csTimer export for 2x2, 3x3 and 4x4.'
@@ -374,7 +382,7 @@ const TEXTS = {
 export const SEO_DATA = TEXTS;
 
 /** Clés non indexables (pages éphémères ou d'erreur). */
-const NOINDEX_KEYS = new Set(['training', 'notFound']);
+const NOINDEX_KEYS = new Set(['training', 'notFound', 'smartCubeReplay']);
 
 const interpolate = (text, vars) =>
   text.replace(/\{\{(\w+)\}\}/g, (_, name) => (vars[name] ?? '').toString());

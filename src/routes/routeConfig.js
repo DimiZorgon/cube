@@ -126,6 +126,12 @@ export const paths = {
   play: () => '/play',
   game: size => `/play/${size}`,
   smartCube: () => '/play/smart-cube',
+  smartCubeReplay: (solveNum = null) =>
+    solveNum !== null && solveNum !== undefined && !String(solveNum).startsWith(':')
+      ? `/smart-cube/replay/${encodeURIComponent(String(solveNum))}`
+      : solveNum && String(solveNum).startsWith(':')
+      ? `/smart-cube/replay/${solveNum}`
+      : '/smart-cube/replay',
   smartCubeAlgo: caseId =>
     caseId && !caseId.startsWith(':')
       ? `/smart-cube/algo/${encodeURIComponent(caseId)}`

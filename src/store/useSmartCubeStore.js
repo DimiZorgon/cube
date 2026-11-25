@@ -17,8 +17,13 @@ import { generateWcaScramble } from '../utils/scrambleGenerator.js';
 import {
   SESSIONS_STORAGE_KEY,
   loadSmartCubeSolves,
-  saveSmartCubeSolves
+  saveSmartCubeSolves,
+  loadSmartCubeSolvesAsync,
+  saveSmartCubeSolvesAsync,
+  assignMissingSolveNumbers,
+  mergeImportedSolves
 } from '../utils/smartCube/sessionStorage.js';
+import { parseImportedSolvesJson } from '../utils/smartCube/solveExport.js';
 import {
   resolveMoveTiming,
   enrichPhaseSplits,
@@ -510,7 +515,8 @@ function buildSolveRecord({
   f2lBreakdown,
   crossFace,
   gyroSamples,
-  droppedPackets
+  droppedPackets,
+  solveNumber = null
 }) {
   const enrichedSplits = enrichPhaseSplits(phaseSplits, moveHistory);
   const breakdownCopy = { ...(f2lBreakdown || {}) };
@@ -524,6 +530,9 @@ function buildSolveRecord({
 
   return {
     id: `solve-${now}-${Math.random().toString(36).slice(2, 7)}`,
+    ...(typeof solveNumber === 'number' && Number.isInteger(solveNumber) && solveNumber > 0
+      ? { solveNumber }
+      : {}),
     timestamp: now,
     date: now,
     elapsedMs,
@@ -1168,6 +1177,8 @@ let zustandAutoInspect = true;
 
 const defaultScramble = generateWcaScramble('3x3x3');
 const defaultMoves = parseScramble(defaultScramble);
+const initialLocalSession = assignMissingSolveNumbers(loadSessionSolves(), 1);
+let hydrationPromise = null;
 
 const rawZustandStore = create((set, get) => {
   defaultGanBleDriver.onStatusChange = (status, error) => {
@@ -1236,7 +1247,9 @@ const rawZustandStore = create((set, get) => {
     currentTps: 0,
     finalTps: null,
     moveHistory: [],
-    sessionSolves: loadSessionSolves(),
+    sessionSolves: initialLocalSession.solves,
+    nextSolveNumber: initialLocalSession.nextSolveNumber,
+    isHistoryHydrated: typeof indexedDB === 'undefined',
     scramble: defaultScramble,
     scrambleMoves: defaultMoves,
     scrambleIndex: 0,
@@ -1566,6 +1579,8 @@ const rawZustandStore = create((set, get) => {
         if (isSolved) {
           currentTimerStatus = 'solved';
           finalTps = tps;
+          const assignedNumber = state.nextSolveNumber || 1;
+          const nextNum = Math.max(assignedNumber + 1, state.nextSolveNumber || 1);
           const solveRecord = buildSolveRecord({
             now,
             elapsedMs: elapsed,
@@ -1578,10 +1593,29 @@ const rawZustandStore = create((set, get) => {
             f2lBreakdown: phaseUpdate.f2lBreakdown,
             crossFace: phaseUpdate.crossFace,
             gyroSamples: zustandGyroSamples,
-            droppedPackets: zustandDroppedPackets
+            droppedPackets: zustandDroppedPackets,
+            solveNumber: assignedNumber
           });
           nextSessionSolves = [...nextSessionSolves, solveRecord];
-          saveSessionSolves(nextSessionSolves);
+          saveSmartCubeSolvesAsync(nextSessionSolves, nextNum).catch(() => {});
+          set({
+            timerStatus: currentTimerStatus,
+            timerStartTime: startTime,
+            wallStartTime: wallStart,
+            moveCount: newMoveCount,
+            moveHistory: newHistory,
+            elapsedMs: elapsed,
+            currentTps: tps,
+            finalTps,
+            sessionSolves: nextSessionSolves,
+            nextSolveNumber: nextNum,
+            currentPhase,
+            activeCrossFace,
+            phaseSplits,
+            phaseSteps
+          });
+          applyMoveTo3D(moveNotation);
+          return;
         }
       }
 
@@ -1636,6 +1670,8 @@ const rawZustandStore = create((set, get) => {
       zustandLastF2LSplitMs = phaseUpdate.lastF2LSplitMs;
       zustandLastF2LMoves = phaseUpdate.lastF2LMoves;
 
+      const assignedNumber = state.nextSolveNumber || 1;
+      const nextNum = Math.max(assignedNumber + 1, state.nextSolveNumber || 1);
       const solveRecord = buildSolveRecord({
         now,
         elapsedMs: elapsed,
@@ -1648,16 +1684,18 @@ const rawZustandStore = create((set, get) => {
         f2lBreakdown: phaseUpdate.f2lBreakdown,
         crossFace: phaseUpdate.crossFace,
         gyroSamples: zustandGyroSamples,
-        droppedPackets: zustandDroppedPackets
+        droppedPackets: zustandDroppedPackets,
+        solveNumber: assignedNumber
       });
       const nextSessionSolves = [...state.sessionSolves, solveRecord];
-      saveSessionSolves(nextSessionSolves);
+      saveSmartCubeSolvesAsync(nextSessionSolves, nextNum).catch(() => {});
       set({
         timerStatus: 'solved',
         elapsedMs: elapsed,
         finalTps,
         currentTps: finalTps,
         sessionSolves: nextSessionSolves,
+        nextSolveNumber: nextNum,
         currentPhase: phaseUpdate.currentPhase,
         activeCrossFace: phaseUpdate.crossFace,
         phaseSplits: phaseUpdate.phaseSplits,
@@ -1763,20 +1801,76 @@ const rawZustandStore = create((set, get) => {
       });
     },
 
+    hydrateSolves: async () => {
+      if (get().isHistoryHydrated) {
+        return { solves: get().sessionSolves, nextSolveNumber: get().nextSolveNumber };
+      }
+      if (!hydrationPromise) {
+        hydrationPromise = (async () => {
+          const { solves: idbSolves, nextSolveNumber: idbCounter } = await loadSmartCubeSolvesAsync();
+          const currentSolves = get().sessionSolves;
+          const idbIds = new Set(idbSolves.map(s => s?.id).filter(Boolean));
+          const preHydrationNew = currentSolves.filter(s => s?.id && !idbIds.has(s.id));
+
+          let finalSolves = idbSolves;
+          let finalCounter = idbCounter;
+          if (preHydrationNew.length > 0 && typeof indexedDB !== 'undefined') {
+            const merged = mergeImportedSolves(idbSolves, preHydrationNew, idbCounter);
+            finalSolves = merged.solves;
+            finalCounter = merged.nextSolveNumber;
+            await saveSmartCubeSolvesAsync(finalSolves, finalCounter);
+          }
+
+          set({
+            sessionSolves: finalSolves,
+            nextSolveNumber: finalCounter,
+            isHistoryHydrated: true
+          });
+          return { solves: finalSolves, nextSolveNumber: finalCounter };
+        })().catch(() => {
+          set({ isHistoryHydrated: true });
+          return { solves: get().sessionSolves, nextSolveNumber: get().nextSolveNumber };
+        });
+      }
+      return hydrationPromise;
+    },
+
+    importSolvesJson: async (rawText) => {
+      await get().hydrateSolves();
+      const imported = parseImportedSolvesJson(rawText);
+      const merged = mergeImportedSolves(get().sessionSolves, imported, get().nextSolveNumber);
+      await saveSmartCubeSolvesAsync(merged.solves, merged.nextSolveNumber);
+      set({
+        sessionSolves: merged.solves,
+        nextSolveNumber: merged.nextSolveNumber
+      });
+      return {
+        addedCount: merged.addedCount,
+        skippedCount: merged.skippedCount,
+        total: merged.solves.length
+      };
+    },
+
     recordSolve: (record) => {
-      const next = [...get().sessionSolves, record];
-      saveSessionSolves(next);
-      set({ sessionSolves: next });
+      const currentCounter = get().nextSolveNumber || 1;
+      const assignedNumber = typeof record?.solveNumber === 'number' && Number.isInteger(record.solveNumber) && record.solveNumber > 0
+        ? record.solveNumber
+        : currentCounter;
+      const nextNum = Math.max(currentCounter, assignedNumber + 1);
+      const entry = { ...record, solveNumber: assignedNumber };
+      const next = [...get().sessionSolves, entry];
+      saveSmartCubeSolvesAsync(next, nextNum).catch(() => {});
+      set({ sessionSolves: next, nextSolveNumber: nextNum });
     },
 
     deleteSolve: (id) => {
       const next = get().sessionSolves.filter(s => s.id !== id);
-      saveSessionSolves(next);
+      saveSmartCubeSolvesAsync(next, get().nextSolveNumber).catch(() => {});
       set({ sessionSolves: next });
     },
 
     clearSessionSolves: () => {
-      saveSessionSolves([]);
+      saveSmartCubeSolvesAsync([], get().nextSolveNumber).catch(() => {});
       set({ sessionSolves: [] });
     },
 
@@ -1790,11 +1884,17 @@ const rawZustandStore = create((set, get) => {
         const isDnf = penalty === 'dnf';
         return { ...s, penalty, isDnf };
       });
-      saveSessionSolves(next);
+      saveSmartCubeSolvesAsync(next, get().nextSolveNumber).catch(() => {});
       set({ sessionSolves: next });
     }
   };
 });
+
+if (typeof indexedDB !== 'undefined') {
+  setTimeout(() => {
+    rawZustandStore.getState().hydrateSolves();
+  }, 0);
+}
 
 export function useSmartCubeStore(...args) {
   if (new.target) {

@@ -1,17 +1,26 @@
 // src/pages/SmartCubePage.jsx
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import * as THREE from 'three';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { TrackballControls } from '@react-three/drei';
-import { ArrowLeft, AlertTriangle, Sparkles, Clock, ArrowDownBox, Play } from '@getpapillon/papicons';
+import {
+  ArrowLeft,
+  AlertTriangle,
+  Sparkles,
+  Clock,
+  ArrowDownBox,
+  ArrowUpBox,
+  Play,
+  Link as LinkIcon,
+  Check
+} from '@getpapillon/papicons';
 import { RubiksCube } from '../components/RubiksCube';
 import { MacAddressModal } from '../components/SmartCube/MacAddressModal';
 import { SmartCubePbModal } from '../components/SmartCube/SmartCubePbModal';
 import { SmartCubeEvolutionChart } from '../components/SmartCube/SmartCubeEvolutionChart';
 import { F2LBreakdownView } from '../components/SmartCube/F2LBreakdownView';
-import { SolveReplayPlayer } from '../components/SmartCube/SolveReplayPlayer';
 import { useCubeStore } from '../store/useCubeStore';
 import {
   useSmartCubeStore,
@@ -34,6 +43,7 @@ import {
   buildCsTimerExport,
   downloadBlobFile
 } from '../utils/smartCube/solveExport';
+import { buildReplayShareUrl } from '../utils/smartCube/replayCodec';
 import { paths } from '../routes/routeConfig';
 import { useSeo } from '../routes/useSeo';
 
@@ -399,11 +409,12 @@ function ConnectionStatusPill({ status }) {
 }
 
 export function SmartCubePage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   useSeo('smartCube');
 
   const controlsRef = useRef(null);
+  const importInputRef = useRef(null);
 
   const isBluetoothSupported = useMemo(() => {
     return typeof navigator !== 'undefined' && Boolean(navigator.bluetooth);
@@ -440,6 +451,7 @@ export function SmartCubePage() {
   const deleteSolve = useSmartCubeStore(state => state.deleteSolve);
   const clearSessionSolves = useSmartCubeStore(state => state.clearSessionSolves);
   const updateSolvePenalty = useSmartCubeStore(state => state.updateSolvePenalty);
+  const importSolvesJson = useSmartCubeStore(state => state.importSolvesJson);
 
   const isGyroActive = useSmartCubeStore(state => state.isGyroActive);
   const toggleGyroActive = useSmartCubeStore(state => state.toggleGyroActive);
@@ -458,6 +470,8 @@ export function SmartCubePage() {
   const [statsPeriod, setStatsPeriod] = useState('total'); // 'day' | 'total'
   const [distRange, setDistRange] = useState(50); // 50 | 100 | 200 | 'all'
   const [selectedSolveId, setSelectedSolveId] = useState(null);
+  const [importStatus, setImportStatus] = useState(null);
+  const [isShareCopied, setIsShareCopied] = useState(false);
 
   const [liveTickMs, setLiveTickMs] = useState(0);
   const [inspectionElapsedMs, setInspectionElapsedMs] = useState(0);
@@ -579,6 +593,47 @@ export function SmartCubePage() {
     }
     const csPayload = buildCsTimerExport([...sessionSolves].reverse(), 'Smart Cube - 3x3x3');
     downloadBlobFile(JSON.stringify(csPayload, null, 2), `cstimer_export_smartcube_3x3x3_${stamp}.json`, 'application/json');
+  };
+
+  const handleImportFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const result = await importSolvesJson(text);
+      setImportStatus({
+        type: 'success',
+        text: t('smartCube.import.success', '{{added}} résolution(s) importée(s) ({{skipped}} doublon(s) ignoré(s)).', {
+          added: result.addedCount,
+          skipped: result.skippedCount
+        })
+      });
+    } catch (err) {
+      setImportStatus({
+        type: 'error',
+        text: err?.message || t('smartCube.import.error', 'Échec de l’import JSON.')
+      });
+    }
+    setTimeout(() => setImportStatus(null), 5000);
+  };
+
+  const handleShareSolve = async (solveToShare) => {
+    if (!solveToShare) return;
+    try {
+      const shareUrl = await buildReplayShareUrl(
+        solveToShare,
+        typeof window !== 'undefined' ? window.location.origin : '',
+        i18n.language
+      );
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(shareUrl);
+        setIsShareCopied(true);
+        setTimeout(() => setIsShareCopied(false), 2000);
+      }
+    } catch {
+      // ignore clipboard/share errors
+    }
   };
 
   const sessionStats = useMemo(() => {
@@ -1302,6 +1357,26 @@ export function SmartCubePage() {
                       <span>{t('smartCube.pbCard.button', 'Carte PB')}</span>
                     </button>
                   )}
+                  {!modalSolveAnalysis && (
+                    <>
+                      <input
+                        ref={importInputRef}
+                        type="file"
+                        accept="application/json,.json"
+                        onChange={handleImportFileChange}
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => importInputRef.current?.click()}
+                        className="inline-flex items-center gap-1 px-2.5 min-h-10 sm:min-h-8 rounded-lg bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-xs font-semibold text-[#f0f1ed] cursor-pointer shrink-0"
+                        title={t('smartCube.history.import', 'Importer JSON')}
+                      >
+                        <ArrowUpBox size={14} />
+                        <span>{t('smartCube.history.import', 'Importer JSON')}</span>
+                      </button>
+                    </>
+                  )}
                   {sessionSolves.length > 0 && !modalSolveAnalysis && (
                     <div className="relative">
                       <button
@@ -1411,6 +1486,19 @@ export function SmartCubePage() {
 
             {/* Contenu de la modale */}
             <div className="flex-1 min-h-0 overflow-y-auto p-3.5 sm:p-4 flex flex-col gap-3">
+              {importStatus && !modalSolveAnalysis && (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className={`px-3 py-2 rounded-lg border text-xs font-semibold ${
+                    importStatus.type === 'error'
+                      ? 'bg-rose-950/50 border-rose-700/60 text-rose-200'
+                      : 'bg-emerald-950/50 border-emerald-700/60 text-emerald-200'
+                  }`}
+                >
+                  {importStatus.text}
+                </div>
+              )}
               {/* SOUS-VUE 1 : FICHE DÉTAILLÉE D'UN TEMPS ("Voir toutes les infos") */}
               {modalSolveAnalysis ? (
                 <div className="flex flex-col gap-3">
@@ -1576,7 +1664,34 @@ export function SmartCubePage() {
                     </div>
                   </div>
 
-                  <SolveReplayPlayer solve={modalSolveAnalysis.solve} />
+                  <div className="p-3.5 rounded-xl bg-[#202629] border border-[#394144] flex flex-wrap items-center justify-between gap-2.5">
+                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                      <Link
+                        to={paths.smartCubeReplay(
+                          modalSolveAnalysis.solve.solveNumber ??
+                          (sessionSolves.findIndex(s => s.id === modalSolveAnalysis.solve.id) + 1)
+                        )}
+                        className="flex-1 sm:flex-initial min-h-11 inline-flex items-center justify-center gap-2 px-4 rounded-lg bg-[#9eb5aa] hover:bg-[#b9c9bf] text-xs font-bold text-[#1b2023] transition-colors"
+                      >
+                        <Play size={14} />
+                        <span>{t('smartCube.replay.openPage', 'Replay 3D')}</span>
+                      </Link>
+
+                      <button
+                        type="button"
+                        onClick={() => handleShareSolve(modalSolveAnalysis.solve)}
+                        aria-live="polite"
+                        className="flex-1 sm:flex-initial min-h-11 inline-flex items-center justify-center gap-1.5 px-4 rounded-lg bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-xs font-semibold text-[#f0f1ed] cursor-pointer transition-colors"
+                      >
+                        {isShareCopied ? <Check size={14} /> : <LinkIcon size={14} />}
+                        <span>
+                          {isShareCopied
+                            ? t('smartCube.replay.linkCopied', 'Lien copié !')
+                            : t('smartCube.replay.share', 'Partager')}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ) : historyTab === 'list' ? (
                 /* ONGLET 1 : DÉTAILS DE LA RÉSOLUTION (TABLEAU STRUCTURÉ FAÇON CUBE STATION) */
@@ -1626,7 +1741,7 @@ export function SmartCubePage() {
                             >
                               <div className="flex items-center justify-between gap-2">
                                 <div className="flex items-baseline gap-2 min-w-0">
-                                  <span className="text-xs font-mono text-[#94a3b8]">#{solveIndex}</span>
+                                  <span className="text-xs font-mono text-[#94a3b8]">#{solve.solveNumber ?? solveIndex}</span>
                                   <span className={`text-xl font-mono font-extrabold ${timeColor}`}>
                                     {formatSolveTime(solve.elapsedMs ?? solve.timeMs, solve.penalty)}
                                   </span>
@@ -1741,7 +1856,7 @@ export function SmartCubePage() {
 
                                 return (
                                   <tr key={solve.id} className="hover:bg-[#252b2e]/60 transition-colors">
-                                    <td className="py-2.5 px-2.5 text-[#94a3b8] font-semibold">#{solveIndex}</td>
+                                    <td className="py-2.5 px-2.5 text-[#94a3b8] font-semibold">#{solve.solveNumber ?? solveIndex}</td>
                                     <td className={`py-2.5 px-2.5 text-sm font-extrabold ${timeColor}`}>
                                       {formatSolveTime(solve.elapsedMs ?? solve.timeMs, solve.penalty)}
                                     </td>

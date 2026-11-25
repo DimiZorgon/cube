@@ -168,3 +168,75 @@ export function downloadBlobFile(content, filename, mimeType = 'text/plain;chars
   }
   return true;
 }
+
+/**
+ * Validates and normalizes solves imported from a JSON export (`{ solves: [...] }` or `[...]`).
+ * Throws an Error when the JSON is malformed or contains no valid solves.
+ */
+export function parseImportedSolvesJson(rawInput) {
+  let parsed = rawInput;
+  if (typeof rawInput === 'string') {
+    try {
+      parsed = JSON.parse(rawInput);
+    } catch {
+      throw new Error('JSON invalide : impossible de lire le fichier.');
+    }
+  }
+
+  const candidateList = Array.isArray(parsed)
+    ? parsed
+    : parsed && typeof parsed === 'object' && Array.isArray(parsed.solves)
+    ? parsed.solves
+    : null;
+
+  if (!candidateList) {
+    throw new Error('Format JSON non reconnu : tableau "solves" attendu.');
+  }
+
+  const normalized = [];
+  for (const item of candidateList) {
+    if (!item || typeof item !== 'object') continue;
+
+    const rawTime = Number(item.elapsedMs ?? item.timeMs);
+    if (!Number.isFinite(rawTime) || rawTime <= 0) continue;
+
+    const movesStr = Array.isArray(item.moves)
+      ? item.moves.map(m => (typeof m === 'string' ? m.trim() : String(m?.move || '').trim())).filter(Boolean).join(' ')
+      : typeof item.moves === 'string'
+      ? item.moves.trim()
+      : Array.isArray(item.moveTimings)
+      ? item.moveTimings.map(m => (typeof m === 'string' ? m.trim() : String(m?.move || '').trim())).filter(Boolean).join(' ')
+      : '';
+
+    const scrambleStr = typeof item.scramble === 'string' ? item.scramble.trim() : '';
+    if (!movesStr && !scrambleStr) continue;
+
+    const ts = Number(item.timestamp ?? item.date) || Date.now();
+    const penalty = item.penalty === '+2' || item.penalty === 'dnf' ? item.penalty : (item.isDnf ? 'dnf' : 'none');
+    const moveCount = Number(item.moveCount) || (movesStr ? movesStr.split(/\s+/).filter(Boolean).length : 0);
+    const tps = Number(item.tps) || (moveCount > 0 && rawTime > 0 ? Number((moveCount / (rawTime / 1000)).toFixed(2)) : 0);
+
+    normalized.push({
+      ...item,
+      id: typeof item.id === 'string' && item.id.trim()
+        ? item.id.trim()
+        : `solve-${ts}-${Math.random().toString(36).slice(2, 7)}`,
+      timestamp: ts,
+      date: ts,
+      elapsedMs: rawTime,
+      timeMs: rawTime,
+      penalty,
+      isDnf: penalty === 'dnf',
+      scramble: scrambleStr,
+      moves: movesStr,
+      moveCount,
+      tps
+    });
+  }
+
+  if (normalized.length === 0) {
+    throw new Error('Aucune résolution valide trouvée dans le fichier JSON.');
+  }
+
+  return normalized;
+}
