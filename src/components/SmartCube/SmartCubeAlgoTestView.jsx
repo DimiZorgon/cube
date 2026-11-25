@@ -588,7 +588,7 @@ export function SmartCubeAlgoTestView({
           <button
             type="button"
             onClick={onBack}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-xs font-semibold text-slate-200 transition-colors cursor-pointer shrink-0"
+            className="inline-flex items-center justify-center gap-1.5 min-h-[44px] sm:min-h-[36px] min-w-[44px] sm:min-w-0 px-2.5 py-1.5 rounded-lg bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-xs font-semibold text-slate-200 transition-colors cursor-pointer shrink-0"
             aria-label={t('smartCube.algoTest.backToAlgos', 'Retour aux algorithmes')}
           >
             <ArrowLeft size={16} />
@@ -624,7 +624,7 @@ export function SmartCubeAlgoTestView({
             type="button"
             onClick={handleConnectClick}
             disabled={connectionStatus === 'connecting'}
-            className={`inline-flex items-center gap-1.5 px-2 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold border transition-colors cursor-pointer shrink-0 ${
+            className={`inline-flex items-center gap-1.5 min-h-[44px] sm:min-h-[34px] px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold border transition-colors cursor-pointer shrink-0 ${
               connectionStatus === 'connected'
                 ? 'bg-[#252b2e] border-[#56615e] text-slate-200 hover:border-rose-400 hover:text-rose-300'
                 : 'bg-[#9eb5aa] border-[#9eb5aa] text-[#1b2023] font-bold hover:bg-[#b0c6bc]'
@@ -732,7 +732,7 @@ export function SmartCubeAlgoTestView({
               <button
                 type="button"
                 onClick={handleSkipScramble}
-                className="w-full py-1.5 px-3 rounded-lg bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-xs font-semibold text-slate-200 hover:text-white transition-colors cursor-pointer"
+                className="w-full min-h-[44px] sm:min-h-[36px] py-1.5 px-3 rounded-lg bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-xs font-semibold text-slate-200 hover:text-white transition-colors cursor-pointer"
               >
                 {t('smartCube.algoTest.skipScramble', 'Passer le mélange (déjà mélangé)')}
               </button>
@@ -756,11 +756,11 @@ export function SmartCubeAlgoTestView({
         {/* CENTER / RIGHT: 3D Masked Model & Live Timing */}
         <main className="flex-1 min-h-0 flex flex-col relative bg-[#141719] overflow-hidden">
           {/* Gyro & Recenter Floating Controls */}
-          <div className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between pointer-events-none">
+          <div className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between gap-2 pointer-events-none">
             <button
               type="button"
               onClick={() => toggleGyroActive()}
-              className={`pointer-events-auto inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold border cursor-pointer transition-colors ${
+              className={`pointer-events-auto inline-flex items-center gap-1.5 min-h-[44px] sm:min-h-[32px] px-3 sm:px-2.5 py-1 rounded-md text-[11px] font-semibold border cursor-pointer transition-colors ${
                 isGyroActive
                   ? 'bg-[#202629] border-[#385a49] text-[#9eb5aa]'
                   : 'bg-[#202629] border-[#394144] text-slate-400'
@@ -777,7 +777,7 @@ export function SmartCubeAlgoTestView({
               <button
                 type="button"
                 onClick={handleRecalibrateGyro}
-                className="px-2.5 py-1 rounded-md bg-[#202629] border border-[#394144] hover:border-[#9eb5aa] text-[11px] font-semibold text-[#f0f1ed] cursor-pointer"
+                className="min-h-[44px] sm:min-h-[32px] px-3 sm:px-2.5 py-1 rounded-md bg-[#202629] border border-[#394144] hover:border-[#9eb5aa] text-[11px] font-semibold text-[#f0f1ed] cursor-pointer"
                 title={t('smartCube.action.recalibrate', 'Recentrer orientation 3D')}
               >
                 {t('smartCube.action.recalibrateShort', 'Recentrer')}
@@ -785,7 +785,7 @@ export function SmartCubeAlgoTestView({
               <button
                 type="button"
                 onClick={init3DCubeAndSimulator}
-                className="px-2.5 py-1 rounded-md bg-[#202629] border border-[#394144] hover:border-[#9eb5aa] text-[11px] font-semibold text-[#9eb5aa] cursor-pointer"
+                className="min-h-[44px] sm:min-h-[32px] px-3 sm:px-2.5 py-1 rounded-md bg-[#202629] border border-[#394144] hover:border-[#9eb5aa] text-[11px] font-semibold text-[#9eb5aa] cursor-pointer"
                 title={t('smartCube.algoTest.retry', 'Réessayer')}
               >
                 {t('smartCube.algoTest.retry', 'Réessayer')}
@@ -866,7 +866,7 @@ export function SmartCubeAlgoTestView({
                 <button
                   type="button"
                   onClick={init3DCubeAndSimulator}
-                  className="px-3 py-1 rounded-md bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-xs font-semibold text-white transition-colors cursor-pointer"
+                  className="min-h-[44px] sm:min-h-[32px] px-3 py-1 rounded-md bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-xs font-semibold text-white transition-colors cursor-pointer"
                 >
                   {t('smartCube.algoTest.retry', 'Réessayer')}
                 </button>

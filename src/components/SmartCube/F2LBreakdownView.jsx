@@ -34,7 +34,7 @@ export function F2LBreakdownView({ solve }) {
     // If not directly present, attempt reconstruction from scramble + moveTimings
     if ((!breakdown || Object.keys(breakdown).length === 0) && solve.scramble && Array.isArray(solve.moveTimings) && solve.moveTimings.length > 0) {
       try {
-        breakdown = reconstructF2LBreakdown(solve.scramble, solve.moveTimings);
+        breakdown = reconstructF2LBreakdown(solve.scramble, solve.moveTimings, solve.crossFace || 'auto');
       } catch {
         breakdown = null;
       }
@@ -51,6 +51,10 @@ export function F2LBreakdownView({ solve }) {
       const entry = breakdown[k];
       if (entry && entry.slot) {
         const dur = typeof entry.durationMs === 'number' ? entry.durationMs : 0;
+        const moveCount = typeof entry.moveCount === 'number'
+          ? entry.moveCount
+          : (typeof entry.moves === 'number' ? entry.moves : null);
+        const tps = typeof entry.tps === 'number' ? entry.tps : null;
         totalDuration += dur;
         items.push({
           id: k,
@@ -58,6 +62,8 @@ export function F2LBreakdownView({ solve }) {
           slot: entry.slot,
           durationMs: dur,
           splitMs: typeof entry.splitMs === 'number' ? entry.splitMs : null,
+          moveCount,
+          tps,
           timestamp: entry.timestamp
         });
       }
@@ -99,7 +105,7 @@ export function F2LBreakdownView({ solve }) {
                 key={item.id}
                 style={{ width: `${pct}%` }}
                 className={`${PAIR_BAR_COLORS[idx % PAIR_BAR_COLORS.length]} h-full`}
-                title={`${item.label} (${item.slot}): ${formatSeconds(item.durationMs)} (${pct.toFixed(0)}%)`}
+                title={`${item.label} (${item.slot}): ${formatSeconds(item.durationMs)} (${pct.toFixed(0)}%)${item.moveCount !== null ? ` · ${item.moveCount}m` : ''}${item.tps !== null ? ` · ${item.tps.toFixed(1)} TPS` : ''}`}
               />
             );
           })}
@@ -107,38 +113,48 @@ export function F2LBreakdownView({ solve }) {
       )}
 
       {/* Grid columns header */}
-      <div className="grid grid-cols-4 text-[11px] font-bold text-[#94a3b8] px-2 pt-0.5">
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto] gap-2 text-[11px] font-bold text-[#94a3b8] px-2 pt-0.5">
         <span>{t('smartCube.f2l.pair', 'Paire')}</span>
         <span>{t('smartCube.f2l.slot', 'Emplacement')}</span>
         <span className="text-right">{t('smartCube.f2l.duration', 'Temps')}</span>
-        <span className="text-right">{t('smartCube.f2l.split', 'Cumul')}</span>
+        <span className="text-right min-w-[3.25rem]">{t('smartCube.f2l.split', 'Cumul')}</span>
       </div>
 
       {/* 4 F2L Pairs rows */}
       <div className="flex flex-col gap-1.5">
         {items.map((item, idx) => {
           const slotBadgeStyle = SLOT_STYLES[item.slot] || 'bg-[#252b2e] text-slate-300 border-[#394144]';
+          const hasPairMetrics = item.moveCount !== null || item.tps !== null;
           return (
             <div
               key={item.id}
-              className="grid grid-cols-4 items-center px-2.5 py-1.5 rounded-lg bg-[#252b2e] border border-[#394144]/70 font-mono text-xs"
+              className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto] gap-2 items-center px-2.5 py-1.5 rounded-lg bg-[#252b2e] border border-[#394144]/70 font-mono text-xs"
             >
-              <div className="flex items-center gap-1.5">
-                <span className={`w-2 h-2 rounded-full ${PAIR_BAR_COLORS[idx % PAIR_BAR_COLORS.length]}`} />
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className={`w-2 h-2 rounded-full shrink-0 ${PAIR_BAR_COLORS[idx % PAIR_BAR_COLORS.length]}`} />
                 <span className="font-bold text-white">{item.label}</span>
               </div>
 
-              <div>
+              <div className="min-w-0">
                 <span className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-bold border ${slotBadgeStyle}`}>
                   {item.slot}
                 </span>
               </div>
 
-              <div className="text-right font-bold text-emerald-400">
-                {formatSeconds(item.durationMs)}
+              <div className="text-right">
+                <div className="font-bold text-emerald-400">
+                  {formatSeconds(item.durationMs)}
+                </div>
+                {hasPairMetrics && (
+                  <div className="text-[10px] text-[#94a3b8] font-normal whitespace-nowrap">
+                    {item.moveCount !== null ? `${item.moveCount}m` : ''}
+                    {item.moveCount !== null && item.tps !== null ? ' · ' : ''}
+                    {item.tps !== null ? `${item.tps.toFixed(1)} TPS` : ''}
+                  </div>
+                )}
               </div>
 
-              <div className="text-right text-[#94a3b8]">
+              <div className="text-right text-[#94a3b8] min-w-[3.25rem]">
                 {item.splitMs !== null ? formatSeconds(item.splitMs) : '-'}
               </div>
             </div>

@@ -259,13 +259,6 @@ body {
   pointer-events: none;
 }
 
-.game-back-btn {
-  position: absolute;
-  top: 0.75rem;
-  right: 1rem;
-  z-index: 100;
-}
-
 .highscore {
   display: inline-flex;
   align-items: center;
@@ -327,19 +320,22 @@ body {
   .header {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 0.45rem 0.65rem;
-    padding: 0.55rem 0.7rem;
+    gap: 0.45rem 0.5rem;
+    padding: 0.5rem 0.65rem;
   }
 
   .header-left {
     grid-column: 1;
     grid-row: 1;
     justify-content: flex-start;
+    gap: 0.5rem;
   }
 
   .header-right {
     grid-column: 2;
     grid-row: 1;
+    flex-wrap: wrap;
+    gap: 0.35rem !important;
   }
 
   .header-center {
@@ -356,50 +352,59 @@ body {
   }
 
   .header .shuffle-btn {
-    min-height: 40px;
+    min-height: 44px;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.82rem;
   }
 
   .header-center .shuffle-btn {
-    padding-inline: 0.75rem;
+    padding-inline: 0.85rem;
+  }
+
+  .header-btn-label-sm {
+    display: none;
   }
 
   .stats-container {
-    gap: 0.75rem;
-    margin: 0.45rem auto 0;
-    padding-top: 2.5rem;
-    flex-direction: column;
+    gap: 0.35rem 0.85rem;
+    margin: 0.4rem 0.75rem 0;
+    justify-content: center;
+    flex-wrap: wrap;
   }
 
   .timer {
     margin: 0;
-    font-size: 1.5rem;
+    font-size: 1.45rem;
   }
 
   .moves-count {
     font-size: 0.85rem !important;
   }
 
-  .game-back-btn {
-    top: 0.55rem;
-    right: 0.65rem;
-    padding: 0.4rem 0.6rem;
-    font-size: 0.8rem;
-  }
-
   .pos-top {
-    top: 7.5rem;
-    gap: 0.5rem;
+    top: 4rem;
+    gap: 0.35rem;
   }
 
   .pos-bottom {
-    bottom: calc(1rem + env(safe-area-inset-bottom));
-    gap: 0.4rem;
+    bottom: calc(0.75rem + env(safe-area-inset-bottom));
+    gap: 0.3rem;
+    max-width: calc(100vw - 1rem);
   }
 
-  .pos-left { left: 0.65rem; }
-  .pos-right { right: 0.65rem; }
+  .pos-left {
+    left: 0.45rem;
+    top: 49%;
+    gap: 0.25rem !important;
+  }
 
-  :root { --btn-size: clamp(42px, 12vw, 56px); }
+  .pos-right {
+    right: 0.45rem;
+    top: 49%;
+    gap: 0.25rem !important;
+  }
+
+  :root { --btn-size: clamp(36px, 10.5vw, 50px); }
 
   .training-algo-banner {
     max-width: calc(100% - 1.5rem);
@@ -409,9 +414,33 @@ body {
   }
 
   .solved-banner-modal {
-    top: 25%;
+    top: 22%;
     width: calc(100% - 2rem);
     padding: 1.25rem;
+  }
+}
+
+@media (max-width: 400px) {
+  :root { --btn-size: clamp(32px, 9.5vw, 42px); }
+
+  .pos-top {
+    top: 3.75rem;
+    gap: 0.25rem;
+  }
+
+  .pos-bottom {
+    bottom: calc(0.5rem + env(safe-area-inset-bottom));
+    gap: 0.2rem;
+  }
+
+  .pos-left {
+    left: 0.3rem;
+    gap: 0.2rem !important;
+  }
+
+  .pos-right {
+    right: 0.3rem;
+    gap: 0.2rem !important;
   }
 }
 

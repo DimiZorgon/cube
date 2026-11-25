@@ -29,18 +29,18 @@ function getEffectiveTime(solve) {
   return solve.penalty === '+2' ? solve.time + 2000 : solve.time;
 }
 
-// Calcul officiel WCA d'une moyenne élaguée (ao5, ao12) : retire le meilleur et le pire
+// Calcul officiel WCA d'une moyenne élaguée (ao5, ao12, ao50, ao100)
 function computeTrimmedAverage(solvesSlice, expectedCount) {
   if (!solvesSlice || solvesSlice.length < expectedCount) return null;
   const window = solvesSlice.slice(0, expectedCount);
   const values = window.map(getEffectiveTime);
+  const trimCount = Math.ceil(expectedCount * 0.05);
   const dnfCount = values.filter(v => v === Infinity).length;
 
-  if (dnfCount >= 2) return 'DNF';
+  if (dnfCount > trimCount) return 'DNF';
 
   const sorted = [...values].sort((a, b) => a - b);
-  // On retire le plus petit (index 0) et le plus grand (index N-1)
-  const trimmed = sorted.slice(1, expectedCount - 1);
+  const trimmed = sorted.slice(trimCount, expectedCount - trimCount);
   const sum = trimmed.reduce((acc, v) => acc + v, 0);
   return sum / trimmed.length;
 }
@@ -386,14 +386,16 @@ export function SpeedTimer({ onBack }) {
         ? validSolves.reduce((acc, s) => acc + getEffectiveTime(s), 0) / validSolves.length
         : null;
 
-    // Calcul pour chaque solve de son ao5 et ao12 à cet instant
+    // Calcul pour chaque solve de son ao5, ao12, ao50 et ao100 à cet instant
     const solvesWithAverages = solves.map((s, idx) => {
       const sliceFromHere = solves.slice(idx);
       return {
         ...s,
         mo3: computeMeanOf3(sliceFromHere),
         ao5: computeTrimmedAverage(sliceFromHere, 5),
-        ao12: computeTrimmedAverage(sliceFromHere, 12)
+        ao12: computeTrimmedAverage(sliceFromHere, 12),
+        ao50: computeTrimmedAverage(sliceFromHere, 50),
+        ao100: computeTrimmedAverage(sliceFromHere, 100)
       };
     });
 
@@ -416,13 +418,17 @@ export function SpeedTimer({ onBack }) {
         timePenalty: currentSolve ? currentSolve.penalty : null,
         mo3: currentSolve ? currentSolve.mo3 : null,
         ao5: currentSolve ? currentSolve.ao5 : null,
-        ao12: currentSolve ? currentSolve.ao12 : null
+        ao12: currentSolve ? currentSolve.ao12 : null,
+        ao50: currentSolve ? currentSolve.ao50 : null,
+        ao100: currentSolve ? currentSolve.ao100 : null
       },
       best: {
         time: getBestMetric('time'),
         mo3: getBestMetric('mo3'),
         ao5: getBestMetric('ao5'),
-        ao12: getBestMetric('ao12')
+        ao12: getBestMetric('ao12'),
+        ao50: getBestMetric('ao50'),
+        ao100: getBestMetric('ao100')
       }
     };
   }, [solves]);
@@ -549,7 +555,7 @@ export function SpeedTimer({ onBack }) {
           </button>
         </div>
 
-        {/* Tableau récapitulatif Current / Best (time, mo3, ao5, ao12) */}
+        {/* Tableau récapitulatif Current / Best (time, mo3, ao5, ao12, ao50, ao100) */}
         <div className="cstimer-summary-card">
           <table className="cstimer-summary-table">
             <thead>
@@ -569,45 +575,27 @@ export function SpeedTimer({ onBack }) {
                   {stats.best.time !== null ? formatTimerValue(stats.best.time) : '-'}
                 </td>
               </tr>
-              <tr>
-                <td className="metric-name">{t('timer.metric.mo3')}</td>
-                <td className="metric-val">
-                  {stats.current.mo3 === 'DNF'
-                    ? 'DNF'
-                    : stats.current.mo3 !== null
-                    ? formatTimerValue(stats.current.mo3)
-                    : '-'}
-                </td>
-                <td className="metric-val best">
-                  {stats.best.mo3 !== null ? formatTimerValue(stats.best.mo3) : '-'}
-                </td>
-              </tr>
-              <tr>
-                <td className="metric-name">{t('timer.metric.ao5')}</td>
-                <td className="metric-val">
-                  {stats.current.ao5 === 'DNF'
-                    ? 'DNF'
-                    : stats.current.ao5 !== null
-                    ? formatTimerValue(stats.current.ao5)
-                    : '-'}
-                </td>
-                <td className="metric-val best">
-                  {stats.best.ao5 !== null ? formatTimerValue(stats.best.ao5) : '-'}
-                </td>
-              </tr>
-              <tr>
-                <td className="metric-name">{t('timer.metric.ao12')}</td>
-                <td className="metric-val">
-                  {stats.current.ao12 === 'DNF'
-                    ? 'DNF'
-                    : stats.current.ao12 !== null
-                    ? formatTimerValue(stats.current.ao12)
-                    : '-'}
-                </td>
-                <td className="metric-val best">
-                  {stats.best.ao12 !== null ? formatTimerValue(stats.best.ao12) : '-'}
-                </td>
-              </tr>
+              {[
+                { key: 'mo3', label: t('timer.metric.mo3') },
+                { key: 'ao5', label: t('timer.metric.ao5') },
+                { key: 'ao12', label: t('timer.metric.ao12') },
+                { key: 'ao50', label: t('timer.metric.ao50', 'ao50') },
+                { key: 'ao100', label: t('timer.metric.ao100', 'ao100') }
+              ].map(({ key, label }) => (
+                <tr key={key}>
+                  <td className="metric-name">{label}</td>
+                  <td className="metric-val">
+                    {stats.current[key] === 'DNF'
+                      ? 'DNF'
+                      : stats.current[key] !== null
+                      ? formatTimerValue(stats.current[key])
+                      : '-'}
+                  </td>
+                  <td className="metric-val best">
+                    {stats.best[key] !== null ? formatTimerValue(stats.best[key]) : '-'}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
 

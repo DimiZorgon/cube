@@ -5,12 +5,13 @@ import { useTranslation } from 'react-i18next';
 import * as THREE from 'three';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { TrackballControls } from '@react-three/drei';
-import { ArrowLeft, AlertTriangle, Sparkles, Clock, ArrowDownBox } from '@getpapillon/papicons';
+import { ArrowLeft, AlertTriangle, Sparkles, Clock, ArrowDownBox, Play } from '@getpapillon/papicons';
 import { RubiksCube } from '../components/RubiksCube';
 import { MacAddressModal } from '../components/SmartCube/MacAddressModal';
 import { SmartCubePbModal } from '../components/SmartCube/SmartCubePbModal';
 import { SmartCubeEvolutionChart } from '../components/SmartCube/SmartCubeEvolutionChart';
 import { F2LBreakdownView } from '../components/SmartCube/F2LBreakdownView';
+import { SolveReplayPlayer } from '../components/SmartCube/SolveReplayPlayer';
 import { useCubeStore } from '../store/useCubeStore';
 import {
   useSmartCubeStore,
@@ -20,8 +21,19 @@ import {
 } from '../store/useSmartCubeStore';
 import { loadCachedMac } from '../utils/smartCube/macAddressUtils';
 import { playSolveVictorySound } from '../utils/audioSystem';
-import { calculateSessionStats, getEffectiveTime } from '../utils/smartCube/wcaStats';
+import {
+  calculateSessionStats,
+  calculateWcaAo50,
+  calculateWcaAo100,
+  getEffectiveTime
+} from '../utils/smartCube/wcaStats';
 import { computeRollingAverage } from '../utils/smartCube/chartStats';
+import {
+  buildFullJsonExport,
+  buildCsvExport,
+  buildCsTimerExport,
+  downloadBlobFile
+} from '../utils/smartCube/solveExport';
 import { paths } from '../routes/routeConfig';
 import { useSeo } from '../routes/useSeo';
 
@@ -126,10 +138,16 @@ function buildSolveAnalysis(solve, fallbackMoveHistory = []) {
       moveCount: 0,
       moves: 0,
       tps: 0,
+      recognitionMs: 0,
+      executionMs: 0,
+      executionTps: 0,
       skipped: true
     };
     const durationMs = Number(s.durationMs) || 0;
     const moves = Number(s.moves ?? s.moveCount) || 0;
+    const recognitionMs = Number(s.recognitionMs) || 0;
+    const executionMs = typeof s.executionMs === 'number' ? s.executionMs : Math.max(0, durationMs - recognitionMs);
+    const executionTps = Number(s.executionTps) || 0;
     const pct = Math.min(100, Math.max(0, Math.round((durationMs / totalMs) * 100)));
     return {
       phase,
@@ -138,6 +156,9 @@ function buildSolveAnalysis(solve, fallbackMoveHistory = []) {
       durationMs,
       moves,
       tps: Number(s.tps) || 0,
+      recognitionMs,
+      executionMs,
+      executionTps,
       skipped: Boolean(s.skipped),
       pct
     };
@@ -147,6 +168,7 @@ function buildSolveAnalysis(solve, fallbackMoveHistory = []) {
     solve.moveTimings || fallbackMoveHistory,
     splitsObj
   );
+  const regrips = solve.regrips || { count: 0, items: [] };
   const fluency = computeFluencyScore(totalMs, pauses);
 
   return {
@@ -154,6 +176,7 @@ function buildSolveAnalysis(solve, fallbackMoveHistory = []) {
     totalMs,
     breakdown,
     pauses,
+    regrips,
     fluency
   };
 }
@@ -430,6 +453,7 @@ export function SmartCubePage() {
   const [isCopied, setIsCopied] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isPbModalOpen, setIsPbModalOpen] = useState(false);
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const [historyTab, setHistoryTab] = useState('list'); // 'list' | 'stats' | 'trends' | 'distribution'
   const [statsPeriod, setStatsPeriod] = useState('total'); // 'day' | 'total'
   const [distRange, setDistRange] = useState(50); // 50 | 100 | 200 | 'all'
@@ -535,45 +559,26 @@ export function SmartCubePage() {
     }
   };
 
-  const handleExportCsTimer = () => {
+  const handleExport = (format = 'cstimer') => {
+    setIsExportMenuOpen(false);
     if (!sessionSolves || sessionSolves.length === 0) {
       alert(t('timer.noSolvesToExport', 'Aucun temps à exporter dans cette session'));
       return;
     }
 
-    const csSolves = [...sessionSolves].reverse().map(s => {
-      const penaltyCode = s.penalty === '+2' ? 2000 : (s.penalty === 'dnf' || s.penalty === 'DNF' || s.isDnf) ? -1 : 0;
-      const timeMs = s.elapsedMs ?? s.timeMs ?? 0;
-      const timestampSec = Math.floor((Number(s.timestamp) || Number(s.date) || Date.now()) / 1000);
-      return [
-        [penaltyCode, timeMs],
-        s.scramble || '',
-        s.moves ? `Moves: ${s.moves}` : '',
-        timestampSec
-      ];
-    });
-
-    const exportData = {
-      session1: csSolves,
-      properties: {
-        sessionData: JSON.stringify({
-          1: {
-            name: 'Smart Cube - 3x3x3',
-            opt: {}
-          }
-        })
-      }
-    };
-
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `cstimer_export_smartcube_3x3x3_${Date.now()}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    const stamp = Date.now();
+    if (format === 'json') {
+      const payload = buildFullJsonExport(sessionSolves);
+      downloadBlobFile(JSON.stringify(payload, null, 2), `smartcube_full_${stamp}.json`, 'application/json');
+      return;
+    }
+    if (format === 'csv') {
+      const csv = buildCsvExport(sessionSolves);
+      downloadBlobFile(csv, `smartcube_analytics_${stamp}.csv`, 'text/csv;charset=utf-8');
+      return;
+    }
+    const csPayload = buildCsTimerExport([...sessionSolves].reverse(), 'Smart Cube - 3x3x3');
+    downloadBlobFile(JSON.stringify(csPayload, null, 2), `cstimer_export_smartcube_3x3x3_${stamp}.json`, 'application/json');
   };
 
   const sessionStats = useMemo(() => {
@@ -662,8 +667,20 @@ export function SmartCubePage() {
 
     const pAo5 = computeRollingAverage(filtered, 5).filter(v => typeof v === 'number' && !isNaN(v));
     const pAo12 = computeRollingAverage(filtered, 12).filter(v => typeof v === 'number' && !isNaN(v));
+    const pAo50 = [];
+    for (let i = 50; i <= filtered.length; i++) {
+      const avg = calculateWcaAo50(filtered.slice(i - 50, i));
+      if (typeof avg === 'number' && !isNaN(avg)) pAo50.push(avg);
+    }
+    const pAo100 = [];
+    for (let i = 100; i <= filtered.length; i++) {
+      const avg = calculateWcaAo100(filtered.slice(i - 100, i));
+      if (typeof avg === 'number' && !isNaN(avg)) pAo100.push(avg);
+    }
     const bestAo5Ms = pAo5.length > 0 ? Math.min(...pAo5) : null;
     const bestAo12Ms = pAo12.length > 0 ? Math.min(...pAo12) : null;
+    const bestAo50Ms = pAo50.length > 0 ? Math.min(...pAo50) : null;
+    const bestAo100Ms = pAo100.length > 0 ? Math.min(...pAo100) : null;
 
     const vCount = validSolves.length;
     return {
@@ -676,7 +693,9 @@ export function SmartCubePage() {
       avgFluency: vCount > 0 ? totalFluency / vCount : null,
       avgPauses: vCount > 0 ? totalPauses / vCount : null,
       bestAo5Ms,
-      bestAo12Ms
+      bestAo12Ms,
+      bestAo50Ms,
+      bestAo100Ms
     };
   }, [sessionSolves, statsPeriod]);
 
@@ -794,10 +813,10 @@ export function SmartCubePage() {
   return (
     <div className="flex flex-col h-[100dvh] w-full bg-[#1b2023] text-[#f0f1ed] overflow-hidden select-none">
       {/* 1. EN-TÊTE MINIMALISTE SUR UNE SEULE LIGNE : Retour + Connecté + Batterie + Déconnecter */}
-      <header className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-1.5 sm:gap-2 px-2.5 sm:px-5 min-h-12 py-1 bg-[#202629] border-b border-[#394144] shrink-0 z-20">
+      <header className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-1.5 sm:gap-2 px-2.5 sm:px-5 min-h-14 py-1.5 bg-[#202629] border-b border-[#394144] shrink-0 z-20">
         <button
           onClick={() => navigate(paths.play())}
-          className="inline-flex items-center justify-center w-8 h-8 sm:w-auto sm:px-2.5 rounded-lg bg-[#252b2e] border border-[#41494c] text-[#f0f1ed] hover:border-[#9eb5aa] transition-colors cursor-pointer shrink-0"
+          className="inline-flex items-center justify-center min-w-11 min-h-11 sm:min-w-0 sm:min-h-9 sm:px-2.5 rounded-lg bg-[#252b2e] border border-[#41494c] text-[#f0f1ed] hover:border-[#9eb5aa] transition-colors cursor-pointer shrink-0"
           aria-label={t('common.back', 'Retour')}
           title={t('app.play.smartCube.back', 'Jeux')}
         >
@@ -807,14 +826,13 @@ export function SmartCubePage() {
           </span>
         </button>
 
-        <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-wrap sm:flex-nowrap justify-end">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap sm:flex-nowrap justify-end">
           <ConnectionStatusPill status={connectionStatus} />
 
-          {/* Pilule Batterie (cliquable pour rafraîchir) */}
           <button
             type="button"
             onClick={() => refreshBattery && refreshBattery()}
-            className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold bg-[#252b2e] border border-[#41494c] text-slate-200 hover:border-[#9eb5aa] cursor-pointer shrink-0"
+            className="inline-flex items-center gap-1.5 px-2.5 min-h-10 sm:min-h-8 rounded-full text-[11px] sm:text-xs font-semibold bg-[#252b2e] border border-[#41494c] text-slate-200 hover:border-[#9eb5aa] cursor-pointer shrink-0"
             title={t('smartCube.telemetry.battery', 'Batterie')}
           >
             <BatteryIcon level={batteryLevel} isConnected={connectionStatus === 'connected'} />
@@ -825,11 +843,10 @@ export function SmartCubePage() {
             </span>
           </button>
 
-          {/* Bouton Connecter / Déconnecter */}
           <button
             onClick={handleConnectClick}
             disabled={!isBluetoothSupported || connectionStatus === 'connecting'}
-            className={`inline-flex items-center gap-1.5 px-2 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold border transition-colors cursor-pointer shrink-0 ${
+            className={`inline-flex items-center gap-1.5 px-3 min-h-10 sm:min-h-8 rounded-full text-[11px] sm:text-xs font-semibold border transition-colors cursor-pointer shrink-0 ${
               connectionStatus === 'connected'
                 ? 'bg-[#252b2e] border-[#56615e] text-slate-200 hover:border-rose-400 hover:text-rose-300'
                 : 'bg-[#9eb5aa] border-[#9eb5aa] text-[#1b2023] font-bold hover:bg-[#b0c6bc]'
@@ -905,13 +922,13 @@ export function SmartCubePage() {
               )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 flex-wrap justify-end">
               {timerStatus === 'scrambling' && (
                 <>
                   <button
                     type="button"
                     onClick={handleQuitScramble}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#252b2e] border border-rose-900/60 text-[11px] font-semibold text-rose-300 hover:border-rose-500 hover:text-rose-200 cursor-pointer"
+                    className="inline-flex items-center gap-1 px-2.5 min-h-9 sm:min-h-7 rounded bg-[#252b2e] border border-rose-900/60 text-[11px] font-semibold text-rose-300 hover:border-rose-500 hover:text-rose-200 cursor-pointer"
                     title={t('smartCube.action.quitScrambleDesc', 'Réinitialiser le cube et générer un nouveau mélange')}
                   >
                     <QuitIcon className="w-3 h-3" />
@@ -920,7 +937,7 @@ export function SmartCubePage() {
                   <button
                     type="button"
                     onClick={() => newScramble(scramble, { autoInspect: true })}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#252b2e] border border-[#41494c] text-[11px] font-semibold text-slate-300 hover:border-[#9eb5aa] hover:text-white cursor-pointer"
+                    className="inline-flex items-center gap-1 px-2.5 min-h-9 sm:min-h-7 rounded bg-[#252b2e] border border-[#41494c] text-[11px] font-semibold text-slate-300 hover:border-[#9eb5aa] hover:text-white cursor-pointer"
                   >
                     <EyeIcon className="w-3 h-3" />
                     <span>{t('smartCube.action.inspect', 'Passer')}</span>
@@ -930,7 +947,7 @@ export function SmartCubePage() {
               <button
                 type="button"
                 onClick={handleStartNextGuidedScramble}
-                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-[11px] font-semibold text-[#f0f1ed] cursor-pointer"
+                className="inline-flex items-center gap-1 px-2.5 min-h-9 sm:min-h-7 rounded bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-[11px] font-semibold text-[#f0f1ed] cursor-pointer"
               >
                 <Sparkles size={11} />
                 <span>
@@ -991,7 +1008,7 @@ export function SmartCubePage() {
           <button
             type="button"
             onClick={() => toggleGyroActive()}
-            className={`pointer-events-auto inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold border cursor-pointer transition-colors ${
+            className={`pointer-events-auto inline-flex items-center gap-1.5 px-3 min-h-10 sm:min-h-8 rounded-md text-[11px] font-semibold border cursor-pointer transition-colors ${
               isGyroActive
                 ? 'bg-[#202629] border-[#385a49] text-[#9eb5aa]'
                 : 'bg-[#202629] border-[#394144] text-slate-400'
@@ -1008,7 +1025,7 @@ export function SmartCubePage() {
             <button
               type="button"
               onClick={recalibrateGyro}
-              className="px-2.5 py-1 rounded-md bg-[#202629] border border-[#394144] hover:border-[#9eb5aa] text-[11px] font-semibold text-[#f0f1ed] cursor-pointer"
+              className="px-3 min-h-10 sm:min-h-8 rounded-md bg-[#202629] border border-[#394144] hover:border-[#9eb5aa] text-[11px] font-semibold text-[#f0f1ed] cursor-pointer"
               title={t('smartCube.action.recalibrate', 'Recentrer orientation 3D')}
             >
               {t('smartCube.action.recalibrateShort', 'Recentrer')}
@@ -1017,7 +1034,7 @@ export function SmartCubePage() {
               <button
                 type="button"
                 onClick={resetSolve}
-                className="px-2.5 py-1 rounded-md bg-[#202629] border border-[#394144] hover:border-rose-400 text-[11px] font-semibold text-slate-300 cursor-pointer"
+                className="px-3 min-h-10 sm:min-h-8 rounded-md bg-[#202629] border border-[#394144] hover:border-rose-400 text-[11px] font-semibold text-slate-300 cursor-pointer"
               >
                 {t('smartCube.action.reset', 'Réinitialiser')}
               </button>
@@ -1185,9 +1202,8 @@ export function SmartCubePage() {
               </div>
             </div>
 
-            {/* Grille des 4 phases CFOP (C, F, O, P) avec Temps, Étapes et TPS */}
             {postSolveAnalysis && (
-              <div className="grid grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                 {postSolveAnalysis.breakdown.map(item => (
                   <div
                     key={item.phase}
@@ -1209,7 +1225,6 @@ export function SmartCubePage() {
               </div>
             )}
 
-            {/* Boutons d'action en bas : Voir tous les temps + Mélange suivant */}
             <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 pt-0.5">
               <button
                 type="button"
@@ -1217,7 +1232,7 @@ export function SmartCubePage() {
                   setSelectedSolveId(null);
                   setIsHistoryOpen(true);
                 }}
-                className="flex-1 inline-flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-xs font-semibold text-[#f0f1ed] cursor-pointer"
+                className="flex-1 inline-flex items-center justify-center gap-2 min-h-11 sm:min-h-9 py-2 px-3 rounded-lg bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-xs font-semibold text-[#f0f1ed] cursor-pointer"
               >
                 <ListIcon className="w-4 h-4 text-[#9eb5aa]" />
                 <span>{t('smartCube.history.title', 'Tous les temps')} ({sessionSolves.length})</span>
@@ -1230,16 +1245,17 @@ export function SmartCubePage() {
                     setSelectedSolveId(postSolveAnalysis.solve.id);
                     setIsHistoryOpen(true);
                   }}
-                  className="py-2 px-3 rounded-lg bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-xs font-semibold text-[#f0f1ed] cursor-pointer"
+                  className="inline-flex items-center justify-center gap-1.5 min-h-11 sm:min-h-9 py-2 px-3 rounded-lg bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-xs font-semibold text-[#f0f1ed] cursor-pointer"
                 >
-                  {t('smartCube.history.inspectSolve', 'Détails')}
+                  <Play size={13} className="text-[#9eb5aa]" />
+                  <span>{t('smartCube.replay.button', 'Rejouer')}</span>
                 </button>
               )}
 
               <button
                 type="button"
                 onClick={handleStartNextGuidedScramble}
-                className="py-2 px-3.5 rounded-lg bg-[#9eb5aa] hover:bg-[#b0c6bc] text-xs font-bold text-[#1b2023] cursor-pointer"
+                className="min-h-11 sm:min-h-9 py-2 px-3.5 rounded-lg bg-[#9eb5aa] hover:bg-[#b0c6bc] text-xs font-bold text-[#1b2023] cursor-pointer"
               >
                 {t('smartCube.action.scramble', 'Suivant')}
               </button>
@@ -1279,7 +1295,7 @@ export function SmartCubePage() {
                     <button
                       type="button"
                       onClick={() => setIsPbModalOpen(true)}
-                      className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-xs font-semibold text-[#f0f1ed] cursor-pointer shrink-0"
+                      className="inline-flex items-center gap-1 px-2.5 min-h-10 sm:min-h-8 rounded-lg bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-xs font-semibold text-[#f0f1ed] cursor-pointer shrink-0"
                       title={t('smartCube.pbCard.buttonTooltip', 'Partager la carte de record Smart Cube')}
                     >
                       <Sparkles size={14} />
@@ -1287,23 +1303,51 @@ export function SmartCubePage() {
                     </button>
                   )}
                   {sessionSolves.length > 0 && !modalSolveAnalysis && (
-                    <button
-                      type="button"
-                      onClick={handleExportCsTimer}
-                      className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-xs font-semibold text-[#f0f1ed] cursor-pointer shrink-0"
-                      title={t('timer.exportCsTimer', 'Exporter la session au format csTimer')}
-                    >
-                      <ArrowDownBox size={14} />
-                      <span>{t('smartCube.history.export', 'Exporter')}</span>
-                    </button>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setIsExportMenuOpen(prev => !prev)}
+                        className="inline-flex items-center gap-1 px-2.5 min-h-10 sm:min-h-8 rounded-lg bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-xs font-semibold text-[#f0f1ed] cursor-pointer shrink-0"
+                        title={t('smartCube.history.export', 'Exporter')}
+                      >
+                        <ArrowDownBox size={14} />
+                        <span>{t('smartCube.history.export', 'Exporter')}</span>
+                      </button>
+                      {isExportMenuOpen && (
+                        <div className="absolute right-0 mt-1 w-44 rounded-lg bg-[#202629] border border-[#41494c] shadow-xl z-50 overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => handleExport('json')}
+                            className="w-full text-left px-3 py-2.5 text-xs font-semibold text-slate-200 hover:bg-[#252b2e] hover:text-white cursor-pointer"
+                          >
+                            {t('smartCube.export.json', 'JSON complet')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleExport('csv')}
+                            className="w-full text-left px-3 py-2.5 text-xs font-semibold text-slate-200 hover:bg-[#252b2e] hover:text-white border-t border-[#394144] cursor-pointer"
+                          >
+                            {t('smartCube.export.csv', 'CSV analytique')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleExport('cstimer')}
+                            className="w-full text-left px-3 py-2.5 text-xs font-semibold text-slate-200 hover:bg-[#252b2e] hover:text-white border-t border-[#394144] cursor-pointer"
+                          >
+                            {t('smartCube.export.cstimer', 'csTimer JSON')}
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   )}
                   <button
                     type="button"
                     onClick={() => {
+                      setIsExportMenuOpen(false);
                       setSelectedSolveId(null);
                       setIsHistoryOpen(false);
                     }}
-                    className="px-2 sm:px-2.5 py-1 rounded-lg bg-[#252b2e] border border-[#41494c] text-xs font-bold text-slate-200 hover:text-white cursor-pointer shrink-0"
+                    className="px-2.5 min-h-10 sm:min-h-8 rounded-lg bg-[#252b2e] border border-[#41494c] text-xs font-bold text-slate-200 hover:text-white cursor-pointer shrink-0"
                   >
                     {t('common.close', 'Fermer')}
                   </button>
@@ -1370,7 +1414,6 @@ export function SmartCubePage() {
               {/* SOUS-VUE 1 : FICHE DÉTAILLÉE D'UN TEMPS ("Voir toutes les infos") */}
               {modalSolveAnalysis ? (
                 <div className="flex flex-col gap-3">
-                  {/* Résumé principal du temps */}
                   <div className="p-3.5 rounded-xl bg-[#202629] border border-[#394144] flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <div className="text-[11px] text-[#94a3b8] uppercase font-bold">
@@ -1381,7 +1424,7 @@ export function SmartCubePage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 text-center">
+                    <div className="flex items-center gap-2 sm:gap-3 text-center">
                       <div className="px-2.5 py-1.5 rounded-lg bg-[#252b2e] border border-[#394144]">
                         <div className="text-[10px] text-[#94a3b8] uppercase font-bold">Étapes</div>
                         <div className="text-sm font-mono font-bold text-white">{modalSolveAnalysis.solve.moveCount}</div>
@@ -1399,7 +1442,6 @@ export function SmartCubePage() {
                     </div>
                   </div>
 
-                  {/* Tableau CFOP style Cube Station (C, F, O, P avec Temps, Étapes, TPS, %) */}
                   <div className="p-3.5 rounded-xl bg-[#202629] border border-[#394144] flex flex-col gap-2.5">
                     <div className="text-xs font-bold uppercase tracking-wider text-[#9eb5aa]">
                       {t('smartCube.cfop.title', 'Décomposition CFOP (Cross • F2L • OLL • PLL)')}
@@ -1436,16 +1478,27 @@ export function SmartCubePage() {
                             </span>
                             <span className="font-sans font-semibold text-slate-200">{item.name}</span>
                           </div>
-                          <span className="text-right font-bold text-white">
-                            {item.skipped ? 'Skip' : formatSplitSeconds(item.durationMs)}
-                          </span>
+                          <div className="text-right">
+                            <div className="font-bold text-white">
+                              {item.skipped ? 'Skip' : formatSplitSeconds(item.durationMs)}
+                            </div>
+                            {!item.skipped && (item.recognitionMs > 0 || item.phase !== 'cross') && (
+                              <div className="text-[10px] text-[#94a3b8]">
+                                {t('smartCube.analysis.recognition', 'Rec.')} {(item.recognitionMs / 1000).toFixed(2)}s / {t('smartCube.analysis.execution', 'Exéc.')} {(item.executionMs / 1000).toFixed(2)}s
+                              </div>
+                            )}
+                          </div>
                           <span className="text-right text-slate-300">{item.moves}</span>
-                          <span className="text-right text-emerald-400">{item.tps.toFixed(2)}</span>
+                          <div className="text-right">
+                            <div className="text-emerald-400">{item.tps.toFixed(2)}</div>
+                            {!item.skipped && item.executionTps > 0 && item.recognitionMs > 0 && (
+                              <div className="text-[10px] text-[#94a3b8]">{item.executionTps.toFixed(1)} ex</div>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
 
-                    {/* Hésitations / pauses */}
                     <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-[#252b2e] border border-[#394144] text-xs">
                       <span className="text-[#94a3b8] font-semibold">
                         {t('smartCube.analysis.pauses', 'Hésitations (>450ms)')}
@@ -1457,6 +1510,21 @@ export function SmartCubePage() {
                       ) : (
                         <span className="font-mono text-amber-300">
                           {modalSolveAnalysis.pauses.count} pause(s) • {(modalSolveAnalysis.pauses.totalPauseMs / 1000).toFixed(2)}s
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-[#252b2e] border border-[#394144] text-xs">
+                      <span className="text-[#94a3b8] font-semibold">
+                        {t('smartCube.analysis.regrips', 'Regrips détectés')}
+                      </span>
+                      {modalSolveAnalysis.regrips.count === 0 ? (
+                        <span className="font-mono text-emerald-400 font-semibold">
+                          {t('smartCube.analysis.noRegrips', 'Aucun regrip détecté')}
+                        </span>
+                      ) : (
+                        <span className="font-mono text-sky-300">
+                          {modalSolveAnalysis.regrips.count} regrip(s)
                         </span>
                       )}
                     </div>
@@ -1507,6 +1575,8 @@ export function SmartCubePage() {
                         ))}
                     </div>
                   </div>
+
+                  <SolveReplayPlayer solve={modalSolveAnalysis.solve} />
                 </div>
               ) : historyTab === 'list' ? (
                 /* ONGLET 1 : DÉTAILS DE LA RÉSOLUTION (TABLEAU STRUCTURÉ FAÇON CUBE STATION) */
@@ -1530,117 +1600,218 @@ export function SmartCubePage() {
                       {t('smartCube.history.empty', 'Aucun temps enregistré')}
                     </div>
                   ) : (
-                    <div className="rounded-xl bg-[#202629] border border-[#394144] overflow-hidden">
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse text-xs">
-                          <thead>
-                            <tr className="bg-[#252b2e] border-b border-[#394144] text-[10px] uppercase tracking-wider font-extrabold text-[#94a3b8]">
-                              <th className="py-2.5 px-2.5">{t('smartCube.history.colTotal', 'Total')}</th>
-                              <th className="py-2.5 px-2.5">{t('smartCube.history.colSingle', 'Résolution unique')}</th>
-                              <th className="py-2.5 px-2 text-center">{t('smartCube.history.colSteps', 'Étapes')}</th>
-                              <th className="py-2.5 px-2 text-center">{t('smartCube.history.colTps', 'TPS')}</th>
-                              <th className="py-2.5 px-2 text-center">{t('smartCube.history.colFluency', 'Fluence')}</th>
-                              <th className="py-2.5 px-2 text-center">{t('smartCube.history.colAo5', 'AO5')}</th>
-                              <th className="py-2.5 px-2 text-center">{t('smartCube.history.colAo12', 'AO12')}</th>
-                              <th className="py-2.5 px-2.5 text-right">{t('smartCube.history.colActions', 'Actions')}</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-[#394144]/60 font-mono">
-                            {[...sessionSolves].reverse().map((solve, revIdx) => {
-                              const solveIndex = sessionSolves.length - revIdx;
-                              const origIndex = solveIndex - 1;
-                              const isNone = !solve.penalty || solve.penalty === 'none';
-                              const isPlus2 = solve.penalty === '+2';
-                              const isDnf = solve.penalty === 'dnf' || solve.isDnf;
-                              const isBest = origIndex === bestSolveIndex;
-                              const isWorst = origIndex === worstSolveIndex;
-                              const fluency = computeFluencyScore(solve.elapsedMs ?? solve.timeMs, solve.pauses);
-                              const ao5AtIdx = rollingAo5List[origIndex];
-                              const ao12AtIdx = rollingAo12List[origIndex];
+                    <>
+                      {/* Mobile compact cards */}
+                      <div className="sm:hidden flex flex-col gap-2">
+                        {[...sessionSolves].reverse().map((solve, revIdx) => {
+                          const solveIndex = sessionSolves.length - revIdx;
+                          const origIndex = solveIndex - 1;
+                          const isNone = !solve.penalty || solve.penalty === 'none';
+                          const isPlus2 = solve.penalty === '+2';
+                          const isDnf = solve.penalty === 'dnf' || solve.isDnf;
+                          const isBest = origIndex === bestSolveIndex;
+                          const isWorst = origIndex === worstSolveIndex;
+                          const ao5AtIdx = rollingAo5List[origIndex];
 
-                              let timeColor = 'text-white';
-                              if (isDnf) {
-                                timeColor = 'text-rose-400 line-through';
-                              } else if (isBest) {
-                                timeColor = 'text-emerald-400 font-bold';
-                              } else if (isWorst) {
-                                timeColor = 'text-rose-400 font-bold';
-                              } else if (isPlus2) {
-                                timeColor = 'text-amber-300';
-                              }
+                          let timeColor = 'text-white';
+                          if (isDnf) timeColor = 'text-rose-400 line-through';
+                          else if (isBest) timeColor = 'text-emerald-400';
+                          else if (isWorst) timeColor = 'text-rose-400';
+                          else if (isPlus2) timeColor = 'text-amber-300';
 
-                              return (
-                                <tr key={solve.id} className="hover:bg-[#252b2e]/60 transition-colors">
-                                  <td className="py-2.5 px-2.5 text-[#94a3b8] font-semibold">#{solveIndex}</td>
-                                  <td className={`py-2.5 px-2.5 text-sm font-extrabold ${timeColor}`}>
+                          return (
+                            <div
+                              key={solve.id}
+                              className="p-3 rounded-xl bg-[#202629] border border-[#394144] flex flex-col gap-2.5"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-baseline gap-2 min-w-0">
+                                  <span className="text-xs font-mono text-[#94a3b8]">#{solveIndex}</span>
+                                  <span className={`text-xl font-mono font-extrabold ${timeColor}`}>
                                     {formatSolveTime(solve.elapsedMs ?? solve.timeMs, solve.penalty)}
-                                  </td>
-                                  <td className="py-2.5 px-2 text-center text-slate-200">{solve.moveCount ?? '-'}</td>
-                                  <td className="py-2.5 px-2 text-center text-[#9eb5aa]">
-                                    {solve.tps ? Number(solve.tps).toFixed(2) : '-'}
-                                  </td>
-                                  <td className="py-2.5 px-2 text-center text-slate-300">{fluency}</td>
-                                  <td className="py-2.5 px-2 text-center text-amber-300">
-                                    {ao5AtIdx === 'DNF' ? 'DNF' : typeof ao5AtIdx === 'number' ? formatSolveTime(ao5AtIdx) : '-'}
-                                  </td>
-                                  <td className="py-2.5 px-2 text-center text-violet-300">
-                                    {ao12AtIdx === 'DNF' ? 'DNF' : typeof ao12AtIdx === 'number' ? formatSolveTime(ao12AtIdx) : '-'}
-                                  </td>
-                                  <td className="py-2.5 px-2.5 text-right">
-                                    <div className="inline-flex items-center justify-end gap-1">
-                                      <button
-                                        type="button"
-                                        onClick={() => setSelectedSolveId(solve.id)}
-                                        className="px-2 py-1 rounded bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-[#f0f1ed] font-sans text-[10px] font-semibold cursor-pointer"
-                                      >
-                                        {t('smartCube.history.inspectSolve', 'Infos')}
-                                      </button>
-                                      <div className="inline-flex rounded border border-[#41494c] overflow-hidden font-sans text-[10px] font-semibold">
+                                  </span>
+                                  {isBest && (
+                                    <span className="px-1.5 py-0.5 rounded bg-emerald-950/60 border border-emerald-700/50 text-[10px] font-bold text-emerald-300">
+                                      PB
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2.5 text-xs font-mono text-slate-300 shrink-0">
+                                  <span>{solve.moveCount ?? '-'}m</span>
+                                  <span className="text-[#9eb5aa]">{solve.tps ? Number(solve.tps).toFixed(2) : '-'} t/s</span>
+                                  <span className="text-amber-300">
+                                    Ao5 {ao5AtIdx === 'DNF' ? 'DNF' : typeof ao5AtIdx === 'number' ? formatSolveTime(ao5AtIdx) : '-'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedSolveId(solve.id)}
+                                  className="inline-flex items-center justify-center px-3 min-h-11 rounded-lg bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-[#f0f1ed] text-xs font-semibold cursor-pointer"
+                                >
+                                  <span>{t('smartCube.history.details', 'Détails')}</span>
+                                </button>
+
+                                <div className="flex items-center gap-1.5">
+                                  <div className="inline-flex rounded-lg border border-[#41494c] overflow-hidden text-xs font-semibold">
+                                    <button
+                                      type="button"
+                                      onClick={() => updateSolvePenalty(solve.id, 'none')}
+                                      className={`px-2.5 min-h-11 cursor-pointer ${
+                                        isNone ? 'bg-slate-700 text-white font-bold' : 'text-[#94a3b8]'
+                                      }`}
+                                    >
+                                      {t('smartCube.history.penaltyOk', 'OK')}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => updateSolvePenalty(solve.id, '+2')}
+                                      className={`px-2.5 min-h-11 border-l border-[#41494c] cursor-pointer ${
+                                        isPlus2 ? 'bg-amber-600 text-white font-bold' : 'text-[#94a3b8]'
+                                      }`}
+                                    >
+                                      {t('smartCube.history.penaltyPlus2', '+2')}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => updateSolvePenalty(solve.id, 'dnf')}
+                                      className={`px-2.5 min-h-11 border-l border-[#41494c] cursor-pointer ${
+                                        isDnf ? 'bg-rose-700 text-white font-bold' : 'text-[#94a3b8]'
+                                      }`}
+                                    >
+                                      {t('smartCube.history.penaltyDnf', 'DNF')}
+                                    </button>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => deleteSolve(solve.id)}
+                                    className="inline-flex items-center justify-center min-w-11 min-h-11 rounded-lg bg-[#252b2e] border border-[#41494c] text-[#94a3b8] hover:text-rose-400 cursor-pointer"
+                                    aria-label={t('smartCube.history.delete', 'Supprimer ce temps')}
+                                  >
+                                    <TrashIcon />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Desktop full table */}
+                      <div className="hidden sm:block rounded-xl bg-[#202629] border border-[#394144] overflow-hidden">
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left border-collapse text-xs">
+                            <thead>
+                              <tr className="bg-[#252b2e] border-b border-[#394144] text-[10px] uppercase tracking-wider font-extrabold text-[#94a3b8]">
+                                <th className="py-2.5 px-2.5">{t('smartCube.history.colTotal', 'Total')}</th>
+                                <th className="py-2.5 px-2.5">{t('smartCube.history.colSingle', 'Résolution unique')}</th>
+                                <th className="py-2.5 px-2 text-center">{t('smartCube.history.colSteps', 'Étapes')}</th>
+                                <th className="py-2.5 px-2 text-center">{t('smartCube.history.colTps', 'TPS')}</th>
+                                <th className="py-2.5 px-2 text-center">{t('smartCube.history.colFluency', 'Fluence')}</th>
+                                <th className="py-2.5 px-2 text-center">{t('smartCube.history.colAo5', 'AO5')}</th>
+                                <th className="py-2.5 px-2 text-center">{t('smartCube.history.colAo12', 'AO12')}</th>
+                                <th className="py-2.5 px-2.5 text-right">{t('smartCube.history.colActions', 'Actions')}</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#394144]/60 font-mono">
+                              {[...sessionSolves].reverse().map((solve, revIdx) => {
+                                const solveIndex = sessionSolves.length - revIdx;
+                                const origIndex = solveIndex - 1;
+                                const isNone = !solve.penalty || solve.penalty === 'none';
+                                const isPlus2 = solve.penalty === '+2';
+                                const isDnf = solve.penalty === 'dnf' || solve.isDnf;
+                                const isBest = origIndex === bestSolveIndex;
+                                const isWorst = origIndex === worstSolveIndex;
+                                const fluency = computeFluencyScore(solve.elapsedMs ?? solve.timeMs, solve.pauses);
+                                const ao5AtIdx = rollingAo5List[origIndex];
+                                const ao12AtIdx = rollingAo12List[origIndex];
+
+                                let timeColor = 'text-white';
+                                if (isDnf) {
+                                  timeColor = 'text-rose-400 line-through';
+                                } else if (isBest) {
+                                  timeColor = 'text-emerald-400 font-bold';
+                                } else if (isWorst) {
+                                  timeColor = 'text-rose-400 font-bold';
+                                } else if (isPlus2) {
+                                  timeColor = 'text-amber-300';
+                                }
+
+                                return (
+                                  <tr key={solve.id} className="hover:bg-[#252b2e]/60 transition-colors">
+                                    <td className="py-2.5 px-2.5 text-[#94a3b8] font-semibold">#{solveIndex}</td>
+                                    <td className={`py-2.5 px-2.5 text-sm font-extrabold ${timeColor}`}>
+                                      {formatSolveTime(solve.elapsedMs ?? solve.timeMs, solve.penalty)}
+                                    </td>
+                                    <td className="py-2.5 px-2 text-center text-slate-200">{solve.moveCount ?? '-'}</td>
+                                    <td className="py-2.5 px-2 text-center text-[#9eb5aa]">
+                                      {solve.tps ? Number(solve.tps).toFixed(2) : '-'}
+                                    </td>
+                                    <td className="py-2.5 px-2 text-center text-slate-300">{fluency}</td>
+                                    <td className="py-2.5 px-2 text-center text-amber-300">
+                                      {ao5AtIdx === 'DNF' ? 'DNF' : typeof ao5AtIdx === 'number' ? formatSolveTime(ao5AtIdx) : '-'}
+                                    </td>
+                                    <td className="py-2.5 px-2 text-center text-violet-300">
+                                      {ao12AtIdx === 'DNF' ? 'DNF' : typeof ao12AtIdx === 'number' ? formatSolveTime(ao12AtIdx) : '-'}
+                                    </td>
+                                    <td className="py-2.5 px-2.5 text-right">
+                                      <div className="inline-flex items-center justify-end gap-1">
                                         <button
                                           type="button"
-                                          onClick={() => updateSolvePenalty(solve.id, 'none')}
-                                          className={`px-1.5 py-0.5 cursor-pointer ${
-                                            isNone ? 'bg-slate-700 text-white font-bold' : 'text-[#94a3b8]'
-                                          }`}
+                                          onClick={() => setSelectedSolveId(solve.id)}
+                                          className="px-2 py-1 rounded bg-[#252b2e] border border-[#41494c] hover:border-[#9eb5aa] text-[#f0f1ed] font-sans text-[10px] font-semibold cursor-pointer"
                                         >
-                                          {t('smartCube.history.penaltyOk', 'OK')}
+                                          {t('smartCube.history.details', 'Détails')}
                                         </button>
+                                        <div className="inline-flex rounded border border-[#41494c] overflow-hidden font-sans text-[10px] font-semibold">
+                                          <button
+                                            type="button"
+                                            onClick={() => updateSolvePenalty(solve.id, 'none')}
+                                            className={`px-1.5 py-0.5 cursor-pointer ${
+                                              isNone ? 'bg-slate-700 text-white font-bold' : 'text-[#94a3b8]'
+                                            }`}
+                                          >
+                                            {t('smartCube.history.penaltyOk', 'OK')}
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => updateSolvePenalty(solve.id, '+2')}
+                                            className={`px-1.5 py-0.5 border-l border-[#41494c] cursor-pointer ${
+                                              isPlus2 ? 'bg-amber-600 text-white font-bold' : 'text-[#94a3b8]'
+                                            }`}
+                                          >
+                                            {t('smartCube.history.penaltyPlus2', '+2')}
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => updateSolvePenalty(solve.id, 'dnf')}
+                                            className={`px-1.5 py-0.5 border-l border-[#41494c] cursor-pointer ${
+                                              isDnf ? 'bg-rose-700 text-white font-bold' : 'text-[#94a3b8]'
+                                            }`}
+                                          >
+                                            {t('smartCube.history.penaltyDnf', 'DNF')}
+                                          </button>
+                                        </div>
                                         <button
                                           type="button"
-                                          onClick={() => updateSolvePenalty(solve.id, '+2')}
-                                          className={`px-1.5 py-0.5 border-l border-[#41494c] cursor-pointer ${
-                                            isPlus2 ? 'bg-amber-600 text-white font-bold' : 'text-[#94a3b8]'
-                                          }`}
+                                          onClick={() => deleteSolve(solve.id)}
+                                          className="p-1 rounded text-[#94a3b8] hover:text-rose-400 cursor-pointer"
+                                          aria-label={t('smartCube.history.delete', 'Supprimer ce temps')}
                                         >
-                                          {t('smartCube.history.penaltyPlus2', '+2')}
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => updateSolvePenalty(solve.id, 'dnf')}
-                                          className={`px-1.5 py-0.5 border-l border-[#41494c] cursor-pointer ${
-                                            isDnf ? 'bg-rose-700 text-white font-bold' : 'text-[#94a3b8]'
-                                          }`}
-                                        >
-                                          {t('smartCube.history.penaltyDnf', 'DNF')}
+                                          <TrashIcon />
                                         </button>
                                       </div>
-                                      <button
-                                        type="button"
-                                        onClick={() => deleteSolve(solve.id)}
-                                        className="p-1 rounded text-[#94a3b8] hover:text-rose-400 cursor-pointer"
-                                        aria-label={t('smartCube.history.delete', 'Supprimer ce temps')}
-                                      >
-                                        <TrashIcon />
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
-                    </div>
+                    </>
                   )}
                 </div>
               ) : historyTab === 'stats' ? (
@@ -1742,6 +1913,18 @@ export function SmartCubePage() {
                           <td className="py-2.5 px-4 font-semibold text-slate-300">{t('smartCube.stats.bestAo12', 'AO12.Meilleur')}</td>
                           <td className="py-2.5 px-4 text-right font-mono font-bold text-violet-300">
                             {periodStats.bestAo12Ms !== null ? formatSolveTime(periodStats.bestAo12Ms) : '-'}
+                          </td>
+                        </tr>
+                        <tr className="hover:bg-[#252b2e]/50">
+                          <td className="py-2.5 px-4 font-semibold text-slate-300">{t('smartCube.stats.bestAo50', 'AO50.Meilleur')}</td>
+                          <td className="py-2.5 px-4 text-right font-mono font-bold text-sky-300">
+                            {periodStats.bestAo50Ms !== null ? formatSolveTime(periodStats.bestAo50Ms) : '-'}
+                          </td>
+                        </tr>
+                        <tr className="hover:bg-[#252b2e]/50">
+                          <td className="py-2.5 px-4 font-semibold text-slate-300">{t('smartCube.stats.bestAo100', 'AO100.Meilleur')}</td>
+                          <td className="py-2.5 px-4 text-right font-mono font-bold text-emerald-300">
+                            {periodStats.bestAo100Ms !== null ? formatSolveTime(periodStats.bestAo100Ms) : '-'}
                           </td>
                         </tr>
                       </tbody>

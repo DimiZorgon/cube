@@ -638,6 +638,56 @@
     transform: translateX(0);
   }
 
+  .cstimer-mini-icon-btn {
+    min-width: 42px;
+    min-height: 42px;
+    width: 42px;
+    height: 42px;
+  }
+
+  .cstimer-drawer-toggle-btn {
+    min-width: 42px;
+    min-height: 42px;
+    height: 42px;
+    padding: 0 0.6rem;
+  }
+
+  .cstimer-nav-link {
+    min-height: 40px;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  .hist-actions {
+    gap: 0.35rem;
+  }
+
+  .hist-pen-btn {
+    min-height: 36px;
+    min-width: 38px;
+    padding: 0.2rem 0.45rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .hist-del-btn {
+    min-height: 36px;
+    min-width: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .cstimer-penalty-pill {
+    min-height: 44px;
+  }
+
+  .cstimer-session-row .cstimer-select {
+    min-width: 0;
+    min-height: 42px;
+  }
+
   /* Barre de scramble compacte en haut */
   .cstimer-scramble-bar {
     padding: 0.6rem 0.75rem;
@@ -653,7 +703,8 @@
 
   .cstimer-scramble-controls .cstimer-select {
     flex: 0 1 auto;
-    min-width: 82px;
+    min-width: 72px;
+    min-height: 42px;
     padding: 0.36rem 0.5rem;
     font-size: 0.82rem;
   }
@@ -664,11 +715,6 @@
     flex: 1;
     justify-content: center;
     min-width: 0;
-  }
-
-  .cstimer-nav-link {
-    font-size: 0.78rem;
-    white-space: nowrap;
   }
 
   .cstimer-scramble-text {
@@ -693,7 +739,38 @@
 
   .cstimer-scramble-nav {
     flex: 0 0 auto;
-    padding: 0.28rem 0.5rem;
+    padding: 0.15rem 0.4rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .cstimer-scramble-bar {
+    padding: 0.5rem;
+  }
+
+  .cstimer-scramble-controls {
+    gap: 0.25rem;
+  }
+
+  .cstimer-scramble-controls .cstimer-select {
+    min-width: 0;
+    max-width: 84px;
+    padding: 0.3rem 0.35rem;
+    font-size: 0.78rem;
+  }
+
+  .cstimer-mini-icon-btn {
+    min-width: 40px;
+    min-height: 40px;
+    width: 40px;
+    height: 40px;
+  }
+
+  .cstimer-drawer-toggle-btn {
+    min-width: 40px;
+    min-height: 40px;
+    height: 40px;
+    padding: 0 0.4rem;
   }
 }
 

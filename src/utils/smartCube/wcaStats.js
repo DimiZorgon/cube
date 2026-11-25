@@ -46,51 +46,69 @@ export function getEffectiveTime(solve) {
 }
 
 /**
- * Computes WCA Average of 5 (Ao5) according to WCA Regulation 9f8:
- * - Trims the fastest (min) and slowest (max) times.
- * - Averages the remaining 3 times.
- * - Single DNF is treated as the worst time (trimmed).
- * - 2 or more DNFs results in 'DNF'.
- * - Returns null if fewer than 5 solves.
+ * Computes a WCA trimmed average of `size` solves according to WCA Regulations 9f8/9f9:
+ * - Trims `ceil(size * 0.05)` fastest and slowest solves (1 for 5/12, 3 for 50, 5 for 100).
+ * - Returns 'DNF' if `dnfCount > trimCount`.
+ * - Returns null if fewer than `size` solves.
+ *
+ * @param {Array<number|object|string>} solves
+ * @param {number} size
+ * @returns {number|string|null} Rounded average in ms, 'DNF', or null
+ */
+export function calculateWcaTrimmedAverage(solves, size) {
+  if (!solves || !size || size <= 0 || solves.length < size) return null;
+  const trimCount = Math.ceil(size * 0.05);
+  const keptCount = size - trimCount * 2;
+  if (keptCount <= 0) return null;
+
+  const slice = solves.slice(-size);
+  const dnfCount = slice.filter(s => s === 'DNF' || s?.penalty === 'dnf' || s?.isDnf).length;
+  if (dnfCount > trimCount) return 'DNF';
+
+  const times = slice.map(getEffectiveTime).sort((a, b) => a - b);
+  const trimmed = times.slice(trimCount, size - trimCount);
+  const sum = trimmed.reduce((acc, t) => acc + t, 0);
+  return Math.round(sum / trimmed.length);
+}
+
+/**
+ * Computes WCA Average of 5 (Ao5) according to WCA Regulation 9f8.
  *
  * @param {Array<number|object|string>} solves
  * @returns {number|string|null} Rounded average in ms, 'DNF', or null
  */
 export function calculateWcaAo5(solves) {
-  if (!solves || solves.length < 5) return null;
-  const last5 = solves.slice(-5);
-  const dnfCount = last5.filter(s => s === 'DNF' || s?.penalty === 'dnf' || s?.isDnf).length;
-  if (dnfCount >= 2) return 'DNF';
-
-  const times = last5.map(getEffectiveTime).sort((a, b) => a - b);
-  // Remove min (index 0) and max (index 4), average middle 3 (indices 1, 2, 3)
-  const middle3 = times.slice(1, 4);
-  const sum = middle3.reduce((acc, t) => acc + t, 0);
-  return Math.round(sum / 3);
+  return calculateWcaTrimmedAverage(solves, 5);
 }
 
 /**
- * Computes WCA Average of 12 (Ao12) according to WCA Regulation 9f9:
- * - Trims the fastest (min) and slowest (max) times.
- * - Averages the remaining 10 times.
- * - Single DNF is treated as worst (trimmed).
- * - 2 or more DNFs results in 'DNF'.
- * - Returns null if fewer than 12 solves.
+ * Computes WCA Average of 12 (Ao12) according to WCA Regulation 9f9.
  *
  * @param {Array<number|object|string>} solves
  * @returns {number|string|null} Rounded average in ms, 'DNF', or null
  */
 export function calculateWcaAo12(solves) {
-  if (!solves || solves.length < 12) return null;
-  const last12 = solves.slice(-12);
-  const dnfCount = last12.filter(s => s === 'DNF' || s?.penalty === 'dnf' || s?.isDnf).length;
-  if (dnfCount >= 2) return 'DNF';
+  return calculateWcaTrimmedAverage(solves, 12);
+}
 
-  const times = last12.map(getEffectiveTime).sort((a, b) => a - b);
-  // Remove min (index 0) and max (index 11), average middle 10 (indices 1 to 10)
-  const middle10 = times.slice(1, 11);
-  const sum = middle10.reduce((acc, t) => acc + t, 0);
-  return Math.round(sum / 10);
+/**
+ * Computes WCA Average of 50 (Ao50).
+ *
+ * @param {Array<number|object|string>} solves
+ * @returns {number|string|null} Rounded average in ms, 'DNF', or null
+ */
+export function calculateWcaAo50(solves) {
+  return calculateWcaTrimmedAverage(solves, 50);
+}
+
+/**
+ * Computes WCA Average of 100 (Ao100).
+ *
+ * @param {Array<number|object|string>} solves
+ * @returns {number|string|null} Rounded average in ms, 'DNF', or null
+ */
+export function calculateWcaAo100(solves) {
+  return calculateWcaTrimmedAverage(solves, 100);
 }
 
 /**
@@ -117,7 +135,7 @@ export function calculateWcaMo3(solves) {
  * Computes complete summary statistics for a session.
  *
  * @param {Array<number|object|string>} solves
- * @returns {{ count: number, best: number|null, worst: number|null, mo3: number|string|null, ao5: number|string|null, ao12: number|string|null, avgTps: number|null }}
+ * @returns {{ count: number, best: number|null, worst: number|null, mo3: number|string|null, ao5: number|string|null, ao12: number|string|null, ao50: number|string|null, ao100: number|string|null, avgTps: number|null }}
  */
 export function calculateSessionStats(solves) {
   if (!solves || solves.length === 0) {
@@ -128,6 +146,8 @@ export function calculateSessionStats(solves) {
       mo3: null,
       ao5: null,
       ao12: null,
+      ao50: null,
+      ao100: null,
       avgTps: null
     };
   }
@@ -141,6 +161,8 @@ export function calculateSessionStats(solves) {
   const mo3 = calculateWcaMo3(solves);
   const ao5 = calculateWcaAo5(solves);
   const ao12 = calculateWcaAo12(solves);
+  const ao50 = calculateWcaAo50(solves);
+  const ao100 = calculateWcaAo100(solves);
 
   const validTps = solves
     .map(s => (typeof s === 'object' ? s?.tps : null))
@@ -157,6 +179,8 @@ export function calculateSessionStats(solves) {
     mo3,
     ao5,
     ao12,
+    ao50,
+    ao100,
     avgTps
   };
 }

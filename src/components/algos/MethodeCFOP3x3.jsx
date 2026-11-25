@@ -24,6 +24,14 @@ const LEARNED_STORAGE_KEY = 'rubiks_learned_algos';
 export function MethodeCFOP3x3({ onBack, onTestAlgo, onTestSmartCube, activeSection: controlledSection, onSectionChange }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const sections = CFOP_SECTIONS.map(section => ({
+    ...section,
+    label: t(`data.section.cfop.${section.id}`)
+  }));
+  const [localSection, setLocalSection] = useState('F2L');
+  const activeSection = controlledSection ?? localSection;
+  const setActiveSection = onSectionChange ?? setLocalSection;
+
   const handleTestSmartCube = (item) => {
     if (typeof onTestSmartCube === 'function') {
       onTestSmartCube(item);
@@ -33,13 +41,6 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo, onTestSmartCube, activeSect
       });
     }
   };
-  const sections = CFOP_SECTIONS.map(section => ({
-    ...section,
-    label: t(`data.section.cfop.${section.id}`)
-  }));
-  const [localSection, setLocalSection] = useState('F2L');
-  const activeSection = controlledSection ?? localSection;
-  const setActiveSection = onSectionChange ?? setLocalSection;
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedCase, setSelectedCase] = useState(null);
   const [showOnlyUnlearned, setShowOnlyUnlearned] = useState(false);
@@ -61,9 +62,10 @@ export function MethodeCFOP3x3({ onBack, onTestAlgo, onTestSmartCube, activeSect
     setLearnedIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
   };
 
+  const rawGroups = CFOP_DATA[activeSection];
   const groups = useMemo(
-    () => localizeCFOPGroups(activeSection, CFOP_DATA[activeSection] || [], t),
-    [activeSection, t]
+    () => localizeCFOPGroups(activeSection, rawGroups || [], t),
+    [activeSection, rawGroups, t]
   );
   const activeSectionLabel = sections.find(section => section.id === activeSection)?.label || activeSection;
   const totalCases = groups.reduce((acc, g) => acc + g.cases.length, 0);

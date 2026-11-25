@@ -14,6 +14,16 @@ import { CubeStateSimulator } from '../utils/cubeMath.js';
 import { safeTps } from '../utils/smartCube/wcaStats.js';
 import { detectSolvePhase, detectF2LSlots, F2L_SLOT_NAMES } from '../utils/smartCube/solvePhaseDetector.js';
 import { generateWcaScramble } from '../utils/scrambleGenerator.js';
+import {
+  SESSIONS_STORAGE_KEY,
+  loadSmartCubeSolves,
+  saveSmartCubeSolves
+} from '../utils/smartCube/sessionStorage.js';
+import {
+  resolveMoveTiming,
+  enrichPhaseSplits,
+  detectRegrips
+} from '../utils/smartCube/solveMetrics.js';
 
 export const CFOP_PHASE_ORDER = Object.freeze(['cross', 'f2l', 'oll', 'pll']);
 export const CFOP_PHASE_NAMES = Object.freeze({
@@ -170,6 +180,8 @@ export function advanceSolvePhases({
   f2lBreakdown = null,
   completedF2LSlots = null,
   lastF2LSplitMs = null,
+  lastF2LMoves = null,
+  moveHistory = null,
   timestamp = null
 }) {
   const splits = { ...(phaseSplits || {}) };
@@ -186,7 +198,11 @@ export function advanceSolvePhases({
   let f2lMarker = typeof lastF2LSplitMs === 'number'
     ? lastF2LSplitMs
     : (splits.cross?.splitMs || splitMarker || 0);
+  let f2lMoveMarker = typeof lastF2LMoves === 'number'
+    ? lastF2LMoves
+    : (splits.cross?.moveCount ?? moveMarker ?? 0);
   const nowTs = timestamp || Date.now();
+  const history = Array.isArray(moveHistory) ? moveHistory : [];
   const pairKeys = ['f1', 'f2', 'f3', 'f4'];
 
   const ranks = { cross: 0, f2l: 1, oll: 2, pll: 3, complete: 4 };
@@ -204,27 +220,6 @@ export function advanceSolvePhases({
 
   const currentRank = ranks[phase] ?? 0;
   const targetRank = ranks[targetPhase] ?? currentRank;
-
-  // Track incremental F2L slot completions if we are in F2L phase or beyond cross
-  if (facelets && (targetRank >= ranks.f2l || currentRank >= ranks.f2l)) {
-    const currentSlots = detectF2LSlots(facelets, resolvedCrossFace);
-    for (const s of currentSlots) {
-      if (s.solved && !completedSlots.includes(s.slot)) {
-        completedSlots.push(s.slot);
-        const nextKey = pairKeys[Object.keys(breakdown).length];
-        if (nextKey) {
-          const durationMs = Math.max(0, elapsedMs - f2lMarker);
-          breakdown[nextKey] = {
-            slot: s.slot,
-            durationMs,
-            splitMs: elapsedMs,
-            timestamp: nowTs
-          };
-          f2lMarker = elapsedMs;
-        }
-      }
-    }
-  }
 
   if (targetRank > currentRank) {
     for (let r = currentRank; r < targetRank; r++) {
@@ -252,6 +247,7 @@ export function advanceSolvePhases({
           moveMarker = currentMoveCount;
           if (stepPhase === 'cross') {
             f2lMarker = elapsedMs;
+            f2lMoveMarker = currentMoveCount;
           }
         } else {
           const record = {
@@ -270,6 +266,44 @@ export function advanceSolvePhases({
       }
     }
     phase = targetPhase;
+  }
+
+  // Track incremental F2L slot completions if we are in F2L phase or beyond cross
+  if (facelets && (targetRank >= ranks.f2l || currentRank >= ranks.f2l)) {
+    const currentSlots = detectF2LSlots(facelets, resolvedCrossFace);
+    for (const s of currentSlots) {
+      if (s.solved && !completedSlots.includes(s.slot)) {
+        completedSlots.push(s.slot);
+        const nextKey = pairKeys[Object.keys(breakdown).length];
+        if (nextKey) {
+          const durationMs = Math.max(0, elapsedMs - f2lMarker);
+          const hasMoves = currentMoveCount > f2lMoveMarker;
+          const startMoveIndex = hasMoves ? f2lMoveMarker : null;
+          const endMoveIndex = hasMoves ? currentMoveCount - 1 : null;
+          const moveCount = hasMoves ? currentMoveCount - f2lMoveMarker : 0;
+          const firstStep = hasMoves ? (Number(history[startMoveIndex]?.stepTime) || 0) : 0;
+          const recognitionMs = moveCount > 0 ? Math.min(durationMs, Math.max(0, firstStep)) : 0;
+          const executionMs = Math.max(0, durationMs - recognitionMs);
+          const tps = safeTps(moveCount, durationMs);
+
+          breakdown[nextKey] = {
+            slot: s.slot,
+            durationMs,
+            splitMs: elapsedMs,
+            timestamp: nowTs,
+            moveCount,
+            moves: moveCount,
+            tps,
+            startMoveIndex,
+            endMoveIndex,
+            recognitionMs,
+            executionMs
+          };
+          f2lMarker = elapsedMs;
+          f2lMoveMarker = currentMoveCount;
+        }
+      }
+    }
   }
 
   if (forceComplete || targetPhase === 'complete') {
@@ -313,7 +347,14 @@ export function advanceSolvePhases({
         slot: s,
         durationMs: 0,
         splitMs: elapsedMs,
-        timestamp: nowTs
+        timestamp: nowTs,
+        moveCount: 0,
+        moves: 0,
+        tps: 0,
+        startMoveIndex: null,
+        endMoveIndex: null,
+        recognitionMs: 0,
+        executionMs: 0
       };
     }
   }
@@ -323,16 +364,19 @@ export function advanceSolvePhases({
     splits.f2l.breakdown = breakdown;
   }
 
+  const enrichedSplits = enrichPhaseSplits(splits, history);
+
   return {
     currentPhase: phase,
-    phaseSplits: splits,
+    phaseSplits: enrichedSplits,
     phaseSteps: steps,
     lastPhaseSplitMs: splitMarker,
     lastPhaseMoves: moveMarker,
     crossFace: resolvedCrossFace,
     f2lBreakdown: breakdown,
     completedF2LSlots: completedSlots,
-    lastF2LSplitMs: f2lMarker
+    lastF2LSplitMs: f2lMarker,
+    lastF2LMoves: f2lMoveMarker
   };
 }
 
@@ -361,7 +405,9 @@ export function analyzeSolvePauses(moveHistory = [], phaseSplits = {}, threshold
     const entry = moveHistory[i];
     const stepTime = Number(entry?.stepTime) || 0;
     if (stepTime >= thresholdMs) {
-      const relMs = Math.max(0, (entry.timestamp ?? startTs) - startTs);
+      const relMs = typeof entry?.relMs === 'number'
+        ? entry.relMs
+        : Math.max(0, (entry.timestamp ?? startTs) - startTs);
       const phase = getPhaseAtElapsed(relMs);
       totalPauseMs += stepTime;
       if (stepTime > maxPauseMs) maxPauseMs = stepTime;
@@ -400,48 +446,110 @@ export const FIXED_SMART_CUBE_MAPPING = Object.freeze({
   B: { axis: 'z', value: -1, direction: 1 }
 });
 
-export const SESSIONS_STORAGE_KEY = 'rubiks_smartcube_sessions_v1';
+export { SESSIONS_STORAGE_KEY };
+export const loadSessionSolves = loadSmartCubeSolves;
+export const saveSessionSolves = saveSmartCubeSolves;
 export const POST_CONNECT_GAP_MS = 120;
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-export function loadSessionSolves() {
-  if (typeof localStorage === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(SESSIONS_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    // Sanitize any corrupt timestamps (e.g., from Bluetooth hardware uptime < 100000000000)
-    const minReasonableEpoch = 1577836800000; // 2020-01-01
-    let modified = false;
-    const sanitized = parsed.map(s => {
-      let ts = Number(s?.timestamp) || Number(s?.date) || 0;
-      if (ts < minReasonableEpoch) {
-        // If id contains an epoch timestamp (solve-<timestamp>-<hash>)
-        const match = typeof s?.id === 'string' && s.id.match(/^solve-(\d+)/);
-        const idTs = match ? Number(match[1]) : 0;
-        ts = idTs >= minReasonableEpoch ? idTs : Date.now();
-        modified = true;
-        return { ...s, timestamp: ts, date: ts };
-      }
-      return s;
-    });
-    if (modified) {
-      saveSessionSolves(sanitized);
-    }
-    return sanitized;
-  } catch {
-    return [];
+function processSerialPacket(moveData, lastSerial, droppedPackets, isSolving) {
+  const incomingSerial =
+    moveData && typeof moveData === 'object' && typeof moveData.serial === 'number' && Number.isFinite(moveData.serial)
+      ? moveData.serial
+      : null;
+
+  if (incomingSerial === null) {
+    return { duplicate: false, lastSerial, droppedPackets, serial: null };
   }
+  if (lastSerial !== null && incomingSerial === lastSerial) {
+    return { duplicate: true, lastSerial, droppedPackets, serial: incomingSerial };
+  }
+
+  let nextDropped = droppedPackets;
+  if (isSolving && lastSerial !== null) {
+    const delta = (incomingSerial - lastSerial + 65536) % 65536;
+    if (delta > 1) {
+      nextDropped += delta - 1;
+    }
+  }
+
+  return {
+    duplicate: false,
+    lastSerial: incomingSerial,
+    droppedPackets: nextDropped,
+    serial: incomingSerial
+  };
 }
 
-export function saveSessionSolves(solves) {
-  if (typeof localStorage === 'undefined') return;
-  try {
-    localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(solves));
-  } catch {
-    // Ignorer les erreurs de quota localStorage
+function trySampleGyro(samples, quaternion, lastSampleWallMs, solveStartMs, timerStatus) {
+  if (timerStatus !== 'solving' || !Array.isArray(quaternion) || quaternion.length < 4) {
+    return lastSampleWallMs;
   }
+  if (samples.length >= 600) return lastSampleWallMs;
+  const now = Date.now();
+  if (samples.length > 0 && now - lastSampleWallMs < 100) {
+    return lastSampleWallMs;
+  }
+  const relMs = Math.max(0, now - (solveStartMs || now));
+  samples.push({
+    relMs,
+    q: [quaternion[0], quaternion[1], quaternion[2], quaternion[3]]
+  });
+  return now;
+}
+
+function buildSolveRecord({
+  now,
+  elapsedMs,
+  moveCount,
+  tps,
+  scramble,
+  moveHistory,
+  phaseSplits,
+  phaseSteps,
+  f2lBreakdown,
+  crossFace,
+  gyroSamples,
+  droppedPackets
+}) {
+  const enrichedSplits = enrichPhaseSplits(phaseSplits, moveHistory);
+  const breakdownCopy = { ...(f2lBreakdown || {}) };
+  enrichedSplits.f2lBreakdown = breakdownCopy;
+  if (enrichedSplits.f2l) {
+    enrichedSplits.f2l.breakdown = breakdownCopy;
+  }
+
+  const pauses = analyzeSolvePauses(moveHistory, enrichedSplits);
+  const regrips = detectRegrips(moveHistory, gyroSamples, enrichedSplits);
+
+  return {
+    id: `solve-${now}-${Math.random().toString(36).slice(2, 7)}`,
+    timestamp: now,
+    date: now,
+    elapsedMs,
+    timeMs: elapsedMs,
+    moveCount,
+    tps,
+    scramble: scramble || '',
+    moves: moveHistory.map(m => m.move).join(' '),
+    moveTimings: moveHistory.map(m => ({
+      move: m.move,
+      timestamp: m.timestamp,
+      relMs: m.relMs ?? 0,
+      stepTime: m.stepTime,
+      cubeTimestamp: m.cubeTimestamp ?? null,
+      serial: m.serial ?? null
+    })),
+    pauses,
+    regrips,
+    crossFace: crossFace || 'auto',
+    droppedPackets: droppedPackets || 0,
+    penalty: 'none',
+    isDnf: false,
+    splits: enrichedSplits,
+    f2lBreakdown: breakdownCopy,
+    steps: Array.isArray(phaseSteps) ? [...phaseSteps] : []
+  };
 }
 
 export function generateRandomScramble(_moveCount = 20) {
@@ -520,6 +628,11 @@ export class SmartCubeStore {
     this._f2lBreakdown = {};
     this._f2lCompletedSlots = [];
     this._lastF2LSplitMs = 0;
+    this._lastF2LMoves = 0;
+    this._lastSerial = null;
+    this._droppedPackets = 0;
+    this._gyroSamples = [];
+    this._lastGyroSampleWallMs = 0;
     this._autoInspectOnScrambleEnd = false;
 
     this.cubeSimulator = new CubeStateSimulator();
@@ -558,6 +671,13 @@ export class SmartCubeStore {
 
     this.driver.onGyro = (quaternion) => {
       this.state.gyroQuaternion = quaternion;
+      this._lastGyroSampleWallMs = trySampleGyro(
+        this._gyroSamples,
+        quaternion,
+        this._lastGyroSampleWallMs,
+        this.state.wallStartTime || this.state.timerStartTime,
+        this.state.timerStatus
+      );
     };
 
     this.driver.onFacelets = (facelets) => {
@@ -610,6 +730,10 @@ export class SmartCubeStore {
     this.state.deviceName = null;
     this.state.batteryLevel = null;
     this.state.errorMessage = null;
+    this._lastSerial = null;
+    this._droppedPackets = 0;
+    this._gyroSamples = [];
+    this._lastGyroSampleWallMs = 0;
   }
 
   startInspection() {
@@ -649,6 +773,11 @@ export class SmartCubeStore {
     this._f2lBreakdown = {};
     this._f2lCompletedSlots = [];
     this._lastF2LSplitMs = 0;
+    this._lastF2LMoves = 0;
+    this._lastSerial = null;
+    this._droppedPackets = 0;
+    this._gyroSamples = [];
+    this._lastGyroSampleWallMs = 0;
     if (this.cubeSimulator) {
       this.cubeSimulator = new CubeStateSimulator();
     }
@@ -658,7 +787,16 @@ export class SmartCubeStore {
   handleIncomingMove(moveData, explicitTimestamp = null) {
     const moveNotation = typeof moveData === 'string' ? moveData : moveData?.move;
     if (!moveNotation) return;
-    const now = explicitTimestamp ?? Date.now();
+
+    const serialInfo = processSerialPacket(
+      moveData,
+      this._lastSerial,
+      this._droppedPackets,
+      this.state.timerStatus === 'solving'
+    );
+    if (serialInfo.duplicate) return;
+    this._lastSerial = serialInfo.lastSerial;
+    this._droppedPackets = serialInfo.droppedPackets;
 
     if (this.state.timerStatus === 'solved') {
       if (this.cubeSimulator) {
@@ -723,9 +861,10 @@ export class SmartCubeStore {
     let startTime = this.state.timerStartTime;
 
     if (currentTimerStatus === 'scrambled' || currentTimerStatus === 'inspecting') {
+      const baseNow = explicitTimestamp ?? Date.now();
       currentTimerStatus = 'solving';
-      startTime = now;
-      this.state.wallStartTime = Date.now();
+      startTime = baseNow;
+      this.state.wallStartTime = baseNow;
       this.state.inspectionStartTime = 0;
       this.state.currentPhase = 'cross';
       this.state.activeCrossFace = 'auto';
@@ -736,26 +875,38 @@ export class SmartCubeStore {
       this._f2lBreakdown = {};
       this._f2lCompletedSlots = [];
       this._lastF2LSplitMs = 0;
+      this._lastF2LMoves = 0;
+      this._droppedPackets = 0;
+      this._gyroSamples = [];
+      this._lastGyroSampleWallMs = 0;
     }
 
-    const lastMoveTs = this.state.moveHistory.length > 0
-      ? this.state.moveHistory[this.state.moveHistory.length - 1].timestamp
-      : now;
-    const stepTime = Math.max(0, now - lastMoveTs);
+    const prevMoveEntry = this.state.moveHistory.length > 0
+      ? this.state.moveHistory[this.state.moveHistory.length - 1]
+      : null;
+    const timing = resolveMoveTiming({
+      moveData,
+      explicitTimestamp,
+      prevMoveEntry,
+      solveStartWallMs: startTime
+    });
+    const now = timing.timestamp;
 
     const newMoveCount = this.state.moveCount + 1;
     this.state.moveHistory.push({
       move: moveNotation,
-      timestamp: now,
-      stepTime,
-      serial: (typeof moveData === 'object' && moveData?.serial) ?? newMoveCount
+      timestamp: timing.timestamp,
+      relMs: timing.relMs,
+      stepTime: timing.stepTime,
+      cubeTimestamp: timing.cubeTimestamp,
+      serial: serialInfo.serial
     });
 
     let elapsed = this.state.elapsedMs;
     let tps = this.state.currentTps;
 
     if (currentTimerStatus === 'solving') {
-      elapsed = Math.max(1, now - (startTime ?? now));
+      elapsed = Math.max(1, timing.relMs > 0 ? timing.relMs : (now - (startTime ?? now)));
       tps = safeTps(newMoveCount, elapsed);
 
       const facelets = this.cubeSimulator ? this.cubeSimulator.getFaceletString() : null;
@@ -775,6 +926,8 @@ export class SmartCubeStore {
         f2lBreakdown: this._f2lBreakdown,
         completedF2LSlots: this._f2lCompletedSlots,
         lastF2LSplitMs: this._lastF2LSplitMs,
+        lastF2LMoves: this._lastF2LMoves,
+        moveHistory: this.state.moveHistory,
         timestamp: now
       });
 
@@ -787,36 +940,25 @@ export class SmartCubeStore {
       this._f2lBreakdown = phaseUpdate.f2lBreakdown;
       this._f2lCompletedSlots = phaseUpdate.completedF2LSlots;
       this._lastF2LSplitMs = phaseUpdate.lastF2LSplitMs;
+      this._lastF2LMoves = phaseUpdate.lastF2LMoves;
 
       if (isSolved) {
         currentTimerStatus = 'solved';
         this.state.finalTps = tps;
-        const pauses = analyzeSolvePauses(this.state.moveHistory, this.state.phaseSplits);
-        const solveRecord = {
-          id: `solve-${now}-${Math.random().toString(36).slice(2, 7)}`,
-          timestamp: now,
-          date: now,
+        const solveRecord = buildSolveRecord({
+          now,
           elapsedMs: elapsed,
-          timeMs: elapsed,
           moveCount: newMoveCount,
           tps,
-          scramble: this.state.scramble || '',
-          moves: this.state.moveHistory.map(m => m.move).join(' '),
-          moveTimings: this.state.moveHistory.map(m => ({
-            move: m.move,
-            timestamp: m.timestamp,
-            stepTime: m.stepTime
-          })),
-          pauses,
-          penalty: 'none',
-          isDnf: false,
-          splits: {
-            ...this.state.phaseSplits,
-            f2lBreakdown: { ...phaseUpdate.f2lBreakdown }
-          },
-          f2lBreakdown: { ...phaseUpdate.f2lBreakdown },
-          steps: [...this.state.phaseSteps]
-        };
+          scramble: this.state.scramble,
+          moveHistory: this.state.moveHistory,
+          phaseSplits: this.state.phaseSplits,
+          phaseSteps: this.state.phaseSteps,
+          f2lBreakdown: phaseUpdate.f2lBreakdown,
+          crossFace: phaseUpdate.crossFace,
+          gyroSamples: this._gyroSamples,
+          droppedPackets: this._droppedPackets
+        });
         this.state.sessionSolves.push(solveRecord);
         saveSessionSolves(this.state.sessionSolves);
       }
@@ -855,6 +997,8 @@ export class SmartCubeStore {
       f2lBreakdown: this._f2lBreakdown,
       completedF2LSlots: this._f2lCompletedSlots,
       lastF2LSplitMs: this._lastF2LSplitMs,
+      lastF2LMoves: this._lastF2LMoves,
+      moveHistory: this.state.moveHistory,
       timestamp: now
     });
     this.state.currentPhase = phaseUpdate.currentPhase;
@@ -866,33 +1010,22 @@ export class SmartCubeStore {
     this._f2lBreakdown = phaseUpdate.f2lBreakdown;
     this._f2lCompletedSlots = phaseUpdate.completedF2LSlots;
     this._lastF2LSplitMs = phaseUpdate.lastF2LSplitMs;
+    this._lastF2LMoves = phaseUpdate.lastF2LMoves;
 
-    const pauses = analyzeSolvePauses(this.state.moveHistory, this.state.phaseSplits);
-    const solveRecord = {
-      id: `solve-${now}-${Math.random().toString(36).slice(2, 7)}`,
-      timestamp: now,
-      date: now,
+    const solveRecord = buildSolveRecord({
+      now,
       elapsedMs: elapsed,
-      timeMs: elapsed,
       moveCount: this.state.moveCount,
       tps: finalTps,
-      scramble: this.state.scramble || '',
-      moves: this.state.moveHistory.map(m => m.move).join(' '),
-      moveTimings: this.state.moveHistory.map(m => ({
-        move: m.move,
-        timestamp: m.timestamp,
-        stepTime: m.stepTime
-      })),
-      pauses,
-      penalty: 'none',
-      isDnf: false,
-      splits: {
-        ...this.state.phaseSplits,
-        f2lBreakdown: { ...phaseUpdate.f2lBreakdown }
-      },
-      f2lBreakdown: { ...phaseUpdate.f2lBreakdown },
-      steps: [...this.state.phaseSteps]
-    };
+      scramble: this.state.scramble,
+      moveHistory: this.state.moveHistory,
+      phaseSplits: this.state.phaseSplits,
+      phaseSteps: this.state.phaseSteps,
+      f2lBreakdown: phaseUpdate.f2lBreakdown,
+      crossFace: phaseUpdate.crossFace,
+      gyroSamples: this._gyroSamples,
+      droppedPackets: this._droppedPackets
+    });
     this.state.sessionSolves.push(solveRecord);
     saveSessionSolves(this.state.sessionSolves);
   }
@@ -929,6 +1062,11 @@ export class SmartCubeStore {
     this._f2lBreakdown = {};
     this._f2lCompletedSlots = [];
     this._lastF2LSplitMs = 0;
+    this._lastF2LMoves = 0;
+    this._lastSerial = null;
+    this._droppedPackets = 0;
+    this._gyroSamples = [];
+    this._lastGyroSampleWallMs = 0;
     if (this.cubeSimulator) {
       this.cubeSimulator = new CubeStateSimulator();
       this.cubeSimulator.applyMoves(scramble);
@@ -965,6 +1103,11 @@ export class SmartCubeStore {
     this._f2lBreakdown = {};
     this._f2lCompletedSlots = [];
     this._lastF2LSplitMs = 0;
+    this._lastF2LMoves = 0;
+    this._lastSerial = null;
+    this._droppedPackets = 0;
+    this._gyroSamples = [];
+    this._lastGyroSampleWallMs = 0;
     const initialMoves = parseScramble(this.state.scramble);
     this.state.scrambleMoves = initialMoves;
     this.state.scrambleIndex = 0;
@@ -1016,6 +1159,11 @@ let zustandLastPhaseMoves = 0;
 let zustandF2lBreakdown = {};
 let zustandF2lCompletedSlots = [];
 let zustandLastF2LSplitMs = 0;
+let zustandLastF2LMoves = 0;
+let zustandLastSerial = null;
+let zustandDroppedPackets = 0;
+let zustandGyroSamples = [];
+let zustandLastGyroSampleWallMs = 0;
 let zustandAutoInspect = true;
 
 const defaultScramble = generateWcaScramble('3x3x3');
@@ -1044,6 +1192,14 @@ const rawZustandStore = create((set, get) => {
   };
 
   defaultGanBleDriver.onGyro = (quaternion) => {
+    const state = get();
+    zustandLastGyroSampleWallMs = trySampleGyro(
+      zustandGyroSamples,
+      quaternion,
+      zustandLastGyroSampleWallMs,
+      state.wallStartTime || state.timerStartTime,
+      state.timerStatus
+    );
     set({ gyroQuaternion: quaternion });
   };
 
@@ -1177,6 +1333,10 @@ const rawZustandStore = create((set, get) => {
 
     disconnect: () => {
       defaultGanBleDriver.disconnect();
+      zustandLastSerial = null;
+      zustandDroppedPackets = 0;
+      zustandGyroSamples = [];
+      zustandLastGyroSampleWallMs = 0;
       set({
         connectionStatus: 'disconnected',
         deviceName: null,
@@ -1196,6 +1356,11 @@ const rawZustandStore = create((set, get) => {
       zustandF2lBreakdown = {};
       zustandF2lCompletedSlots = [];
       zustandLastF2LSplitMs = 0;
+      zustandLastF2LMoves = 0;
+      zustandLastSerial = null;
+      zustandDroppedPackets = 0;
+      zustandGyroSamples = [];
+      zustandLastGyroSampleWallMs = 0;
       zustandAutoInspect = options.autoInspect !== undefined ? Boolean(options.autoInspect) : true;
       try {
         useCubeStore.getState().initCube(3);
@@ -1240,7 +1405,16 @@ const rawZustandStore = create((set, get) => {
       const state = get();
       const moveNotation = typeof moveData === 'string' ? moveData : moveData?.move;
       if (!moveNotation) return;
-      const now = explicitTimestamp ?? Date.now();
+
+      const serialInfo = processSerialPacket(
+        moveData,
+        zustandLastSerial,
+        zustandDroppedPackets,
+        state.timerStatus === 'solving'
+      );
+      if (serialInfo.duplicate) return;
+      zustandLastSerial = serialInfo.lastSerial;
+      zustandDroppedPackets = serialInfo.droppedPackets;
 
       if (state.timerStatus === 'solved') {
         zustandCubeSimulator.applyMove(moveNotation);
@@ -1304,9 +1478,10 @@ const rawZustandStore = create((set, get) => {
       let phaseSteps = state.phaseSteps;
 
       if (currentTimerStatus === 'scrambled' || currentTimerStatus === 'inspecting') {
+        const baseNow = explicitTimestamp ?? Date.now();
         currentTimerStatus = 'solving';
-        startTime = now;
-        wallStart = Date.now();
+        startTime = baseNow;
+        wallStart = baseNow;
         currentPhase = 'cross';
         activeCrossFace = 'auto';
         phaseSplits = {};
@@ -1316,21 +1491,33 @@ const rawZustandStore = create((set, get) => {
         zustandF2lBreakdown = {};
         zustandF2lCompletedSlots = [];
         zustandLastF2LSplitMs = 0;
+        zustandLastF2LMoves = 0;
+        zustandDroppedPackets = 0;
+        zustandGyroSamples = [];
+        zustandLastGyroSampleWallMs = 0;
       }
 
-      const lastMoveTs = state.moveHistory.length > 0
-        ? state.moveHistory[state.moveHistory.length - 1].timestamp
-        : now;
-      const stepTime = Math.max(0, now - lastMoveTs);
+      const prevMoveEntry = state.moveHistory.length > 0
+        ? state.moveHistory[state.moveHistory.length - 1]
+        : null;
+      const timing = resolveMoveTiming({
+        moveData,
+        explicitTimestamp,
+        prevMoveEntry,
+        solveStartWallMs: startTime
+      });
+      const now = timing.timestamp;
 
       const newMoveCount = state.moveCount + 1;
       const newHistory = [
         ...state.moveHistory,
         {
           move: moveNotation,
-          timestamp: now,
-          stepTime,
-          serial: (typeof moveData === 'object' && moveData?.serial) ?? newMoveCount
+          timestamp: timing.timestamp,
+          relMs: timing.relMs,
+          stepTime: timing.stepTime,
+          cubeTimestamp: timing.cubeTimestamp,
+          serial: serialInfo.serial
         }
       ];
 
@@ -1340,7 +1527,7 @@ const rawZustandStore = create((set, get) => {
       let nextSessionSolves = state.sessionSolves;
 
       if (currentTimerStatus === 'solving') {
-        elapsed = Math.max(1, now - (startTime ?? now));
+        elapsed = Math.max(1, timing.relMs > 0 ? timing.relMs : (now - (startTime ?? now)));
         tps = safeTps(newMoveCount, elapsed);
 
         const facelets = zustandCubeSimulator ? zustandCubeSimulator.getFaceletString() : null;
@@ -1360,6 +1547,8 @@ const rawZustandStore = create((set, get) => {
           f2lBreakdown: zustandF2lBreakdown,
           completedF2LSlots: zustandF2lCompletedSlots,
           lastF2LSplitMs: zustandLastF2LSplitMs,
+          lastF2LMoves: zustandLastF2LMoves,
+          moveHistory: newHistory,
           timestamp: now
         });
 
@@ -1372,36 +1561,25 @@ const rawZustandStore = create((set, get) => {
         zustandF2lBreakdown = phaseUpdate.f2lBreakdown;
         zustandF2lCompletedSlots = phaseUpdate.completedF2LSlots;
         zustandLastF2LSplitMs = phaseUpdate.lastF2LSplitMs;
+        zustandLastF2LMoves = phaseUpdate.lastF2LMoves;
 
         if (isSolved) {
           currentTimerStatus = 'solved';
           finalTps = tps;
-          const pauses = analyzeSolvePauses(newHistory, phaseSplits);
-          const solveRecord = {
-            id: `solve-${now}-${Math.random().toString(36).slice(2, 7)}`,
-            timestamp: now,
-            date: now,
+          const solveRecord = buildSolveRecord({
+            now,
             elapsedMs: elapsed,
-            timeMs: elapsed,
             moveCount: newMoveCount,
             tps,
-            scramble: state.scramble || '',
-            moves: newHistory.map(m => m.move).join(' '),
-            moveTimings: newHistory.map(m => ({
-              move: m.move,
-              timestamp: m.timestamp,
-              stepTime: m.stepTime
-            })),
-            pauses,
-            penalty: 'none',
-            isDnf: false,
-            splits: {
-              ...phaseSplits,
-              f2lBreakdown: { ...phaseUpdate.f2lBreakdown }
-            },
-            f2lBreakdown: { ...phaseUpdate.f2lBreakdown },
-            steps: [...phaseSteps]
-          };
+            scramble: state.scramble,
+            moveHistory: newHistory,
+            phaseSplits,
+            phaseSteps,
+            f2lBreakdown: phaseUpdate.f2lBreakdown,
+            crossFace: phaseUpdate.crossFace,
+            gyroSamples: zustandGyroSamples,
+            droppedPackets: zustandDroppedPackets
+          });
           nextSessionSolves = [...nextSessionSolves, solveRecord];
           saveSessionSolves(nextSessionSolves);
         }
@@ -1447,6 +1625,8 @@ const rawZustandStore = create((set, get) => {
         f2lBreakdown: zustandF2lBreakdown,
         completedF2LSlots: zustandF2lCompletedSlots,
         lastF2LSplitMs: zustandLastF2LSplitMs,
+        lastF2LMoves: zustandLastF2LMoves,
+        moveHistory: state.moveHistory,
         timestamp: now
       });
       zustandLastPhaseSplitMs = phaseUpdate.lastPhaseSplitMs;
@@ -1454,33 +1634,22 @@ const rawZustandStore = create((set, get) => {
       zustandF2lBreakdown = phaseUpdate.f2lBreakdown;
       zustandF2lCompletedSlots = phaseUpdate.completedF2LSlots;
       zustandLastF2LSplitMs = phaseUpdate.lastF2LSplitMs;
+      zustandLastF2LMoves = phaseUpdate.lastF2LMoves;
 
-      const pauses = analyzeSolvePauses(state.moveHistory, phaseUpdate.phaseSplits);
-      const solveRecord = {
-        id: `solve-${now}-${Math.random().toString(36).slice(2, 7)}`,
-        timestamp: now,
-        date: now,
+      const solveRecord = buildSolveRecord({
+        now,
         elapsedMs: elapsed,
-        timeMs: elapsed,
         moveCount: state.moveCount,
         tps: finalTps,
-        scramble: state.scramble || '',
-        moves: state.moveHistory.map(m => m.move).join(' '),
-        moveTimings: state.moveHistory.map(m => ({
-          move: m.move,
-          timestamp: m.timestamp,
-          stepTime: m.stepTime
-        })),
-        pauses,
-        penalty: 'none',
-        isDnf: false,
-        splits: {
-          ...phaseUpdate.phaseSplits,
-          f2lBreakdown: { ...phaseUpdate.f2lBreakdown }
-        },
-        f2lBreakdown: { ...phaseUpdate.f2lBreakdown },
-        steps: [...phaseUpdate.phaseSteps]
-      };
+        scramble: state.scramble,
+        moveHistory: state.moveHistory,
+        phaseSplits: phaseUpdate.phaseSplits,
+        phaseSteps: phaseUpdate.phaseSteps,
+        f2lBreakdown: phaseUpdate.f2lBreakdown,
+        crossFace: phaseUpdate.crossFace,
+        gyroSamples: zustandGyroSamples,
+        droppedPackets: zustandDroppedPackets
+      });
       const nextSessionSolves = [...state.sessionSolves, solveRecord];
       saveSessionSolves(nextSessionSolves);
       set({
@@ -1511,6 +1680,11 @@ const rawZustandStore = create((set, get) => {
       zustandF2lBreakdown = {};
       zustandF2lCompletedSlots = [];
       zustandLastF2LSplitMs = 0;
+      zustandLastF2LMoves = 0;
+      zustandLastSerial = null;
+      zustandDroppedPackets = 0;
+      zustandGyroSamples = [];
+      zustandLastGyroSampleWallMs = 0;
       set({
         scramble,
         scrambleMoves: moves,
@@ -1557,6 +1731,11 @@ const rawZustandStore = create((set, get) => {
       zustandF2lBreakdown = {};
       zustandF2lCompletedSlots = [];
       zustandLastF2LSplitMs = 0;
+      zustandLastF2LMoves = 0;
+      zustandLastSerial = null;
+      zustandDroppedPackets = 0;
+      zustandGyroSamples = [];
+      zustandLastGyroSampleWallMs = 0;
       try {
         useCubeStore.getState().initCube(3);
       } catch {
